@@ -18,25 +18,20 @@
 }
 
 @media print {
-  header,
-  main > div:first-child,
-  section,
-  aside > div:first-child,
-  aside > div:last-child {
-    display: none !important;
+  body * {
+    visibility: hidden;
   }
 
-  body,
-  main,
-  aside,
-  aside > div {
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  #exercise-document,
+  #exercise-document * {
+    visibility: visible;
   }
 
-  aside {
-    border: 0 !important;
-    box-shadow: none !important;
+  #exercise-document {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 }

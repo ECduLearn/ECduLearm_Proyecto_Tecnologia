@@ -2,15 +2,34 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 
 type IconName =
   | "book"
+  | "check"
   | "chevron"
   | "clock"
   | "download"
+  | "file"
   | "info"
-  | "layers"
-  | "settings"
+  | "menu"
+  | "plus"
+  | "send"
   | "sparkles"
-  | "target"
-  | "user";
+  | "undo"
+  | "user"
+  | "x";
+
+type Message = {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+};
+
+type Exercise = {
+  topic: string;
+  context: string;
+  level: string;
+  difficulty: string;
+  questions: number;
+  version: number;
+};
 
 const iconPaths: Record<IconName, ReactNode> = {
   book: (
@@ -20,6 +39,7 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M8 7h8M8 11h6" />
     </>
   ),
+  check: <path d="m5 12 4 4L19 6" />,
   chevron: <path d="m9 18 6-6-6-6" />,
   clock: (
     <>
@@ -33,35 +53,36 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M5 20h14" />
     </>
   ),
+  file: (
+    <>
+      <path d="M6 2h8l4 4v16H6z" />
+      <path d="M14 2v5h5M9 12h6M9 16h6" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5M12 8h.01" />
     </>
   ),
-  layers: (
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  send: (
     <>
-      <path d="m12 3-9 5 9 5 9-5-9-5Z" />
-      <path d="m3 12 9 5 9-5M3 16l9 5 9-5" />
-    </>
-  ),
-  settings: (
-    <>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63h.01A1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9v.01A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z" />
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
     </>
   ),
   sparkles: (
     <>
       <path d="m12 3-1.1 3.1A4.3 4.3 0 0 1 8.3 8.7L5 10l3.3 1.3a4.3 4.3 0 0 1 2.6 2.6L12 17l1.1-3.1a4.3 4.3 0 0 1 2.6-2.6L19 10l-3.3-1.3a4.3 4.3 0 0 1-2.6-2.6L12 3Z" />
-      <path d="m5 3-.4 1.1a1.6 1.6 0 0 1-1 1L2.5 5.5l1.1.4a1.6 1.6 0 0 1 1 1L5 8l.4-1.1a1.6 1.6 0 0 1 1-1l1.1-.4-1.1-.4a1.6 1.6 0 0 1-1-1L5 3ZM19 16l-.6 1.5a2 2 0 0 1-1 1L16 19l1.4.5a2 2 0 0 1 1 1L19 22l.6-1.5a2 2 0 0 1 1-1L22 19l-1.4-.5a2 2 0 0 1-1-1L19 16Z" />
+      <path d="m5 3-.4 1.1a1.6 1.6 0 0 1-1 1L2.5 5.5l1.1.4a1.6 1.6 0 0 1 1 1L5 8l.4-1.1a1.6 1.6 0 0 1 1-1l1.1-.4-1.1-.4a1.6 1.6 0 0 1-1-1L5 3Z" />
     </>
   ),
-  target: (
+  undo: (
     <>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" />
+      <path d="m9 7-5 5 5 5" />
+      <path d="M20 17a7 7 0 0 0-7-7H4" />
     </>
   ),
   user: (
@@ -70,7 +91,38 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M4 21a8 8 0 0 1 16 0" />
     </>
   ),
+  x: <path d="m6 6 12 12M18 6 6 18" />,
 };
+
+const initialExercise: Exercise = {
+  topic: "Estabilidad de estructuras",
+  context: "Ingeniería civil",
+  level: "2do BGU",
+  difficulty: "Intermedia",
+  questions: 3,
+  version: 1,
+};
+
+const initialMessages: Message[] = [
+  {
+    id: 1,
+    role: "user",
+    text: "Ingeniería civil, tengo varios alumnos que quieren seguir esa carrera.",
+  },
+  {
+    id: 2,
+    role: "assistant",
+    text: "Perfecto. Preparé un desafío que conecta el razonamiento lógico con una decisión real de ingeniería civil.",
+  },
+];
+
+const recentItems = [
+  { title: "Análisis estructural", meta: "Ingeniería Civil · Ahora", context: "Ingeniería civil" },
+  { title: "Funciones cuadráticas", meta: "Arquitectura · Ayer", context: "Arquitectura" },
+  { title: "Interés compuesto", meta: "Finanzas · 12 jun", context: "Economía" },
+];
+
+const quickActions = ["Más fácil", "Contexto de arquitectura", "Economía", "Agrega una pregunta"];
 
 function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   return (
@@ -89,48 +141,29 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
   );
 }
 
-function SelectField({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
+function Logo() {
   return (
-    <label className="group block">
-      <span className="mb-2 block text-sm font-semibold text-slate-700">{label}</span>
-      <span className="relative block">
-        <select
-          className="h-12 w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-medium text-slate-800 shadow-sm outline-none transition hover:border-slate-300 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {children}
-        </select>
-        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
-          <Icon name="chevron" className="size-4 rotate-90" />
-        </span>
+    <div className="flex items-center gap-3" aria-label="ECduLearm">
+      <span className="grid size-10 place-items-center rounded-xl bg-white text-blue-950">
+        <Icon name="book" className="size-5" />
       </span>
-    </label>
+      <span className="text-lg font-bold tracking-tight text-white">
+        EC<span className="text-teal-300">du</span>Learm
+      </span>
+    </div>
   );
 }
 
 function App() {
-  const [topic, setTopic] = useState("");
-  const [level, setLevel] = useState("1ro BGU");
-  const [context, setContext] = useState("Arquitectura");
-  const [difficulty, setDifficulty] = useState("Intermedia");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [questionCount, setQuestionCount] = useState("6 ejercicios");
-  const [includeAnswers, setIncludeAnswers] = useState(true);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready">("idle");
-  const [error, setError] = useState("");
-  const [generatedTopic, setGeneratedTopic] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [exercise, setExercise] = useState<Exercise>(initialExercise);
+  const [versions, setVersions] = useState<Exercise[]>([]);
+  const [hasExercise, setHasExercise] = useState(true);
+  const [input, setInput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(
     () => () => {
@@ -139,295 +172,444 @@ function App() {
     [],
   );
 
-  const generateGuide = (event: FormEvent) => {
-    event.preventDefault();
-    if (!topic.trim()) {
-      setError("Escribe un tema para que podamos crear tu guía.");
-      return;
-    }
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isGenerating, hasExercise]);
 
-    setError("");
-    setStatus("loading");
+  const processPrompt = (prompt: string) => {
+    if (!prompt.trim() || isGenerating) return;
+
+    const normalized = prompt.toLowerCase();
+    const nextExercise: Exercise = hasExercise
+      ? { ...exercise, version: exercise.version + 1 }
+      : {
+          ...initialExercise,
+          topic: prompt.length > 54 ? `${prompt.slice(0, 54)}…` : prompt,
+          version: 1,
+        };
+
+    if (normalized.includes("fácil") || normalized.includes("basica") || normalized.includes("básica")) {
+      nextExercise.difficulty = "Básica";
+    }
+    if (normalized.includes("arquitectura")) nextExercise.context = "Arquitectura";
+    if (normalized.includes("econom")) nextExercise.context = "Economía";
+    if (normalized.includes("ingeniería") || normalized.includes("civil")) nextExercise.context = "Ingeniería civil";
+    if (normalized.includes("pregunta")) nextExercise.questions += 1;
+
+    if (hasExercise) setVersions((current) => [...current, exercise]);
+    setMessages((current) => [
+      ...current,
+      { id: Date.now(), role: "user", text: prompt.trim() },
+    ]);
+    setInput("");
+    setIsGenerating(true);
+
     timerRef.current = window.setTimeout(() => {
-      setGeneratedTopic(topic.trim());
-      setStatus("ready");
-    }, 1400);
+      setExercise(nextExercise);
+      setHasExercise(true);
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: hasExercise
+            ? "Listo. Ajusté el ejercicio y guardé la versión anterior por si deseas volver."
+            : "Listo. Organicé tu idea como un ejercicio contextualizado tipo PISA.",
+        },
+      ]);
+      setIsGenerating(false);
+    }, 900);
   };
 
-  const printGuide = () => window.print();
+  const submitPrompt = (event: FormEvent) => {
+    event.preventDefault();
+    processPrompt(input);
+  };
+
+  const startNewExercise = () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    setMessages([
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: "¿Qué tema deseas trabajar? Puedes describirlo con tus palabras o elegir una sugerencia.",
+      },
+    ]);
+    setHasExercise(false);
+    setVersions([]);
+    setInput("");
+    setIsGenerating(false);
+    setSidebarOpen(false);
+  };
+
+  const undoVersion = () => {
+    const previous = versions.at(-1);
+    if (!previous) return;
+    setExercise(previous);
+    setVersions((current) => current.slice(0, -1));
+    setMessages((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: `Restauré la versión ${previous.version}. Puedes seguir iterando sin perder tu trabajo.`,
+      },
+    ]);
+  };
+
+  const openRecent = (item: (typeof recentItems)[number]) => {
+    const recentExercise = {
+      ...initialExercise,
+      topic: item.title,
+      context: item.context,
+    };
+    setExercise(recentExercise);
+    setHasExercise(true);
+    setVersions([]);
+    setMessages([
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio.`,
+      },
+    ]);
+    setSidebarOpen(false);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3" aria-label="ECduLearm, inicio">
-            <span className="grid size-10 place-items-center rounded-xl bg-blue-950 text-white shadow-sm">
-              <Icon name="book" className="size-5" />
-            </span>
-            <span className="text-lg font-bold tracking-tight text-blue-950">
-              EC<span className="text-teal-600">du</span>Learm
-            </span>
-          </div>
+    <div className="min-h-screen bg-slate-100 text-slate-950">
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
+          aria-label="Cerrar navegación"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-blue-950 p-4 text-white transition-transform duration-300 print:hidden lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Navegación e historial"
+      >
+        <div className="flex items-center justify-between px-1">
+          <Logo />
           <button
             type="button"
-            className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-left transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
-            aria-label="Abrir perfil docente"
+            className="grid size-11 place-items-center rounded-xl text-blue-100 hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/20 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú"
           >
-            <span className="hidden sm:block">
-              <span className="block text-sm font-semibold text-slate-900">María Andrade</span>
-              <span className="block text-xs text-slate-500">Docente</span>
-            </span>
-            <span className="grid size-10 place-items-center rounded-full bg-blue-100 text-blue-950">
-              <Icon name="user" className="size-5" />
-            </span>
+            <Icon name="x" />
           </button>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mb-8 max-w-3xl sm:mb-10">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-blue-800">
-            <Icon name="sparkles" className="size-4" />
-            Generador PISA
+        <button
+          type="button"
+          onClick={startNewExercise}
+          className="mt-7 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-blue-950 shadow-lg shadow-slate-950/20 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/20"
+        >
+          <Icon name="plus" className="size-5" />
+          Nuevo ejercicio
+        </button>
+
+        <nav className="mt-8 min-h-0 flex-1 overflow-y-auto" aria-label="Ejercicios recientes">
+          <p className="px-2 text-xs font-bold uppercase tracking-widest text-blue-200">Recientes</p>
+          <div className="mt-3 space-y-1">
+            {recentItems.map((item, index) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => openRecent(item)}
+                className={`min-h-16 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15 ${
+                  index === 0 && hasExercise ? "bg-white/10" : ""
+                }`}
+              >
+                <span className="block truncate text-sm font-semibold text-white">{item.title}</span>
+                <span className="mt-1 block truncate text-xs text-blue-200">{item.meta}</span>
+              </button>
+            ))}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-blue-950 sm:text-4xl lg:text-5xl">
-            Convierte un tema en una experiencia de razonamiento
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">
-            Crea ejercicios matemáticos contextualizados y listos para el aula en pocos minutos.
+        </nav>
+
+        <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+          <div className="flex items-center gap-2 text-xs font-bold text-teal-200">
+            <Icon name="info" className="size-4" />
+            Tip para iterar
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-blue-100">
+            Escribe “contexto de arquitectura” para adaptar la guía al instante.
           </p>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-12 lg:gap-8">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 lg:col-span-7">
-            <div className="mb-7 flex items-start gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700">
-                <Icon name="target" className="size-6" />
-              </span>
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">Diseña tu guía</h2>
-                <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                  Cuéntanos qué necesitas. Nosotros estructuramos el desafío.
-                </p>
-              </div>
-            </div>
+        <button
+          type="button"
+          className="mt-4 flex min-h-14 items-center gap-3 rounded-xl px-2 text-left hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15"
+        >
+          <span className="grid size-10 place-items-center rounded-full bg-teal-100 text-blue-950">
+            <Icon name="user" className="size-5" />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">María Andrade</span>
+            <span className="block text-xs text-blue-200">Docente · 2do BGU</span>
+          </span>
+        </button>
+      </aside>
 
-            <form onSubmit={generateGuide}>
-              <label htmlFor="topic" className="mb-2 block text-sm font-semibold text-slate-700">
-                Tema de matemáticas
-              </label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-4 top-4 text-slate-400">
-                  <Icon name="sparkles" className="size-5" />
-                </span>
-                <textarea
-                  id="topic"
-                  rows={3}
-                  value={topic}
-                  onChange={(event) => {
-                    setTopic(event.target.value);
-                    if (error) setError("");
-                  }}
-                  className="min-h-28 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-4 pl-12 pr-4 text-base leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-700 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  placeholder="¿Qué tema de matemáticas deseas enseñar hoy? (Ej. Funciones cuadráticas)"
-                  aria-describedby={error ? "topic-error" : "topic-help"}
-                  aria-invalid={Boolean(error)}
-                />
-              </div>
-              {error ? (
-                <p id="topic-error" className="mt-2 flex items-center gap-2 text-sm font-medium text-amber-700" role="alert">
-                  <Icon name="info" className="size-4 shrink-0" />
-                  {error}
-                </p>
-              ) : (
-                <p id="topic-help" className="mt-2 text-xs text-slate-500">
-                  Puedes escribir un tema, una destreza o un objetivo de aprendizaje.
-                </p>
-              )}
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <SelectField label="Nivel" value={level} onChange={setLevel}>
-                  <option>1ro BGU</option>
-                  <option>2do BGU</option>
-                  <option>3ro BGU</option>
-                </SelectField>
-                <SelectField label="Contexto PISA" value={context} onChange={setContext}>
-                  <option>Arquitectura</option>
-                  <option>Finanzas</option>
-                  <option>Medio ambiente</option>
-                  <option>Vida cotidiana</option>
-                </SelectField>
-                <SelectField label="Dificultad" value={difficulty} onChange={setDifficulty}>
-                  <option>Básica</option>
-                  <option>Intermedia</option>
-                  <option>Avanzada</option>
-                </SelectField>
-              </div>
-
+      <div className="flex min-h-screen flex-col lg:pl-72">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
+          <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="mt-6 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
-                aria-expanded={advancedOpen}
-                aria-controls="advanced-settings"
-                onClick={() => setAdvancedOpen((current) => !current)}
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Abrir menú"
               >
-                <span className="flex items-center gap-2">
-                  <Icon name="settings" className="size-4" />
-                  Ajustes avanzados
-                </span>
-                <Icon name="chevron" className={`size-4 transition ${advancedOpen ? "-rotate-90" : "rotate-90"}`} />
+                <Icon name="menu" />
               </button>
-
-              {advancedOpen && (
-                <div id="advanced-settings" className="mt-3 grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
-                  <SelectField label="Extensión" value={questionCount} onChange={setQuestionCount}>
-                    <option>4 ejercicios</option>
-                    <option>6 ejercicios</option>
-                    <option>8 ejercicios</option>
-                  </SelectField>
-                  <label className="flex min-h-12 cursor-pointer items-center gap-3 self-end rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
-                    <input
-                      type="checkbox"
-                      checked={includeAnswers}
-                      onChange={(event) => setIncludeAnswers(event.target.checked)}
-                      className="size-5 rounded border-slate-300 accent-blue-800"
-                    />
-                    <span className="text-sm font-medium text-slate-800">Incluir solucionario docente</span>
-                  </label>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={status === "loading"}
-                className="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-blue-950 px-6 text-base font-bold text-white shadow-lg shadow-blue-950/15 transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-wait disabled:bg-slate-600"
-              >
-                {status === "loading" ? (
-                  <>
-                    <span className="size-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    Generando guía...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="sparkles" className="size-5" />
-                    Generar Guía de Razonamiento
-                  </>
-                )}
-              </button>
-              <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-slate-500">
-                <Icon name="clock" className="size-4" />
-                Tu guía estará lista en menos de un minuto
-              </p>
-            </form>
-          </section>
-
-          <aside className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-6 lg:col-span-5">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-              <div>
-                <h2 className="font-bold text-slate-950">Vista previa</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Documento para el estudiante</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-950">
+                  {hasExercise ? exercise.topic : "Nuevo ejercicio"}
+                </p>
+                <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="size-1.5 rounded-full bg-teal-500" />
+                  Asistente pedagógico
+                </p>
               </div>
-              <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${
-                  status === "ready" ? "bg-teal-50 text-teal-700" : "bg-slate-100 text-slate-600"
-                }`}
-                aria-live="polite"
-              >
-                <span className={`size-2 rounded-full ${status === "ready" ? "bg-teal-500" : "bg-slate-400"}`} />
-                {status === "loading" ? "Creando" : status === "ready" ? "Lista" : "Borrador"}
-              </span>
             </div>
 
-            <div className="bg-slate-100 p-4 sm:p-6">
-              <div className="mx-auto min-h-96 max-w-md rounded-sm bg-white p-6 shadow-md sm:p-8">
-                {status === "loading" ? (
-                  <div className="animate-pulse" aria-label="Generando vista previa">
-                    <div className="h-3 w-24 rounded bg-blue-100" />
-                    <div className="mt-4 h-6 w-4/5 rounded bg-slate-200" />
-                    <div className="mt-2 h-3 w-2/5 rounded bg-slate-100" />
-                    <div className="mt-8 space-y-3">
-                      <div className="h-3 rounded bg-slate-100" />
-                      <div className="h-3 rounded bg-slate-100" />
-                      <div className="h-3 w-3/4 rounded bg-slate-100" />
+            <div className="flex items-center gap-2">
+              {hasExercise && versions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={undoVersion}
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                >
+                  <Icon name="undo" className="size-4" />
+                  <span className="hidden sm:inline">Deshacer</span>
+                </button>
+              )}
+              {hasExercise && (
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-3 text-sm font-semibold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:px-4"
+                >
+                  <Icon name="download" className="size-4" />
+                  <span className="hidden sm:inline">Exportar PDF</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1">
+          <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+            <div className="mb-8 flex items-center justify-center gap-2 text-xs font-medium text-slate-500 print:hidden">
+              <Icon name="clock" className="size-4" />
+              Hoy
+            </div>
+
+            <div className="space-y-6 print:hidden">
+              {messages.map((message) =>
+                message.role === "user" ? (
+                  <div key={message.id} className="flex justify-end">
+                    <div className="max-w-xl rounded-2xl rounded-br-md bg-blue-950 px-4 py-3 text-sm leading-relaxed text-white shadow-sm sm:px-5">
+                      {message.text}
                     </div>
-                    <div className="mt-8 h-28 rounded-lg bg-slate-100" />
-                    <div className="mt-6 h-3 rounded bg-slate-100" />
-                    <div className="mt-3 h-3 w-5/6 rounded bg-slate-100" />
                   </div>
                 ) : (
-                  <>
-                    <div className="flex items-center justify-between border-b border-blue-950 pb-4">
-                      <div className="flex items-center gap-2 text-blue-950">
-                        <Icon name="book" className="size-5" />
-                        <span className="text-xs font-extrabold">ECduLearm</span>
-                      </div>
-                      <span className="text-xs font-medium text-slate-400">Guía PISA</span>
+                  <div key={message.id} className="flex items-start gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
+                      <Icon name="sparkles" className="size-4" />
+                    </span>
+                    <div className="max-w-2xl rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm sm:px-5">
+                      {message.text}
                     </div>
-                    <div className="pt-5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                        Matemáticas · {level}
-                      </span>
-                      <h3 className="mt-2 text-xl font-bold leading-tight text-blue-950">
-                        {generatedTopic || "Tu próxima guía aparecerá aquí"}
-                      </h3>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                        Contexto: {context} · Dificultad {difficulty.toLowerCase()}
-                      </p>
-                    </div>
+                  </div>
+                ),
+              )}
 
-                    <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                      <div className="flex items-center gap-2 text-blue-900">
-                        <Icon name="layers" className="size-4" />
-                        <span className="text-xs font-bold">Situación problemática</span>
-                      </div>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                        {status === "ready"
-                          ? `Analiza una situación de ${context.toLowerCase()} y aplica tus conocimientos sobre ${generatedTopic.toLowerCase()}.`
-                          : "La guía integrará una situación real, datos relevantes y preguntas de razonamiento progresivo."}
-                      </p>
-                    </div>
+              {isGenerating && (
+                <div className="flex items-start gap-3" aria-live="polite">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
+                    <Icon name="sparkles" className="size-4 animate-pulse" />
+                  </span>
+                  <div className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-5 text-sm font-medium text-slate-600 shadow-sm">
+                    <span className="size-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-800" />
+                    Adaptando el ejercicio...
+                  </div>
+                </div>
+              )}
+            </div>
 
-                    <div className="mt-6 space-y-4">
-                      {[1, 2, 3].map((number) => (
-                        <div key={number} className="flex gap-3">
-                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                            {number}
+            {!hasExercise && !isGenerating && (
+              <div className="mx-auto mt-10 max-w-2xl text-center print:hidden">
+                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-950 text-white shadow-lg shadow-blue-950/15">
+                  <Icon name="sparkles" className="size-6" />
+                </span>
+                <h1 className="mt-5 text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl">
+                  ¿Qué vamos a crear hoy?
+                </h1>
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
+                  Describe un tema, curso o contexto. ECduLearm lo convertirá en una actividad de razonamiento lista para usar.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {["Funciones cuadráticas para 1ro BGU", "Probabilidad con fútbol", "Finanzas personales"].map(
+                    (suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => processPrompt(suggestion)}
+                        className="min-h-11 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      >
+                        {suggestion}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            {hasExercise && (
+              <div className="mt-6 sm:ml-12">
+                <article
+                  id="exercise-document"
+                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5"
+                >
+                  <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap gap-2">
+                        {[exercise.context, exercise.level, "Razonamiento lógico"].map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-blue-900"
+                          >
+                            {tag}
                           </span>
-                          <div className="flex-1 pt-1">
-                            <div className="h-2 rounded bg-slate-200" />
-                            <div className="mt-2 h-2 w-3/4 rounded bg-slate-100" />
+                        ))}
+                      </div>
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                        <Icon name="check" className="size-4 text-teal-600" />
+                        Versión {exercise.version}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 sm:p-8">
+                    <div className="flex items-start gap-4">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white">
+                        <Icon name="file" className="size-5" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Desafío aplicado</p>
+                        <h2 className="mt-1 text-xl font-bold leading-tight text-blue-950 sm:text-2xl">
+                          {exercise.topic}
+                        </h2>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Dificultad {exercise.difficulty.toLowerCase()} · {exercise.questions} preguntas
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+                      <p className="text-sm font-bold text-slate-900">Situación</p>
+                      <p className="mt-2 text-sm leading-7 text-slate-700">
+                        Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario.
+                        El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir,
+                        deben comparar alternativas y justificar cuál distribuye mejor las cargas.
+                      </p>
+                    </div>
+
+                    <div className="mt-7 space-y-5">
+                      {Array.from({ length: Math.min(exercise.questions, 4) }, (_, index) => (
+                        <div key={index} className="flex gap-4">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold leading-6 text-slate-800">
+                              {index === 0
+                                ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
+                                : index === 1
+                                  ? "Si el diseño requiere 12 módulos, ¿qué superficie total representan?"
+                                  : index === 2
+                                    ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
+                                    : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
+                            </p>
+                            <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-400">
-                      <span>{questionCount}</span>
-                      <span>{includeAnswers ? "Solucionario incluido" : "Sin solucionario"}</span>
+                    <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+                      <span>ECduLearm · Guía docente</span>
+                      <span>Solucionario disponible al exportar</span>
                     </div>
-                  </>
-                )}
-              </div>
-            </div>
+                  </div>
+                </article>
 
-            <div className="p-4 sm:p-5">
+                <div className="mt-4 print:hidden">
+                  <p className="mb-2 text-xs font-semibold text-slate-500">Ajusta sin escribir un prompt largo</p>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {quickActions.map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={isGenerating}
+                        onClick={() => processPrompt(action)}
+                        className="min-h-11 shrink-0 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-50"
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+        </main>
+
+        <footer className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
+          <form onSubmit={submitPrompt} className="mx-auto max-w-4xl">
+            <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-white p-2 shadow-lg shadow-slate-900/5 transition focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
+              <label htmlFor="chat-input" className="sr-only">
+                Escribe una instrucción para ECduLearm
+              </label>
+              <textarea
+                id="chat-input"
+                rows={1}
+                value={input}
+                disabled={isGenerating}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    processPrompt(input);
+                  }
+                }}
+                placeholder='Ej: “más fácil”, “contexto de arquitectura”, “agrega una pregunta”...'
+                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-wait"
+              />
               <button
-                type="button"
-                onClick={printGuide}
-                disabled={status !== "ready"}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-950 bg-white px-4 text-sm font-bold text-blue-950 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                type="submit"
+                disabled={!input.trim() || isGenerating}
+                className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-300"
+                aria-label="Enviar instrucción"
               >
-                <Icon name="download" className="size-5" />
-                Exportar a PDF / Imprimir
+                <Icon name="send" className="size-5" />
               </button>
-              {status !== "ready" && (
-                <p className="mt-2 text-center text-xs text-slate-500">Genera una guía para habilitar la exportación.</p>
-              )}
             </div>
-          </aside>
-        </div>
-      </main>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              ECduLearm puede equivocarse. Revisa los resultados antes de usarlos en clase.
+            </p>
+          </form>
+        </footer>
+      </div>
     </div>
   );
 }
