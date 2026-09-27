@@ -1,1 +1,10 @@
-{}
+{
+  "description": "Streamline lesson planning for high school teachers by generating customized math exercise guides quickly and efficiently, enhancing teaching effectiveness.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
