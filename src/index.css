@@ -1,1 +1,42 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply m-0 min-w-80 bg-slate-50 font-sans;
+  }
+
+  button,
+  select,
+  textarea,
+  input {
+    font: inherit;
+  }
+}
+
+@media print {
+  header,
+  main > div:first-child,
+  section,
+  aside > div:first-child,
+  aside > div:last-child {
+    display: none !important;
+  }
+
+  body,
+  main,
+  aside,
+  aside > div {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  aside {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}
