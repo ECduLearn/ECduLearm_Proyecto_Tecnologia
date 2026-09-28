@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AccessPortal, TeacherDashboard } from "./Portal";
 import AutonomousZone from "./AutonomousZone";
+import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
 
 type IconName =
   | "arrow-left"
@@ -650,7 +651,9 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
 }
 
 function App() {
-  const [view, setView] = useState<"portal" | "student" | "dashboard" | "chat" | "editor">("portal");
+  const [view, setView] = useState<
+    "portal" | "student" | "dashboard" | "planner" | "simulator" | "chat" | "editor"
+  >("portal");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [exercise, setExercise] = useState<Exercise>(initialExercise);
@@ -782,7 +785,12 @@ function App() {
   }
 
   if (view === "student") {
-    return <AutonomousZone onExit={() => setView("portal")} />;
+    return (
+      <AutonomousZone
+        onExit={() => setView("portal")}
+        onSimulator={() => setView("simulator")}
+      />
+    );
   }
 
   if (view === "dashboard") {
@@ -790,8 +798,17 @@ function App() {
       <TeacherDashboard
         onExit={() => setView("portal")}
         onCreateContent={() => setView("chat")}
+        onOpenPlanner={() => setView("planner")}
       />
     );
+  }
+
+  if (view === "planner") {
+    return <PlanningWorkspace onBack={() => setView("dashboard")} />;
+  }
+
+  if (view === "simulator") {
+    return <AdmissionSimulator onBack={() => setView("student")} />;
   }
 
   if (view === "editor") {

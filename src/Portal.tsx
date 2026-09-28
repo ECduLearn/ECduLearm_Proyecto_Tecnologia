@@ -607,9 +607,11 @@ const rooms = [
 export function TeacherDashboard({
   onExit,
   onCreateContent,
+  onOpenPlanner,
 }: {
   onExit: () => void;
   onCreateContent: () => void;
+  onOpenPlanner: () => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
@@ -668,6 +670,14 @@ export function TeacherDashboard({
           >
             <PortalIcon name="sparkles" className="size-5" />
             Crear con IA
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPlanner}
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-blue-100 hover:bg-white/10"
+          >
+            <PortalIcon name="book" className="size-5" />
+            Planificador de clase
           </button>
           <button
             type="button"

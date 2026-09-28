@@ -187,7 +187,13 @@ function StudentHeader({
   );
 }
 
-export default function AutonomousZone({ onExit }: { onExit: () => void }) {
+export default function AutonomousZone({
+  onExit,
+  onSimulator,
+}: {
+  onExit: () => void;
+  onSimulator: () => void;
+}) {
   const [view, setView] = useState<"dashboard" | "free" | "school">("dashboard");
   const [newPin, setNewPin] = useState("");
   const [pinNotice, setPinNotice] = useState("");
@@ -340,7 +346,7 @@ export default function AutonomousZone({ onExit }: { onExit: () => void }) {
                 <p className="mt-3 text-sm text-slate-500">Disponible hasta el viernes · 20 preguntas</p>
                 <button
                   type="button"
-                  onClick={() => setView("school")}
+                  onClick={onSimulator}
                   className="mt-6 min-h-12 w-full rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50"
                 >
                   Empezar reto
@@ -362,7 +368,9 @@ export default function AutonomousZone({ onExit }: { onExit: () => void }) {
                   <p className="mt-2 text-xs text-slate-500">{category.detail}</p>
                   <button
                     type="button"
-                    onClick={() => setView("free")}
+                    onClick={() =>
+                      category.name === "Simuladores de Admisión" ? onSimulator() : setView("free")
+                    }
                     className="mt-auto flex min-h-11 items-center justify-between rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
                   >
                     Entrenar
