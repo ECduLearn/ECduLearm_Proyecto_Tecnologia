@@ -288,6 +288,7 @@ function App() {
       )}
 
       <aside
+        id="app-sidebar"
         className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-blue-950 p-4 text-white transition-transform duration-300 print:hidden lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -366,6 +367,8 @@ function App() {
                 className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 lg:hidden"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
+                aria-controls="app-sidebar"
+                aria-expanded={sidebarOpen}
               >
                 <Icon name="menu" />
               </button>
@@ -412,7 +415,7 @@ function App() {
               Hoy
             </div>
 
-            <div className="space-y-6 print:hidden">
+            <div className="space-y-6 print:hidden" aria-live="polite" aria-busy={isGenerating}>
               {messages.map((message) =>
                 message.role === "user" ? (
                   <div key={message.id} className="flex justify-end">
@@ -437,7 +440,10 @@ function App() {
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
                     <Icon name="sparkles" className="size-4 animate-pulse" />
                   </span>
-                  <div className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-5 text-sm font-medium text-slate-600 shadow-sm">
+                  <div
+                    className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-5 text-sm font-medium text-slate-600 shadow-sm"
+                    role="status"
+                  >
                     <span className="size-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-800" />
                     Adaptando el ejercicio...
                   </div>
