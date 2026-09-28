@@ -23,15 +23,19 @@
   }
 
   #exercise-document,
-  #exercise-document * {
+  #exercise-document *,
+  #guide-document,
+  #guide-document * {
     visibility: visible;
   }
 
-  #exercise-document {
+  #exercise-document,
+  #guide-document {
     position: absolute;
     inset: 0;
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    min-height: 0;
   }
 }
