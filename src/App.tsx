@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { AccessPortal, StudentWorkspace, TeacherDashboard } from "./Portal";
 
 type IconName =
   | "arrow-left"
@@ -648,7 +649,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
 }
 
 function App() {
-  const [view, setView] = useState<"chat" | "editor">("editor");
+  const [view, setView] = useState<"portal" | "student" | "dashboard" | "chat" | "editor">("portal");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [exercise, setExercise] = useState<Exercise>(initialExercise);
@@ -770,6 +771,28 @@ function App() {
     setSidebarOpen(false);
   };
 
+  if (view === "portal") {
+    return (
+      <AccessPortal
+        onStudentEnter={() => setView("student")}
+        onTeacherEnter={() => setView("dashboard")}
+      />
+    );
+  }
+
+  if (view === "student") {
+    return <StudentWorkspace onExit={() => setView("portal")} />;
+  }
+
+  if (view === "dashboard") {
+    return (
+      <TeacherDashboard
+        onExit={() => setView("portal")}
+        onCreateContent={() => setView("chat")}
+      />
+    );
+  }
+
   if (view === "editor") {
     return <EditorView exercise={exercise} onBack={() => setView("chat")} />;
   }
@@ -806,8 +829,17 @@ function App() {
 
         <button
           type="button"
+          onClick={() => setView("dashboard")}
+          className="mt-5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15"
+        >
+          <Icon name="arrow-left" className="size-4" />
+          Volver al panel docente
+        </button>
+
+        <button
+          type="button"
           onClick={startNewExercise}
-          className="mt-7 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-blue-950 shadow-lg shadow-slate-950/20 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/20"
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-blue-950 shadow-lg shadow-slate-950/20 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/20"
         >
           <Icon name="plus" className="size-5" />
           Nuevo ejercicio
