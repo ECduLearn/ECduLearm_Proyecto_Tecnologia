@@ -5,15 +5,12 @@ type IconName =
   | "bold"
   | "book"
   | "check"
-  | "chart"
   | "chevron"
   | "clock"
-  | "copy"
   | "download"
   | "file"
   | "info"
   | "italic"
-  | "lock"
   | "magic"
   | "menu"
   | "paperclip"
@@ -22,12 +19,10 @@ type IconName =
   | "redo"
   | "send"
   | "share"
-  | "shield"
   | "sparkles"
   | "undo"
   | "upload"
   | "user"
-  | "users"
   | "x";
 
 type Message = {
@@ -66,22 +61,11 @@ const iconPaths: Record<IconName, ReactNode> = {
     </>
   ),
   check: <path d="m5 12 4 4L19 6" />,
-  chart: (
-    <>
-      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
-    </>
-  ),
   chevron: <path d="m9 18 6-6-6-6" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
-    </>
-  ),
-  copy: (
-    <>
-      <rect x="8" y="8" width="12" height="12" rx="2" />
-      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
     </>
   ),
   download: (
@@ -103,12 +87,6 @@ const iconPaths: Record<IconName, ReactNode> = {
     </>
   ),
   italic: <path d="M10 4h8M6 20h8M14 4 10 20" />,
-  lock: (
-    <>
-      <rect x="4" y="10" width="16" height="11" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
-    </>
-  ),
   magic: (
     <>
       <path d="m15 4 5 5L8 21l-5-5Z" />
@@ -144,12 +122,6 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
     </>
   ),
-  shield: (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </>
-  ),
   sparkles: (
     <>
       <path d="m12 3-1.1 3.1A4.3 4.3 0 0 1 8.3 8.7L5 10l3.3 1.3a4.3 4.3 0 0 1 2.6 2.6L12 17l1.1-3.1a4.3 4.3 0 0 1 2.6-2.6L19 10l-3.3-1.3a4.3 4.3 0 0 1-2.6-2.6L12 3Z" />
@@ -172,13 +144,6 @@ const iconPaths: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
-    </>
-  ),
-  users: (
-    <>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
     </>
   ),
   x: <path d="m6 6 12 12M18 6 6 18" />,
