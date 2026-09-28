@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AccessPortal, TeacherDashboard } from "./Portal";
-import StudyZone from "./StudyZone";
+import AutonomousZone from "./AutonomousZone";
 
 type IconName =
   | "arrow-left"
@@ -782,7 +782,7 @@ function App() {
   }
 
   if (view === "student") {
-    return <StudyZone onExit={() => setView("portal")} />;
+    return <AutonomousZone onExit={() => setView("portal")} />;
   }
 
   if (view === "dashboard") {
