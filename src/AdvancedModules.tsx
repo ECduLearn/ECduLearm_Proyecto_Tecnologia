@@ -103,25 +103,32 @@ function AdvancedIcon({
 
 const planningPhases = [
   {
-    key: "anticipation",
-    label: "Anticipación",
+    key: "experience",
+    label: "Experiencia",
     time: "10 min",
-    title: "Activar conocimientos previos",
-    body: "Presentar una fotografía de un puente local y pedir al grupo que identifique las formas geométricas que aportan estabilidad. Registrar hipótesis sin evaluarlas todavía.",
+    title: "Activación de conocimientos previos",
+    body: "Observar fotografías de puentes de Quito e identificar las figuras geométricas que se repiten en sus estructuras. Compartir experiencias sobre construcciones que hayan visto en su comunidad.",
   },
   {
-    key: "construction",
-    label: "Construcción del conocimiento",
-    time: "25 min",
-    title: "Explorar estructuras trianguladas",
-    body: "En equipos, comparar modelos construidos con módulos cuadrados y triangulares. Medir su respuesta ante una carga y relacionar los resultados con el concepto de distribución de fuerzas.",
+    key: "reflection",
+    label: "Reflexión",
+    time: "8 min",
+    title: "Preguntas de enganche",
+    body: "¿Por qué algunos puentes utilizan triángulos en lugar de cuadrados? ¿Qué podría ocurrir si una estructura no distribuye bien el peso? Formular una hipótesis en parejas.",
   },
   {
-    key: "consolidation",
-    label: "Consolidación",
-    time: "10 min",
-    title: "Transferir y argumentar",
-    body: "Resolver una situación tipo PISA en la que deben elegir una estructura para un centro comunitario, justificar la decisión con datos y elaborar una conclusión breve.",
+    key: "conceptualization",
+    label: "Conceptualización",
+    time: "15 min",
+    title: "Área, proporcionalidad y distribución de cargas",
+    body: "Relacionar el área del triángulo A = (b × h) ÷ 2 con la cantidad de material requerida. Analizar tablas de carga y construir una explicación sobre la estabilidad de módulos triangulados.",
+  },
+  {
+    key: "application",
+    label: "Aplicación",
+    time: "12 min",
+    title: "Transferencia a una situación real",
+    body: "Resolver ejercicios rutinarios de área de triángulos y registrar el procedimiento en el cuaderno.",
   },
 ];
 
@@ -130,9 +137,12 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const [uploadState, setUploadState] = useState<"idle" | "loading" | "ready">("idle");
   const [duration, setDuration] = useState("45 min");
   const [objective, setObjective] = useState("Analizar cómo las formas triangulares distribuyen cargas en estructuras.");
-  const [selectedPhase, setSelectedPhase] = useState("consolidation");
   const [notice, setNotice] = useState("Plan guardado automáticamente");
   const [isDragging, setIsDragging] = useState(false);
+  const [pisaModalOpen, setPisaModalOpen] = useState(false);
+  const [pisaContext, setPisaContext] = useState("");
+  const [pisaInserted, setPisaInserted] = useState(false);
+  const [isGeneratingPisa, setIsGeneratingPisa] = useState(false);
 
   const acceptFile = (name: string) => {
     if (!name) return;
@@ -150,6 +160,17 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const applyAI = (action: string) => {
     setNotice(`Aplicando “${action}”...`);
     window.setTimeout(() => setNotice("Cambio aplicado y guardado"), 600);
+  };
+
+  const generatePisa = () => {
+    if (!pisaContext.trim()) return;
+    setIsGeneratingPisa(true);
+    window.setTimeout(() => {
+      setIsGeneratingPisa(false);
+      setPisaInserted(true);
+      setPisaModalOpen(false);
+      setNotice("Ejercicio PISA insertado en Aplicación");
+    }, 700);
   };
 
   return (
@@ -284,56 +305,88 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             </div>
 
             <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
-              <div className="border-b border-slate-200 pb-6">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Objetivo de aprendizaje</p>
+              <div className="border-b-2 border-blue-950 pb-6 text-center">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Ministerio de Educación del Ecuador
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-blue-950">
+                  Planificación Microcurricular
+                </h2>
+                <p className="mt-1 text-xs font-semibold text-teal-700">Modelo ERCA · Año lectivo 2025–2026</p>
+              </div>
+
+              <div className="mt-6 grid overflow-hidden rounded-2xl border border-slate-200 sm:grid-cols-2">
+                <div className="border-b border-slate-200 p-4 sm:border-b-0 sm:border-r">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Asignatura</p>
+                  <p className="mt-1 text-sm font-bold text-blue-950">Matemáticas</p>
+                </div>
+                <div className="border-b border-slate-200 p-4 sm:border-b-0">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Curso</p>
+                  <p className="mt-1 text-sm font-bold text-blue-950">2do BGU</p>
+                </div>
+                <div className="border-t border-slate-200 p-4 sm:col-span-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Destreza con Criterio de Desempeño (DCD)
+                  </p>
+                  <p
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="mt-2 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-blue-50 focus:ring-4 focus:ring-blue-100"
+                  >
+                    M.5.2.3. Resolver y plantear problemas que involucren áreas de figuras geométricas y relaciones de
+                    proporcionalidad, justificando procedimientos en contextos reales.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Objetivo de aprendizaje</p>
                 <p
                   contentEditable
                   suppressContentEditableWarning
-                  className="mt-3 rounded-lg text-base leading-relaxed text-slate-700 outline-none hover:bg-blue-50 focus:bg-blue-50 focus:ring-4 focus:ring-blue-100"
+                  className="mt-2 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-blue-50 focus:ring-4 focus:ring-blue-100"
                 >
                   {objective}
                 </p>
               </div>
 
-              <div className="mt-7 space-y-5">
+              <div className="mt-7 space-y-4">
                 {planningPhases.map((phase, index) => (
                   <section
                     key={phase.key}
-                    className={`relative cursor-text rounded-2xl border p-5 transition sm:p-6 ${
-                      selectedPhase === phase.key
-                        ? "border-blue-400 bg-blue-50/50 ring-4 ring-blue-100"
+                    className={`group relative rounded-2xl border p-5 transition sm:p-6 ${
+                      phase.key === "application"
+                        ? "border-blue-300 bg-blue-50/40 hover:border-violet-400 hover:ring-4 hover:ring-violet-100"
                         : "border-slate-200 hover:border-blue-300"
                     }`}
-                    onClick={() => setSelectedPhase(phase.key)}
                   >
-                    {selectedPhase === phase.key && (
-                      <div className="absolute -top-4 left-4 z-10 flex max-w-[calc(100%-2rem)] gap-1 overflow-x-auto rounded-xl bg-slate-950 p-1.5 text-white shadow-xl sm:left-auto sm:right-4">
-                        {[
-                          "Insertar ejercicio PISA aquí",
-                          "Hacer esta explicación más corta",
-                          "Generar rúbrica de evaluación",
-                        ].map((action) => (
-                          <button
-                            key={action}
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              applyAI(action);
-                            }}
-                            className="min-h-9 shrink-0 rounded-lg px-3 text-xs font-semibold hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
-                          >
-                            {action}
-                          </button>
-                        ))}
-                      </div>
+                    {phase.key === "application" && (
+                      <button
+                        type="button"
+                        onClick={() => setPisaModalOpen(true)}
+                        className="absolute -top-4 right-4 z-10 flex min-h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white opacity-100 shadow-lg shadow-violet-900/20 transition hover:bg-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                      >
+                        <AdvancedIcon name="sparkles" className="size-4" />
+                        Insertar Ejercicio PISA aquí
+                      </button>
                     )}
                     <div className="flex items-start gap-4">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-950 text-sm font-bold text-white">
+                      <span
+                        className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ${
+                          phase.key === "application" ? "bg-violet-600" : "bg-blue-950"
+                        }`}
+                      >
                         {index + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-bold uppercase tracking-widest text-teal-700">{phase.label}</p>
+                          <p
+                            className={`text-xs font-bold uppercase tracking-widest ${
+                              phase.key === "application" ? "text-violet-700" : "text-teal-700"
+                            }`}
+                          >
+                            {phase.label}
+                          </p>
                           <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-500 shadow-sm">
                             {phase.time}
                           </span>
@@ -345,13 +398,80 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                         >
                           {phase.title}
                         </h3>
-                        <p
-                          contentEditable
-                          suppressContentEditableWarning
-                          className="mt-3 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-blue-100"
-                        >
-                          {phase.body}
-                        </p>
+
+                        {phase.key !== "application" && (
+                          <p
+                            contentEditable
+                            suppressContentEditableWarning
+                            className="mt-3 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-blue-100"
+                          >
+                            {phase.body}
+                          </p>
+                        )}
+
+                        {phase.key === "application" && !pisaInserted && (
+                          <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/80 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Actividad actual</p>
+                            <p
+                              contentEditable
+                              suppressContentEditableWarning
+                              className="mt-2 text-sm leading-7 text-slate-600 outline-none"
+                            >
+                              Calcular el área de cinco triángulos usando los datos indicados en la ficha y copiar el
+                              procedimiento.
+                            </p>
+                          </div>
+                        )}
+
+                        {phase.key === "application" && pisaInserted && (
+                          <div className="mt-4">
+                            <div className="rounded-2xl border-2 border-violet-300 bg-white p-5 shadow-sm">
+                              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-violet-700">
+                                <AdvancedIcon name="sparkles" className="size-4" />
+                                Ejercicio PISA · {pisaContext}
+                              </div>
+                              <div className="mt-4 space-y-4 text-sm leading-7 text-slate-700">
+                                <div>
+                                  <p className="font-bold text-blue-950">Contexto</p>
+                                  <p className="mt-1">
+                                    El Municipio de Quito planea construir un puente peatonal cerca de una zona escolar. El
+                                    diseño utiliza módulos triangulares para distribuir el peso de forma segura.
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="font-bold text-blue-950">Problema</p>
+                                  <p className="mt-1">
+                                    Cada módulo tiene 4 m de base y 3 m de altura. La propuesta emplea 12 módulos y cada
+                                    metro cuadrado admite una carga máxima definida por la norma técnica.
+                                  </p>
+                                </div>
+                                <div className="rounded-xl bg-violet-50 p-4">
+                                  <p className="font-bold text-violet-950">Pregunta de reflexión</p>
+                                  <p className="mt-1 text-violet-950">
+                                    Justifica con tu procedimiento si el puente soportará el peso previsto según la norma
+                                    de seguridad. ¿Qué dato adicional necesitarías para confirmar tu decisión?
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPisaModalOpen(true)}
+                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-violet-700 hover:bg-violet-100"
+                              >
+                                🔄 Regenerar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNotice("Edición manual activada en el ejercicio")}
+                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-slate-600 hover:bg-white"
+                              >
+                                ✏️ Editar a mano
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </section>
@@ -369,6 +489,94 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
           </div>
         </section>
       </main>
+
+      {pisaModalOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            className="absolute inset-0"
+            onClick={() => setPisaModalOpen(false)}
+            aria-label="Cerrar generador PISA"
+          />
+          <section
+            className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pisa-modal-title"
+          >
+            <button
+              type="button"
+              onClick={() => setPisaModalOpen(false)}
+              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-violet-100"
+              aria-label="Cerrar"
+            >
+              <AdvancedIcon name="x" />
+            </button>
+            <span className="grid size-12 place-items-center rounded-2xl bg-violet-100 text-violet-700">
+              <AdvancedIcon name="sparkles" className="size-6" />
+            </span>
+            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-violet-700">
+              Asistencia de IA · Aplicación ERCA
+            </p>
+            <h2 id="pisa-modal-title" className="mt-2 text-2xl font-bold leading-tight text-blue-950">
+              Adaptando destreza a formato PISA
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              ¿En qué contexto de la vida real quieres aplicarlo?
+            </p>
+
+            <label htmlFor="pisa-context" className="sr-only">
+              Contexto del ejercicio PISA
+            </label>
+            <input
+              id="pisa-context"
+              value={pisaContext}
+              onChange={(event) => setPisaContext(event.target.value)}
+              placeholder="Ej. Construcción de un puente en Quito"
+              className="mt-6 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-sm outline-none placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-100"
+              autoFocus
+            />
+            <div className="mt-3 flex flex-wrap gap-2" aria-label="Contextos sugeridos">
+              {["Arquitectura", "Finanzas Personales", "Cambio Climático", "Deportes"].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setPisaContext(suggestion)}
+                  className={`min-h-10 rounded-full border px-3 text-xs font-bold transition ${
+                    pisaContext === suggestion
+                      ? "border-violet-600 bg-violet-100 text-violet-800"
+                      : "border-slate-300 bg-white text-slate-600 hover:border-violet-400 hover:bg-violet-50"
+                  }`}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPisaModalOpen(false)}
+                className="min-h-12 rounded-xl px-5 text-sm font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!pisaContext.trim() || isGeneratingPisa}
+                onClick={generatePisa}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-sm font-bold text-white shadow-lg shadow-violet-900/20 hover:bg-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-200 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+              >
+                <AdvancedIcon
+                  name="sparkles"
+                  className={`size-5 ${isGeneratingPisa ? "animate-pulse" : ""}`}
+                />
+                {isGeneratingPisa ? "Generando ejercicio..." : "Generar e Insertar"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
