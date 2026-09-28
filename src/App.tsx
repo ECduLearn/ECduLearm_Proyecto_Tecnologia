@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { AccessPortal, StudentWorkspace, TeacherDashboard } from "./Portal";
+import { AccessPortal, TeacherDashboard } from "./Portal";
+import StudyZone from "./StudyZone";
 
 type IconName =
   | "arrow-left"
@@ -781,7 +782,7 @@ function App() {
   }
 
   if (view === "student") {
-    return <StudentWorkspace onExit={() => setView("portal")} />;
+    return <StudyZone onExit={() => setView("portal")} />;
   }
 
   if (view === "dashboard") {
