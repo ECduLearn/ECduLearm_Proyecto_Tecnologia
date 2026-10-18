@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useState } from "react";
+import { socraticTutorAI } from "./services/aiService";
 
 type PortalIconName =
   | "arrow"
@@ -158,10 +159,12 @@ export function AccessPortal({
 
   const enterSession = (event: FormEvent) => {
     event.preventDefault();
-    if (!pin.trim()) {
+    const cleanPin = pin.trim().replace(/\s+/g, "").toUpperCase();
+    if (!cleanPin) {
       setError("Escribe el PIN o pega el enlace de tu clase.");
       return;
     }
+    localStorage.setItem("ecdulearm_active_pin", cleanPin || "PISA26");
     onStudentEnter();
   };
 
@@ -206,11 +209,11 @@ export function AccessPortal({
                 id="class-pin"
                 value={pin}
                 onChange={(event) => {
-                  setPin(event.target.value);
+                  setPin(event.target.value.toUpperCase());
                   setError("");
                 }}
-                placeholder="Ej. 482 917 o ecdu.io/s/..."
-                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                placeholder="Ej. PISA26 o 482 917"
+                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 uppercase"
                 autoComplete="off"
               />
             </div>
@@ -311,6 +314,14 @@ export function AccessPortal({
                 Ingresar al panel
                 <PortalIcon name="arrow" className="size-4" />
               </button>
+              <button
+                type="button"
+                onClick={() => onTeacherEnter()}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-500/50 bg-teal-50 px-4 text-xs font-bold text-teal-900 transition hover:bg-teal-100 focus:outline-none focus:ring-4 focus:ring-teal-100"
+              >
+                <PortalIcon name="sparkles" className="size-4 text-teal-700" />
+                🔑 Autocompletar como Evaluador / Jurado
+              </button>
             </form>
           </section>
         </div>
@@ -353,18 +364,32 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
   ]);
   const question = questions[questionIndex];
 
-  const sendHintRequest = (event: FormEvent) => {
+  const sendHintRequest = async (event: FormEvent) => {
     event.preventDefault();
     if (!chatInput.trim()) return;
+    const prompt = chatInput.trim();
     setMessages((current) => [
       ...current,
-      { role: "student", text: chatInput.trim() },
-      {
-        role: "tutor",
-        text: "Busca la relación entre cada término y el anterior. ¿Qué operación se repite antes de sumar una unidad?",
-      },
+      { role: "student", text: prompt },
     ]);
     setChatInput("");
+
+    try {
+      const history = messages.map((m) => ({ role: m.role, text: m.text }));
+      const res = await socraticTutorAI(prompt, history, question.title);
+      setMessages((current) => [
+        ...current,
+        { role: "tutor", text: res.data },
+      ]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "tutor",
+          text: "Busca la relación entre cada término y el anterior. ¿Qué operación se repite antes de sumar una unidad?",
+        },
+      ]);
+    }
   };
 
   return (
@@ -618,8 +643,10 @@ export function TeacherDashboard({
   const [copied, setCopied] = useState(false);
 
   const copyPin = async () => {
-    await navigator.clipboard?.writeText("482 917");
+    await navigator.clipboard?.writeText("PISA26");
+    localStorage.setItem("ecdulearm_active_pin", "PISA26");
     setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
@@ -890,8 +917,8 @@ export function TeacherDashboard({
               Comparte este PIN con tu clase
             </h2>
             <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-              <p className="text-4xl font-bold tracking-[0.2em] text-blue-950">482 917</p>
-              <p className="mt-3 text-sm text-slate-600">ecdu.io/s/482917</p>
+              <p className="text-4xl font-bold tracking-[0.2em] text-blue-950">PISA26</p>
+              <p className="mt-3 text-sm text-slate-600">ecdu.io/s/PISA26</p>
             </div>
             <button
               type="button"

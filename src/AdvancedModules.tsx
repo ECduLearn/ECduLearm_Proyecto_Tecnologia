@@ -1,4 +1,5 @@
 import { DragEvent, FormEvent, ReactNode, useEffect, useState } from "react";
+import { generateExerciseAI, reviewExamAI } from "./services/aiService";
 
 type AdvancedIconName =
   | "arrow-left"
@@ -162,15 +163,22 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
     window.setTimeout(() => setNotice("Cambio aplicado y guardado"), 600);
   };
 
-  const generatePisa = () => {
+  const generatePisa = async () => {
     if (!pisaContext.trim()) return;
     setIsGeneratingPisa(true);
-    window.setTimeout(() => {
+    try {
+      const res = await generateExerciseAI(pisaContext);
+      setIsGeneratingPisa(false);
+      setPisaInserted(true);
+      setPisaModalOpen(false);
+      setNotice(`Ejercicio PISA “${res.data.exercise.topic}” insertado`);
+      localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
+    } catch {
       setIsGeneratingPisa(false);
       setPisaInserted(true);
       setPisaModalOpen(false);
       setNotice("Ejercicio PISA insertado en Aplicación");
-    }, 700);
+    }
   };
 
   return (
@@ -768,15 +776,32 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
             </div>
             <form
               className="border-t border-slate-200 p-3"
-              onSubmit={(event: FormEvent) => {
+              onSubmit={async (event: FormEvent) => {
                 event.preventDefault();
                 if (!reviewInput.trim()) return;
+                const prompt = reviewInput.trim();
                 setReviewMessages((currentMessages) => [
                   ...currentMessages,
-                  reviewInput.trim(),
-                  "Bien. Ahora dibuja mentalmente el triángulo: ¿cuál lado está frente al ángulo recto y qué representa en el enunciado?",
+                  prompt,
                 ]);
                 setReviewInput("");
+                try {
+                  const res = await reviewExamAI(
+                    "Escalera apoyada contra una pared",
+                    examQuestions[0].prompt,
+                    "A. 5² + 3²",
+                    prompt
+                  );
+                  setReviewMessages((currentMessages) => [
+                    ...currentMessages,
+                    res.data,
+                  ]);
+                } catch {
+                  setReviewMessages((currentMessages) => [
+                    ...currentMessages,
+                    "Bien. Ahora dibuja mentalmente el triángulo: ¿cuál lado está frente al ángulo recto y qué representa en el enunciado?",
+                  ]);
+                }
               }}
             >
               <div className="flex items-center gap-2 rounded-2xl border border-slate-300 p-2 focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">

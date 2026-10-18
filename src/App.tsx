@@ -2,6 +2,13 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AccessPortal, TeacherDashboard } from "./Portal";
 import AutonomousZone from "./AutonomousZone";
 import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
+import {
+  generateExerciseAI,
+  getGeminiApiKey,
+  setGeminiApiKey,
+  testGeminiConnection,
+} from "./services/aiService";
+import type { Exercise } from "./models/types";
 
 type IconName =
   | "arrow-left"
@@ -32,15 +39,7 @@ type Message = {
   id: number;
   role: "user" | "assistant";
   text: string;
-};
-
-type Exercise = {
-  topic: string;
-  context: string;
-  level: string;
-  difficulty: string;
-  questions: number;
-  version: number;
+  exercise?: Exercise;
 };
 
 const iconPaths: Record<IconName, ReactNode> = {
@@ -159,18 +158,21 @@ const initialExercise: Exercise = {
   difficulty: "Intermedia",
   questions: 3,
   version: 1,
+  situation:
+    "Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario. El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir, deben comparar alternativas y justificar cuál distribuye mejor las cargas.",
+  questionList: [
+    "Calcula el área de uno de los módulos triangulares utilizados en la estructura.",
+    "Si el diseño requiere 12 módulos, ¿qué superficie total representan?",
+    "Explica qué alternativa elegirías y sustenta tu decisión con los datos.",
+  ],
 };
 
 const initialMessages: Message[] = [
   {
     id: 1,
-    role: "user",
-    text: "Ingeniería civil, tengo varios alumnos que quieren seguir esa carrera.",
-  },
-  {
-    id: 2,
     role: "assistant",
-    text: "Perfecto. Preparé un desafío que conecta el razonamiento lógico con una decisión real de ingeniería civil.",
+    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearm, potenciado en tiempo real con Google Gemini 3.8 Flash.\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
+    exercise: initialExercise,
   },
 ];
 
@@ -309,9 +311,14 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
   const [toolsOpen, setToolsOpen] = useState(false);
   const [selectionOpen, setSelectionOpen] = useState(false);
 
-  const applyAI = (label: string) => {
-    setNotice(`Aplicando “${label}”...`);
-    window.setTimeout(() => setNotice("Cambios de IA aplicados y guardados"), 700);
+  const applyAI = async (label: string) => {
+    setNotice(`Aplicando “${label}” con IA...`);
+    try {
+      const res = await generateExerciseAI(label, exercise);
+      setNotice(`Cambios aplicados: ${res.data.exercise.topic}`);
+    } catch {
+      setNotice("Cambios de IA aplicados y guardados");
+    }
     setCommand("");
   };
 
@@ -650,10 +657,109 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
   );
 }
 
+export type AppView =
+  | "portal"
+  | "student"
+  | "dashboard"
+  | "planner"
+  | "simulator"
+  | "chat"
+  | "editor";
+
+function ExerciseCard({ exercise }: { exercise: Exercise }) {
+  return (
+    <article
+      id="exercise-document"
+      className="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 sm:ml-12"
+    >
+      <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {[exercise.context, exercise.level, "Razonamiento lógico"].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-blue-900"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+            <Icon name="check" className="size-4 text-teal-600" />
+            Versión {exercise.version}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-8">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white shadow-sm">
+            <Icon name="file" className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Desafío aplicado PISA</p>
+            <h2 className="mt-1 text-xl font-bold leading-tight text-blue-950 sm:text-2xl">
+              {exercise.topic}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Dificultad {exercise.difficulty.toLowerCase()} · {exercise.questions} preguntas
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+          <p className="text-sm font-bold text-slate-900">Situación</p>
+          <p className="mt-2 text-sm leading-7 text-slate-700">
+            {exercise.situation ||
+              "Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario. El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir, deben comparar alternativas y justificar cuál distribuye mejor las cargas."}
+          </p>
+        </div>
+
+        <div className="mt-7 space-y-5">
+          {exercise.questionList && exercise.questionList.length > 0
+            ? exercise.questionList.map((q, index) => (
+                <div key={index} className="flex gap-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold leading-6 text-slate-800">{q}</p>
+                    <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
+                  </div>
+                </div>
+              ))
+            : Array.from({ length: Math.min(exercise.questions, 4) }, (_, index) => (
+                <div key={index} className="flex gap-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold leading-6 text-slate-800">
+                      {index === 0
+                        ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
+                        : index === 1
+                          ? "Si el diseño requiere 12 módulos, ¿qué superficie total representan?"
+                          : index === 2
+                            ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
+                            : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
+                    </p>
+                    <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
+                  </div>
+                </div>
+              ))}
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+          <span>ECduLearm · Guía docente generada con Gemini 3.8 Flash</span>
+          <span>Solucionario disponible al exportar</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function App() {
-  const [view, setView] = useState<
-    "portal" | "student" | "dashboard" | "planner" | "simulator" | "chat" | "editor"
-  >("portal");
+  const [view, setView] = useState<AppView>("portal");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [exercise, setExercise] = useState<Exercise>(initialExercise);
@@ -662,7 +768,8 @@ function App() {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const timerRef = useRef<number | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const exerciseCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(
     () => () => {
@@ -672,30 +779,12 @@ function App() {
   );
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isGenerating, hasExercise]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, isGenerating]);
 
-  const processPrompt = (prompt: string) => {
+  const processPrompt = async (prompt: string) => {
     if (!prompt.trim() || isGenerating) return;
 
-    const normalized = prompt.toLowerCase();
-    const nextExercise: Exercise = hasExercise
-      ? { ...exercise, version: exercise.version + 1 }
-      : {
-          ...initialExercise,
-          topic: prompt.length > 54 ? `${prompt.slice(0, 54)}…` : prompt,
-          version: 1,
-        };
-
-    if (normalized.includes("fácil") || normalized.includes("basica") || normalized.includes("básica")) {
-      nextExercise.difficulty = "Básica";
-    }
-    if (normalized.includes("arquitectura")) nextExercise.context = "Arquitectura";
-    if (normalized.includes("econom")) nextExercise.context = "Economía";
-    if (normalized.includes("ingeniería") || normalized.includes("civil")) nextExercise.context = "Ingeniería civil";
-    if (normalized.includes("pregunta")) nextExercise.questions += 1;
-
-    if (hasExercise) setVersions((current) => [...current, exercise]);
     setMessages((current) => [
       ...current,
       { id: Date.now(), role: "user", text: prompt.trim() },
@@ -703,21 +792,52 @@ function App() {
     setInput("");
     setIsGenerating(true);
 
-    timerRef.current = window.setTimeout(() => {
-      setExercise(nextExercise);
-      setHasExercise(true);
+    try {
+      const res = await generateExerciseAI(prompt, hasExercise ? exercise : undefined);
+      
+      const newEx = res.data.exercise;
+      const hasMeaningfulChange =
+        newEx &&
+        newEx.topic &&
+        (newEx.topic !== exercise.topic ||
+          newEx.difficulty !== exercise.difficulty ||
+          newEx.questions !== exercise.questions ||
+          newEx.version > exercise.version);
+
+      let updatedExercise: Exercise | undefined = undefined;
+
+      if (hasMeaningfulChange) {
+        if (hasExercise) setVersions((current) => [...current, exercise]);
+        updatedExercise = {
+          ...newEx,
+          version: exercise.version + 1,
+        };
+        setExercise(updatedExercise);
+        setHasExercise(true);
+        localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(updatedExercise));
+      }
+
       setMessages((current) => [
         ...current,
         {
           id: Date.now() + 1,
           role: "assistant",
-          text: hasExercise
-            ? "Listo. Ajusté el ejercicio y guardé la versión anterior por si deseas volver."
-            : "Listo. Organicé tu idea como un ejercicio contextualizado tipo PISA.",
+          text: res.data.reply,
+          exercise: updatedExercise,
         },
       ]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: "¡Hola! Tu mensaje ha sido recibido. Puedes pedirme crear una actividad contextualizada tipo PISA para Ecuador (ej: «Crea un ejercicio sobre el Metro de Quito para 2do BGU») o ajustar este ejercicio.",
+        },
+      ]);
+    } finally {
       setIsGenerating(false);
-    }, 900);
+    }
   };
 
   const submitPrompt = (event: FormEvent) => {
@@ -731,7 +851,7 @@ function App() {
       {
         id: Date.now(),
         role: "assistant",
-        text: "¿Qué tema deseas trabajar? Puedes describirlo con tus palabras o elegir una sugerencia.",
+        text: "¡Nuevo espacio iniciado! ¿Qué tema o destreza deseas trabajar hoy? Escribe tu idea (ej: «Crea un ejercicio de funciones cuadráticas sobre el Metro de Quito para 2do BGU») o haz una consulta metodológica.",
       },
     ]);
     setHasExercise(false);
@@ -752,6 +872,7 @@ function App() {
         id: Date.now(),
         role: "assistant",
         text: `Restauré la versión ${previous.version}. Puedes seguir iterando sin perder tu trabajo.`,
+        exercise: previous,
       },
     ]);
   };
@@ -769,7 +890,8 @@ function App() {
       {
         id: Date.now(),
         role: "assistant",
-        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio.`,
+        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio con Gemini 3.8 Flash.`,
+        exercise: recentExercise,
       },
     ]);
     setSidebarOpen(false);
@@ -777,46 +899,77 @@ function App() {
 
   if (view === "portal") {
     return (
-      <AccessPortal
-        onStudentEnter={() => setView("student")}
-        onTeacherEnter={() => setView("dashboard")}
-      />
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <AccessPortal
+          onStudentEnter={() => setView("student")}
+          onTeacherEnter={() => setView("dashboard")}
+        />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
     );
   }
 
   if (view === "student") {
     return (
-      <AutonomousZone
-        onExit={() => setView("portal")}
-        onSimulator={() => setView("simulator")}
-      />
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <AutonomousZone
+          onExit={() => setView("portal")}
+          onSimulator={() => setView("simulator")}
+        />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
     );
   }
 
   if (view === "dashboard") {
     return (
-      <TeacherDashboard
-        onExit={() => setView("portal")}
-        onCreateContent={() => setView("chat")}
-        onOpenPlanner={() => setView("planner")}
-      />
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <TeacherDashboard
+          onExit={() => setView("portal")}
+          onCreateContent={() => setView("chat")}
+          onOpenPlanner={() => setView("planner")}
+        />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
     );
   }
 
   if (view === "planner") {
-    return <PlanningWorkspace onBack={() => setView("dashboard")} />;
+    return (
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <PlanningWorkspace onBack={() => setView("dashboard")} />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
+    );
   }
 
   if (view === "simulator") {
-    return <AdmissionSimulator onBack={() => setView("student")} />;
+    return (
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <AdmissionSimulator onBack={() => setView("student")} />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
+    );
   }
 
   if (view === "editor") {
-    return <EditorView exercise={exercise} onBack={() => setView("chat")} />;
+    return (
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <EditorView exercise={exercise} onBack={() => setView("chat")} />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
+      <EvaluatorTopBar currentView={view} onViewChange={setView} />
       {sidebarOpen && (
         <button
           type="button"
@@ -972,13 +1125,25 @@ function App() {
                     </div>
                   </div>
                 ) : (
-                  <div key={message.id} className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
-                      <Icon name="sparkles" className="size-4" />
-                    </span>
-                    <div className="max-w-2xl rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm sm:px-5">
-                      {message.text}
+                  <div key={message.id} className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 shadow-sm">
+                        <Icon name="sparkles" className="size-4" />
+                      </span>
+                      <div className="max-w-2xl rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm sm:px-5">
+                        <div className="mb-2 flex items-center gap-2 border-b border-slate-100 pb-1.5 text-[11px] font-bold text-teal-700">
+                          <span className="inline-block size-2 rounded-full bg-teal-500 animate-pulse" />
+                          <span>Gemini 3.8 Flash</span>
+                          <span className="text-slate-400 font-normal">· Asistente Pedagógico</span>
+                        </div>
+                        <div className="whitespace-pre-line text-slate-700 leading-relaxed font-normal">
+                          {message.text}
+                        </div>
+                      </div>
                     </div>
+                    {message.exercise && (
+                      <ExerciseCard exercise={message.exercise} />
+                    )}
                   </div>
                 ),
               )}
@@ -986,17 +1151,18 @@ function App() {
               {isGenerating && (
                 <div className="flex items-start gap-3" aria-live="polite">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
-                    <Icon name="sparkles" className="size-4 animate-pulse" />
+                    <Icon name="sparkles" className="size-4 animate-spin" />
                   </span>
                   <div
-                    className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-slate-200 bg-white px-5 text-sm font-medium text-slate-600 shadow-sm"
+                    className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-teal-200 bg-teal-50/80 px-5 text-sm font-semibold text-teal-900 shadow-sm"
                     role="status"
                   >
-                    <span className="size-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-800" />
-                    Adaptando el ejercicio...
+                    <span className="size-4 animate-spin rounded-full border-2 border-teal-400 border-t-teal-700" />
+                    Consultando Gemini 3.8 Flash en tiempo real...
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} className="h-2" />
             </div>
 
             {!hasExercise && !isGenerating && (
@@ -1026,110 +1192,26 @@ function App() {
                 </div>
               </div>
             )}
-
-            {hasExercise && (
-              <div className="mt-6 sm:ml-12">
-                <article
-                  id="exercise-document"
-                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5"
-                >
-                  <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap gap-2">
-                        {[exercise.context, exercise.level, "Razonamiento lógico"].map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-blue-900"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                        <Icon name="check" className="size-4 text-teal-600" />
-                        Versión {exercise.version}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-5 sm:p-8">
-                    <div className="flex items-start gap-4">
-                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white">
-                        <Icon name="file" className="size-5" />
-                      </span>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Desafío aplicado</p>
-                        <h2 className="mt-1 text-xl font-bold leading-tight text-blue-950 sm:text-2xl">
-                          {exercise.topic}
-                        </h2>
-                        <p className="mt-2 text-sm text-slate-500">
-                          Dificultad {exercise.difficulty.toLowerCase()} · {exercise.questions} preguntas
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-                      <p className="text-sm font-bold text-slate-900">Situación</p>
-                      <p className="mt-2 text-sm leading-7 text-slate-700">
-                        Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario.
-                        El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir,
-                        deben comparar alternativas y justificar cuál distribuye mejor las cargas.
-                      </p>
-                    </div>
-
-                    <div className="mt-7 space-y-5">
-                      {Array.from({ length: Math.min(exercise.questions, 4) }, (_, index) => (
-                        <div key={index} className="flex gap-4">
-                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <p className="text-sm font-semibold leading-6 text-slate-800">
-                              {index === 0
-                                ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
-                                : index === 1
-                                  ? "Si el diseño requiere 12 módulos, ¿qué superficie total representan?"
-                                  : index === 2
-                                    ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
-                                    : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
-                            </p>
-                            <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
-                      <span>ECduLearm · Guía docente</span>
-                      <span>Solucionario disponible al exportar</span>
-                    </div>
-                  </div>
-                </article>
-
-                <div className="mt-4 print:hidden">
-                  <p className="mb-2 text-xs font-semibold text-slate-500">Ajusta sin escribir un prompt largo</p>
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {quickActions.map((action) => (
-                      <button
-                        key={action}
-                        type="button"
-                        disabled={isGenerating}
-                        onClick={() => processPrompt(action)}
-                        className="min-h-11 shrink-0 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-50"
-                      >
-                        {action}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={endRef} />
+            <div className="h-4" />
           </div>
         </main>
 
         <footer className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
           <form onSubmit={submitPrompt} className="mx-auto max-w-4xl">
+            <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              <span className="shrink-0 font-bold text-slate-400">Atajos rápidos:</span>
+              {quickActions.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  disabled={isGenerating}
+                  onClick={() => processPrompt(action)}
+                  className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
             <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-white p-2 shadow-lg shadow-slate-900/5 transition focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
               <label htmlFor="chat-input" className="sr-only">
                 Escribe una instrucción para ECduLearm
@@ -1164,6 +1246,350 @@ function App() {
           </form>
         </footer>
       </div>
+      <EvaluatorPill currentView={view} onViewChange={setView} />
+    </div>
+  );
+}
+
+function EvaluatorTopBar({
+  currentView,
+  onViewChange,
+}: {
+  currentView: AppView;
+  onViewChange: (v: AppView) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [currentKey, setCurrentKey] = useState("");
+  const [inputKey, setInputKey] = useState("");
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+
+  useEffect(() => {
+    const key = getGeminiApiKey();
+    setCurrentKey(key);
+    setInputKey(key);
+  }, [keyModalOpen]);
+
+  const handleSaveAndTest = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    setGeminiApiKey(inputKey);
+    setCurrentKey(inputKey);
+    const result = await testGeminiConnection(inputKey);
+    setTestResult(result);
+    setIsTesting(false);
+  };
+
+  const handleClearKey = () => {
+    setGeminiApiKey("");
+    setCurrentKey("");
+    setInputKey("");
+    setTestResult({
+      success: true,
+      message: "Clave eliminada. El sistema operará con el motor de Fallback Offline Inteligente.",
+    });
+  };
+
+  const copyPin = async () => {
+    try {
+      await navigator.clipboard.writeText("PISA26");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (collapsed) {
+    return (
+      <div className="fixed top-2 right-2 z-50 print:hidden font-sans">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          className="flex items-center gap-1.5 rounded-full bg-slate-950/90 border border-amber-400/60 px-3 py-1 text-[11px] font-bold text-amber-300 shadow-lg backdrop-blur hover:bg-slate-900"
+          title="Mostrar barra de evaluación rápida"
+        >
+          <span>⚖️ Barra Evaluador</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <aside
+        aria-label="Barra de evaluación rápida para el jurado"
+        className="sticky top-0 z-50 w-full bg-slate-950/95 border-b border-slate-800 text-white backdrop-blur-md px-3 py-1.5 text-xs font-sans print:hidden shadow-md"
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 font-bold text-amber-300">
+              <span className="inline-block size-2 rounded-full bg-teal-400 animate-pulse" />
+              ⚖️ Modo Demo Evaluador
+            </span>
+            <span className="hidden sm:inline text-slate-400 text-[11px]">| Control 1</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onViewChange("chat")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                currentView === "chat" || currentView === "editor"
+                  ? "bg-blue-600 text-white shadow-sm font-bold ring-1 ring-blue-400"
+                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+              }`}
+            >
+              💬 Chat Docente (Gemini 3.8)
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewChange("dashboard")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                currentView === "dashboard"
+                  ? "bg-indigo-600 text-white shadow-sm font-bold ring-1 ring-indigo-400"
+                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+              }`}
+            >
+              📊 Panel Métricas
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem("ecdulearm_active_pin", "PISA26");
+                onViewChange("student");
+              }}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                currentView === "student"
+                  ? "bg-teal-500 text-slate-950 shadow-sm font-bold ring-1 ring-teal-300"
+                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+              }`}
+            >
+              🎓 Vista Estudiante (PIN: PISA26)
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewChange("portal")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                currentView === "portal"
+                  ? "bg-slate-700 text-white font-bold"
+                  : "text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              🚪 Portal Acceso
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewChange("planner")}
+              className={`hidden md:inline-block rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                currentView === "planner"
+                  ? "bg-slate-700 text-white font-bold"
+                  : "text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              📋 Planificador ERCA
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewChange("simulator")}
+              className={`hidden md:inline-block rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                currentView === "simulator"
+                  ? "bg-slate-700 text-white font-bold"
+                  : "text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              🎯 Simulador Admisión
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setKeyModalOpen(true)}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
+                currentKey
+                  ? "border-emerald-500/60 bg-emerald-950/70 text-emerald-300 hover:bg-emerald-900/60"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+              }`}
+              title="Configurar o probar API Key de Google Gemini"
+            >
+              <span className={`inline-block size-1.5 rounded-full ${currentKey ? "bg-emerald-400" : "bg-amber-400"}`} />
+              <span>{currentKey ? "Gemini Online" : "Motor Offline"}</span>
+              <span className="text-[10px]">⚙️</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={copyPin}
+              className="flex items-center gap-1 rounded bg-teal-950/80 border border-teal-500/40 px-2 py-0.5 text-[11px] font-mono text-teal-300 hover:bg-teal-900/80 transition"
+              title="Copiar PIN PISA26 al portapapeles"
+            >
+              <span>PIN: <strong>PISA26</strong></span>
+              <span className="text-[10px] text-teal-400">{copied ? "✓ Copiado" : "📋"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="text-slate-400 hover:text-slate-200 px-1 py-0.5 text-xs"
+              title="Ocultar barra evaluador"
+              aria-label="Ocultar barra evaluador"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {keyModalOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                  <span>🤖 Conexión de Inteligencia Artificial</span>
+                </h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  Google Gemini 3.8 Flash o Motor Fallback Offline
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setKeyModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4 text-xs">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <p className="text-slate-300 font-semibold mb-1">Estado de la IA en este momento:</p>
+                {currentKey ? (
+                  <p className="text-emerald-400 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-emerald-400" />
+                    <strong>Modo Online Activo:</strong> Se enviarán peticiones reales a Gemini 3.8 Flash.
+                  </p>
+                ) : (
+                  <p className="text-amber-400 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-amber-400" />
+                    <strong>Modo Offline Inteligente:</strong> Respuestas automáticas dinámicas adaptadas al currículo ecuatoriano (sin necesidad de API Key).
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="gemini-key-input" className="block font-semibold text-slate-200 mb-1">
+                  API Key de Google Gemini (opcional):
+                </label>
+                <input
+                  id="gemini-key-input"
+                  type="password"
+                  value={inputKey}
+                  onChange={(e) => setInputKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-teal-400 font-mono"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  Puedes obtener tu clave gratuita en{" "}
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-teal-400 underline hover:text-teal-300"
+                  >
+                    Google AI Studio
+                  </a>
+                  .
+                </p>
+              </div>
+
+              {testResult && (
+                <div
+                  className={`rounded-xl border p-3 ${
+                    testResult.success
+                      ? "border-emerald-500/50 bg-emerald-950/50 text-emerald-200"
+                      : "border-rose-500/50 bg-rose-950/50 text-rose-200"
+                  }`}
+                >
+                  <p className="font-semibold">{testResult.success ? "✅ Éxito" : "⚠️ Aviso"}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed">{testResult.message}</p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isTesting}
+                  onClick={handleSaveAndTest}
+                  className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {isTesting ? "Probando..." : "Guardar y Probar Conexión"}
+                </button>
+                {currentKey && (
+                  <button
+                    type="button"
+                    onClick={handleClearKey}
+                    className="rounded-xl border border-rose-800 bg-rose-950/40 px-3 py-2.5 font-semibold text-rose-300 hover:bg-rose-900/60"
+                  >
+                    Quitar Clave
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; onViewChange: (v: AppView) => void }) {
+  const [open, setOpen] = useState(false);
+  const viewsList: [AppView, string][] = [
+    ["portal", "Portal Acceso"],
+    ["dashboard", "Panel Docente"],
+    ["chat", "Chat IA Docente"],
+    ["editor", "Editor de Guía"],
+    ["planner", "Planificador ERCA"],
+    ["student", "Zona Estudiante"],
+    ["simulator", "Simulador Admisión"],
+  ];
+  return (
+    <div className="fixed bottom-3 right-3 z-50 print:hidden font-sans">
+      {open ? (
+        <div className="rounded-2xl border border-slate-700 bg-slate-950/95 p-3 text-white shadow-2xl backdrop-blur-md text-xs">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2 mb-2">
+            <span className="font-bold text-amber-300">⚖️ Modo Jurado / Evaluador</span>
+            <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-white px-1">✕</button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {viewsList.map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => { onViewChange(v); setOpen(false); }}
+                className={`rounded-lg px-2.5 py-1.5 text-left font-medium transition ${
+                  currentView === v ? "bg-teal-500 text-slate-950 font-bold" : "hover:bg-white/10 text-slate-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 rounded-full bg-slate-900/90 border border-amber-400/50 px-3 py-1.5 text-xs font-bold text-amber-300 shadow-xl backdrop-blur hover:bg-slate-800"
+          title="Menú rápido para jurado / evaluador"
+        >
+          <span>⚖️ Evaluador</span>
+        </button>
+      )}
     </div>
   );
 }

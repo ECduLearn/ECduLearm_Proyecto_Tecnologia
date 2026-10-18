@@ -1,8 +1,22 @@
+# Dependencias
 node_modules/
+/.pnp
+.pnp.js
+
+# Salidas de compilación y producción
 dist/
 build/
+
+# Variables de entorno y secretos
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Caché y archivos temporales
 .cache/
-.env*
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
@@ -13,9 +27,12 @@ logs/
 .tmp-*
 /.figma/design-context/
 
-# Platform-managed agentplat state, not project source. In the
-# client-initiated single-repo workspace layout (make's `Path: "."` spec) the
-# repo root IS the workspace root, so these land inside this repo rather than
-# beside it.
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Estado de herramientas
 /.plugins/
 /.opencode-skills/

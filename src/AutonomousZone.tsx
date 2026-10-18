@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useState } from "react";
+import { socraticTutorAI } from "./services/aiService";
 
 type ZoneIconName =
   | "algebra"
@@ -146,7 +147,12 @@ const practiceCategories = [
   },
 ];
 
-const quickPrompts = ["Dame una pista", "No entiendo el enunciado", "¿Uso regla de tres?"];
+const quickPrompts = [
+  "No entiendo el enunciado",
+  "Dame una pista del primer paso",
+  "Revisa mi procedimiento",
+  "¿Uso regla de tres?",
+];
 
 function StudentHeader({
   onBack,
@@ -208,6 +214,7 @@ export default function AutonomousZone({
   ]);
   const [stepInput, setStepInput] = useState("");
   const [stepStatus, setStepStatus] = useState<"idle" | "review" | "success">("idle");
+  const [stepHint, setStepHint] = useState("");
   const [schoolStep, setSchoolStep] = useState(1);
 
   const socraticReply = (prompt: string) => {
@@ -221,34 +228,81 @@ export default function AutonomousZone({
     return "Mira la diferencia entre una figura y la siguiente. ¿Qué cambia siempre y qué permanece igual?";
   };
 
-  const submitChat = (event: FormEvent) => {
+  const submitChat = async (event: FormEvent) => {
     event.preventDefault();
     if (!chatInput.trim()) return;
     const prompt = chatInput.trim();
+    const studentId = Date.now();
     setMessages((current) => [
       ...current,
-      { id: Date.now(), role: "student", text: prompt },
-      { id: Date.now() + 1, role: "tutor", text: socraticReply(prompt) },
+      { id: studentId, role: "student", text: prompt },
     ]);
     setChatInput("");
+
+    try {
+      const history = messages.map((m) => ({ role: m.role, text: m.text }));
+      const res = await socraticTutorAI(prompt, history, "Reto de lógica y patrones numéricos");
+      setMessages((current) => [
+        ...current,
+        { id: Date.now() + 1, role: "tutor", text: res.data },
+      ]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        { id: Date.now() + 1, role: "tutor", text: socraticReply(prompt) },
+      ]);
+    }
   };
 
-  const useChip = (prompt: string) => {
+  const useChip = async (prompt: string) => {
+    const studentId = Date.now();
     setMessages((current) => [
       ...current,
-      { id: Date.now(), role: "student", text: prompt },
-      { id: Date.now() + 1, role: "tutor", text: socraticReply(prompt) },
+      { id: studentId, role: "student", text: prompt },
     ]);
+
+    try {
+      const history = messages.map((m) => ({ role: m.role, text: m.text }));
+      const res = await socraticTutorAI(prompt, history, "Reto de lógica y patrones numéricos");
+      setMessages((current) => [
+        ...current,
+        { id: Date.now() + 1, role: "tutor", text: res.data },
+      ]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        { id: Date.now() + 1, role: "tutor", text: socraticReply(prompt) },
+      ]);
+    }
   };
 
-  const validateStep = () => {
+  const validateStep = async () => {
     const answer = stepInput.toLowerCase();
     const isUseful =
       schoolStep === 1
         ? (answer.includes("tiempo") || answer.includes("minuto")) &&
-          (answer.includes("velocidad") || answer.includes("distancia"))
-        : answer.includes("minuto") && (answer.includes("segundo") || answer.includes("60"));
-    setStepStatus(isUseful ? "success" : "review");
+          (answer.includes("velocidad") || answer.includes("distancia") || answer.includes("km"))
+        : answer.includes("minuto") && (answer.includes("segundo") || answer.includes("60") || answer.includes("hora"));
+
+    if (isUseful) {
+      setStepStatus("success");
+    } else {
+      setStepStatus("review");
+      try {
+        const hintRes = await socraticTutorAI(
+          `El estudiante respondió en el paso ${schoolStep}: "${stepInput}". Dale una pista reflexiva corta sin darle el cálculo final.`,
+          [],
+          "Vehículo a 60 km/h durante 45 minutos. Determinar distancia y justificar conversión de unidades."
+        );
+        setStepHint(hintRes.data);
+      } catch {
+        setStepHint(
+          schoolStep === 1
+            ? "Revisa bien el texto: ¿cuáles son las dos magnitudes numéricas conocidas y cuál es la variable que te piden encontrar?"
+            : "Recuerda que la velocidad está en km/h y el tiempo en minutos. ¿Qué fracción de una hora representan 45 minutos?"
+        );
+      }
+    }
   };
 
   if (view === "dashboard") {
@@ -593,8 +647,8 @@ export default function AutonomousZone({
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-900">Pista del tutor</p>
                 <p className="mt-1 text-sm leading-relaxed text-amber-950">
-                  Revisa bien el texto, ¿seguro que el tiempo está en horas y no en minutos? Nombra también la variable que
-                  representa la velocidad.
+                  {stepHint ||
+                    "Revisa bien el texto, ¿seguro que el tiempo está en horas y no en minutos? Nombra también la variable que representa la velocidad."}
                 </p>
               </div>
             </div>
