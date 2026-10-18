@@ -36,3 +36,11 @@ $RECYCLE.BIN/
 # Estado de herramientas
 /.plugins/
 /.opencode-skills/
+
+# Archivos de desarrollo local y agentes de IA
+AGENTS.md
+CLAUDE.md
+.agents/
+.figma/
+.mise.toml
+
