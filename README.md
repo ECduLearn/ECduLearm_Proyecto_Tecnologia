@@ -31,7 +31,7 @@ El sistema opera bajo un patrón **Modelo-Vista-Controlador (MVC)** desacoplado 
   * Tipos de dominio ([`types.ts`](src/models/types.ts)): `Exercise`, `PinSession`, `ChatMessage`, `ErcaPhase`.
   * Estado reactivo y persistencia local ([`store.tsx`](src/models/store.tsx)): sincronización bidireccional con `localStorage` para sesiones de aula y versionado de ejercicios.
 * **Controlador / Servicios (`/src/services`):**
-  * Servicio de Inteligencia Artificial ([`aiService.ts`](src/services/aiService.ts)): integración con la API de Google Gemini Flash (`VITE_GEMINI_API_KEY`) con un **Modo Fallback Inquebrantable** de 8 segundos ante pérdida de conexión o ausencia de API key.
+  * Servicio de Inteligencia Artificial ([`aiService.ts`](src/services/aiService.ts)): arquitectura **Multi-Modelo con Balanceo de Cuota** conectada a la API de Google Gemini (`VITE_GEMINI_API_KEY`), priorizando modelos Flash-Lite (`gemini-3.5-flash-lite`, `gemini-flash-lite-latest`) para máximo ahorro de tokens y alta disponibilidad, con limitador de salida (`maxOutputTokens: 1200`) para evitar bloqueos por cuota (Rate Limit 429), y un **Modo Fallback Offline Inquebrantable** de respaldo automático ante pérdida de conexión o ausencia de API key.
   * Servicio de PIN y Seguridad ([`pinService.ts`](src/services/pinService.ts)): generación y validación de códigos de sesión de 6 caracteres sin solicitud de datos personales de menores.
 * **Vista (`/src`):**
   * Componentes visuales responsivos construidos con **React 19 + Tailwind CSS**, diseñados bajo las pautas de accesibilidad **WCAG 2.2 Nivel AA** (objetivos táctiles ≥ 44px, contraste cromático y visibilidad del estado del sistema según Jakob Nielsen).
@@ -56,7 +56,7 @@ Copia la plantilla `.env.example` a un archivo `.env`:
 ```bash
 cp .env.example .env
 ```
-Edita `.env` y agrega tu clave de Gemini API (opcional, el sistema cuenta con fallback offline integrado):
+Edita `.env` y agrega tu clave de Gemini API (opcional, el sistema cuenta con balanceo multimodelo y fallback offline integrado):
 ```env
 VITE_GEMINI_API_KEY=tu_api_key_aqui
 ```

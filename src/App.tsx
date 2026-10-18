@@ -171,7 +171,7 @@ const initialMessages: Message[] = [
   {
     id: 1,
     role: "assistant",
-    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearm, potenciado en tiempo real con Google Gemini 3.8 Flash.\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
+    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearm, potenciado en tiempo real con Google Gemini Flash (con balanceo multimodelo y ahorro de cuota).\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
     exercise: initialExercise,
   },
 ];
@@ -750,7 +750,7 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
-          <span>ECduLearm · Guía docente generada con Gemini 3.8 Flash</span>
+          <span>ECduLearm · Guía docente generada con Google Gemini</span>
           <span>Solucionario disponible al exportar</span>
         </div>
       </div>
@@ -890,7 +890,7 @@ function App() {
       {
         id: Date.now(),
         role: "assistant",
-        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio con Gemini 3.8 Flash.`,
+        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio con el asistente Gemini.`,
         exercise: recentExercise,
       },
     ]);
@@ -1133,7 +1133,7 @@ function App() {
                       <div className="max-w-2xl rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm sm:px-5">
                         <div className="mb-2 flex items-center gap-2 border-b border-slate-100 pb-1.5 text-[11px] font-bold text-teal-700">
                           <span className="inline-block size-2 rounded-full bg-teal-500 animate-pulse" />
-                          <span>Gemini 3.8 Flash</span>
+                          <span>Gemini Flash IA</span>
                           <span className="text-slate-400 font-normal">· Asistente Pedagógico</span>
                         </div>
                         <div className="whitespace-pre-line text-slate-700 leading-relaxed font-normal">
@@ -1158,7 +1158,7 @@ function App() {
                     role="status"
                   >
                     <span className="size-4 animate-spin rounded-full border-2 border-teal-400 border-t-teal-700" />
-                    Consultando Gemini 3.8 Flash en tiempo real...
+                    Consultando Google Gemini en tiempo real...
                   </div>
                 </div>
               )}
@@ -1343,7 +1343,7 @@ function EvaluatorTopBar({
                   : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
               }`}
             >
-              💬 Chat Docente (Gemini 3.8)
+              💬 Chat Docente (Gemini IA)
             </button>
             <button
               type="button"
@@ -1452,7 +1452,7 @@ function EvaluatorTopBar({
                   <span>🤖 Conexión de Inteligencia Artificial</span>
                 </h3>
                 <p className="mt-1 text-xs text-slate-400">
-                  Google Gemini 3.8 Flash o Motor Fallback Offline
+                  Google Gemini (Flash-Lite / Flash con Balanceo Inteligente) o Motor Offline
                 </p>
               </div>
               <button
@@ -1470,7 +1470,7 @@ function EvaluatorTopBar({
                 {currentKey ? (
                   <p className="text-emerald-400 flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-emerald-400" />
-                    <strong>Modo Online Activo:</strong> Se enviarán peticiones reales a Gemini 3.8 Flash.
+                    <strong>Modo Online Activo:</strong> Se envían peticiones optimizadas con balanceo multimodelo (Flash-Lite / Flash) para máximo ahorro de tokens y alta disponibilidad.
                   </p>
                 ) : (
                   <p className="text-amber-400 flex items-center gap-1.5">

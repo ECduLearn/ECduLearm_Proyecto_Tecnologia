@@ -1,7 +1,16 @@
 import { Exercise, ErcaPhase } from "../models/types";
 
-const GEMINI_MODEL = "gemini-3.8-flash";
-const TIMEOUT_MS = 15000;
+// Modelos ordenados por eficiencia de cuota y velocidad (Flash-Lite no quema thinking tokens y tiene mayor cuota diaria gratuita)
+export const CANDIDATE_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-3.8-flash",
+];
+
+const TIMEOUT_MS = 12000;
 
 export interface AIResult<T> {
   data: T;
@@ -36,48 +45,43 @@ export async function testGeminiConnection(customKey?: string): Promise<{ succes
     };
   }
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: "Responde brevemente 'CONEXION_OK' si recibes este mensaje." }],
+  // Probar secuencialmente los modelos disponibles para verificar cuál tiene cuota activa
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: "Responde brevemente 'CONEXION_OK' si recibes este mensaje." }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 50,
           },
-        ],
-        generationConfig: {
-          maxOutputTokens: 200,
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
-    });
+        }),
+      });
 
-    if (!response.ok) {
-      const err = await response.text();
-      return {
-        success: false,
-        message: `Error HTTP ${response.status}: Verifica los permisos de la clave en Google AI Studio.`,
-      };
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        return {
+          success: true,
+          message: `¡Conexión verificada con Google Gemini (${model})! Respuesta: ${text.trim().slice(0, 50)}`,
+        };
+      }
+    } catch {
+      // Probar siguiente modelo
     }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    if (text) {
-      return {
-        success: true,
-        message: `¡Conexión verificada con Google ${GEMINI_MODEL}! Respuesta: ${text.trim()}`,
-      };
-    }
-    return { success: false, message: "Respuesta vacía del servicio de IA." };
-  } catch (error) {
-    return {
-      success: false,
-      message: `Error de red: ${(error as Error).message || "No se pudo contactar a Google Gemini"}.`,
-    };
   }
+
+  return {
+    success: false,
+    message: "No se pudo verificar la conexión con los modelos de Gemini. Es posible que hayas alcanzado el límite de cuota (Rate Limit) o la API Key sea inválida.",
+  };
 }
 
 async function callGemini(systemInstruction: string, prompt: string): Promise<string> {
@@ -86,48 +90,58 @@ async function callGemini(systemInstruction: string, prompt: string): Promise<st
     throw new Error("No API key configured");
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let lastError: Error | null = null;
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  // Multi-model fallback: si un modelo supera cuota (429) o no responde, pasa inmediatamente al siguiente
+  for (const model of CANDIDATE_MODELS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `${systemInstruction}\n\nInstrucción / Mensaje del usuario:\n${prompt}` }],
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `${systemInstruction}\n\nInstrucción / Mensaje del usuario:\n${prompt}` }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1200, // Optimizado para ahorrar tokens y evitar agotar cuota
           },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 3000,
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
-    });
+        }),
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn(`[ECduLearm AI] Modelo ${model} respondió con error ${response.status}:`, errText.slice(0, 150));
+        lastError = new Error(`HTTP error ${response.status} en ${model}`);
+        continue; // Intentar con el siguiente modelo en la lista de candidatos
+      }
+
+      const json = await response.json();
+      const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!candidateText) {
+        lastError = new Error(`Empty response from ${model}`);
+        continue;
+      }
+      return candidateText;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.warn(`[ECduLearm AI] Excepción al llamar a ${model}:`, (error as Error).message);
+      lastError = error as Error;
     }
-
-    const json = await response.json();
-    const candidateText =
-      json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    if (!candidateText) {
-      throw new Error("Empty response from AI");
-    }
-    return candidateText;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
   }
+
+  throw lastError || new Error("Todos los modelos de Gemini fallaron o agotaron cuota");
 }
 
 export async function generateExerciseAI(
