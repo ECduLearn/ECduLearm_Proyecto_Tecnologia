@@ -149,9 +149,11 @@ function Brand({ dark = false }: { dark?: boolean }) {
 export function AccessPortal({
   onStudentEnter,
   onTeacherEnter,
+  onBackToLanding,
 }: {
   onStudentEnter: () => void;
   onTeacherEnter: () => void;
+  onBackToLanding?: () => void;
 }) {
   const [pin, setPin] = useState("");
   const [loginOpen, setLoginOpen] = useState(false);
@@ -172,7 +174,26 @@ export function AccessPortal({
     <div className="relative min-h-screen overflow-hidden bg-white text-slate-950">
       <div className="pointer-events-none absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-50 blur-3xl" />
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-        <Brand dark />
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="rounded-xl text-left transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            title="Volver a Inicio"
+          >
+            <Brand dark />
+          </button>
+          {onBackToLanding && (
+            <button
+              type="button"
+              onClick={onBackToLanding}
+              className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <span>←</span>
+              <span>Inicio</span>
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setLoginOpen(true)}

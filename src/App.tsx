@@ -3,6 +3,8 @@ import { AccessPortal, TeacherDashboard } from "./Portal";
 import AutonomousZone from "./AutonomousZone";
 import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
 import { LandingPage } from "./LandingPage";
+import { AppView, useAppRouter } from "./router";
+export type { AppView } from "./router";
 import {
   generateExerciseAI,
   getGeminiApiKey,
@@ -658,16 +660,6 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
   );
 }
 
-export type AppView =
-  | "landing"
-  | "portal"
-  | "student"
-  | "dashboard"
-  | "planner"
-  | "simulator"
-  | "chat"
-  | "editor";
-
 function ExerciseCard({ exercise }: { exercise: Exercise }) {
   return (
     <article
@@ -761,7 +753,7 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
 }
 
 function App() {
-  const [view, setView] = useState<AppView>("landing");
+  const { view, setView } = useAppRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [exercise, setExercise] = useState<Exercise>(initialExercise);
@@ -903,6 +895,7 @@ function App() {
     return (
       <LandingPage
         onEnterApp={() => setView("portal")}
+        onNavigate={(target) => setView(target as AppView)}
         onStudentEnter={(pin) => {
           if (pin) localStorage.setItem("ecdulearm_active_pin", pin);
           setView("student");
@@ -918,6 +911,7 @@ function App() {
         <AccessPortal
           onStudentEnter={() => setView("student")}
           onTeacherEnter={() => setView("dashboard")}
+          onBackToLanding={() => setView("landing")}
         />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>

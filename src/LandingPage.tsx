@@ -3,9 +3,10 @@ import { useState } from "react";
 export interface LandingPageProps {
   onEnterApp: () => void;
   onStudentEnter?: (pin?: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
-export function LandingPage({ onEnterApp, onStudentEnter }: LandingPageProps) {
+export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingPageProps) {
   // Estado del modal de Política de Privacidad
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
@@ -267,7 +268,7 @@ export function LandingPage({ onEnterApp, onStudentEnter }: LandingPageProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={onEnterApp}
+                  onClick={() => (onNavigate ? onNavigate("dashboard") : onEnterApp())}
                   className="mt-8 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white transition hover:bg-blue-500"
                 >
                   Abrir Entorno Docente en la App
