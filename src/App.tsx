@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AccessPortal, TeacherDashboard } from "./Portal";
 import AutonomousZone from "./AutonomousZone";
 import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
+import { LandingPage } from "./LandingPage";
 import {
   generateExerciseAI,
   getGeminiApiKey,
@@ -658,6 +659,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
 }
 
 export type AppView =
+  | "landing"
   | "portal"
   | "student"
   | "dashboard"
@@ -759,7 +761,7 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
 }
 
 function App() {
-  const [view, setView] = useState<AppView>("portal");
+  const [view, setView] = useState<AppView>("landing");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [exercise, setExercise] = useState<Exercise>(initialExercise);
@@ -896,6 +898,18 @@ function App() {
     ]);
     setSidebarOpen(false);
   };
+
+  if (view === "landing") {
+    return (
+      <LandingPage
+        onEnterApp={() => setView("portal")}
+        onStudentEnter={(pin) => {
+          if (pin) localStorage.setItem("ecdulearm_active_pin", pin);
+          setView("student");
+        }}
+      />
+    );
+  }
 
   if (view === "portal") {
     return (
@@ -1336,6 +1350,17 @@ function EvaluatorTopBar({
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
+              onClick={() => onViewChange("landing")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                currentView === "landing"
+                  ? "bg-teal-500 text-slate-950 shadow-sm font-bold ring-1 ring-teal-300"
+                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+              }`}
+            >
+              🏠 Inicio / Landing
+            </button>
+            <button
+              type="button"
               onClick={() => onViewChange("chat")}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "chat" || currentView === "editor"
@@ -1549,6 +1574,7 @@ function EvaluatorTopBar({
 function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; onViewChange: (v: AppView) => void }) {
   const [open, setOpen] = useState(false);
   const viewsList: [AppView, string][] = [
+    ["landing", "🏠 Inicio / Landing"],
     ["portal", "Portal Acceso"],
     ["dashboard", "Panel Docente"],
     ["chat", "Chat IA Docente"],
