@@ -182,36 +182,36 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div className="min-h-screen bg-sand-50 text-sand-950">
+      <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur">
         <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6">
           <button
             type="button"
             onClick={onBack}
-            className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
           >
             <AdvancedIcon name="arrow-left" />
             <span className="hidden sm:inline">Panel docente</span>
           </button>
           <div className="min-w-0 text-center">
-            <p className="truncate text-sm font-bold text-blue-950 sm:text-base">Adaptador de planificación</p>
-            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500" aria-live="polite">
-              <AdvancedIcon name="check" className="size-3.5 text-teal-700" />
+            <p className="truncate text-sm font-bold text-ink-950 sm:text-base">Adaptador de planificación</p>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-sand-500" aria-live="polite">
+              <AdvancedIcon name="check" className="size-3.5 text-ink-700" />
               {notice}
             </p>
           </div>
-          <span className="hidden rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-900 sm:block">
+          <span className="hidden rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold text-ink-900 sm:block">
             Plan de clase · Borrador
           </span>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1600px] lg:grid-cols-[22rem_1fr]">
-        <aside className="border-b border-stone-200 bg-[#eee8da] p-5 lg:border-b-0 lg:border-r lg:p-7">
+        <aside className="border-b border-sand-200 bg-sand-100 p-5 lg:border-b-0 lg:border-r lg:p-7">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">01 · Fuente pedagógica</p>
-            <h1 className="mt-2 font-serif text-xl font-semibold text-stone-950">Añade el contexto de tu clase</h1>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600">
+            <p className="text-xs font-bold uppercase tracking-widest text-ink-800">01 · Fuente pedagógica</p>
+            <h1 className="mt-2 text-xl font-semibold text-sand-950">Añade el contexto de tu clase</h1>
+            <p className="mt-2 text-sm leading-relaxed text-sand-600">
               El sistema acepta documentos completos y conserva su estructura.
             </p>
           </div>
@@ -219,10 +219,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
           <label
             className={`mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 text-center transition ${
               isDragging
-                ? "border-blue-600 bg-blue-50"
+                ? "border-ink-600 bg-ink-50"
                 : uploadState === "ready"
-                  ? "border-teal-400 bg-teal-50"
-                  : "border-stone-300 bg-white/70 hover:border-emerald-700 hover:bg-emerald-50"
+                  ? "border-ink-400 bg-ink-50"
+                  : "border-sand-300 bg-white/70 hover:border-ink-700 hover:bg-ink-50"
             }`}
             onDragEnter={(event) => {
               event.preventDefault();
@@ -240,7 +240,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             />
             <span
               className={`grid size-12 place-items-center rounded-2xl ${
-                uploadState === "ready" ? "bg-teal-100 text-teal-900" : "bg-white text-blue-900 shadow-sm"
+                uploadState === "ready" ? "bg-ink-100 text-ink-900" : "bg-white text-ink-900 shadow-sm"
               }`}
             >
               <AdvancedIcon
@@ -248,28 +248,28 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 className={`size-6 ${uploadState === "loading" ? "animate-pulse" : ""}`}
               />
             </span>
-            <span className="mt-4 text-sm font-bold text-slate-800">
+            <span className="mt-4 text-sm font-bold text-sand-800">
               {uploadState === "loading"
                 ? "Analizando estructura..."
                 : fileName || "Arrastra o selecciona un archivo"}
             </span>
-            <span className="mt-2 text-xs leading-relaxed text-slate-500">
+            <span className="mt-2 text-xs leading-relaxed text-sand-500">
               Temario, currículo o libro de texto
               <br />
               PDF, Word, PowerPoint, ODT o TXT
             </span>
           </label>
 
-          <div className="mt-7 border-t border-slate-200 pt-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-teal-700">2. Parámetros</p>
-            <label htmlFor="class-duration" className="mt-4 block text-sm font-bold text-slate-800">
+          <div className="mt-7 border-t border-sand-200 pt-6">
+            <p className="text-xs font-bold uppercase tracking-widest text-ink-700">2. Parámetros</p>
+            <label htmlFor="class-duration" className="mt-4 block text-sm font-bold text-sand-800">
               Duración de la clase
             </label>
             <select
               id="class-duration"
               value={duration}
               onChange={(event) => setDuration(event.target.value)}
-              className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold outline-none focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+              className="mt-2 min-h-12 w-full rounded-xl border border-sand-300 bg-white px-4 text-sm font-semibold outline-none focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
             >
               <option>30 min</option>
               <option>45 min</option>
@@ -277,7 +277,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               <option>90 min</option>
             </select>
 
-            <label htmlFor="learning-objective" className="mt-5 block text-sm font-bold text-slate-800">
+            <label htmlFor="learning-objective" className="mt-5 block text-sm font-bold text-sand-800">
               Objetivo de aprendizaje
             </label>
             <textarea
@@ -285,13 +285,13 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               rows={4}
               value={objective}
               onChange={(event) => setObjective(event.target.value)}
-              className="mt-2 w-full resize-none rounded-xl border border-slate-300 p-3 text-sm leading-relaxed outline-none focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+              className="mt-2 w-full resize-none rounded-xl border border-sand-300 p-3 text-sm leading-relaxed outline-none focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
             />
 
             <button
               type="button"
               onClick={() => applyAI("Estructurar plan de clase")}
-              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
             >
               <AdvancedIcon name="magic" className="size-5" />
               Estructurar Plan de Clase
@@ -303,43 +303,43 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
           <div className="mx-auto max-w-4xl">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Lienzo editable</p>
-                <h2 className="mt-1 text-xl font-bold text-stone-950">Estructuras estables y distribución de cargas</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-800">Lienzo editable</p>
+                <h2 className="mt-1 text-xl font-bold text-sand-950">Estructuras estables y distribución de cargas</h2>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <div className="flex items-center gap-2 text-xs font-semibold text-sand-500">
                 <AdvancedIcon name="clock" className="size-4" />
                 {duration} · 2do BGU
               </div>
             </div>
 
-            <article className="border border-stone-300 bg-white p-5 shadow-lg shadow-stone-900/5 sm:p-8">
-              <div className="border-b-2 border-emerald-900 pb-6 text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            <article className="border border-sand-300 bg-white p-5 shadow-lg shadow-sand-900/5 sm:p-8">
+              <div className="border-b-2 border-ink-900 pb-6 text-center">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-sand-500">
                   Ministerio de Educación del Ecuador
                 </p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-950">
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-sand-950">
                   Planificación Microcurricular
                 </h2>
-                <p className="mt-1 text-xs font-semibold text-emerald-800">Modelo ERCA · Año lectivo 2025–2026</p>
+                <p className="mt-1 text-xs font-semibold text-ink-800">Modelo ERCA · Año lectivo 2025–2026</p>
               </div>
 
-              <div className="mt-6 grid overflow-hidden rounded-2xl border border-slate-200 sm:grid-cols-2">
-                <div className="border-b border-slate-200 p-4 sm:border-b-0 sm:border-r">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Asignatura</p>
-                  <p className="mt-1 text-sm font-bold text-blue-950">Matemáticas</p>
+              <div className="mt-6 grid overflow-hidden rounded-2xl border border-sand-200 sm:grid-cols-2">
+                <div className="border-b border-sand-200 p-4 sm:border-b-0 sm:border-r">
+                  <p className="text-xs font-bold uppercase tracking-wide text-sand-500">Asignatura</p>
+                  <p className="mt-1 text-sm font-bold text-ink-950">Matemáticas</p>
                 </div>
-                <div className="border-b border-slate-200 p-4 sm:border-b-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Curso</p>
-                  <p className="mt-1 text-sm font-bold text-blue-950">2do BGU</p>
+                <div className="border-b border-sand-200 p-4 sm:border-b-0">
+                  <p className="text-xs font-bold uppercase tracking-wide text-sand-500">Curso</p>
+                  <p className="mt-1 text-sm font-bold text-ink-950">2do BGU</p>
                 </div>
-                <div className="border-t border-slate-200 p-4 sm:col-span-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                <div className="border-t border-sand-200 p-4 sm:col-span-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-sand-500">
                     Destreza con Criterio de Desempeño (DCD)
                   </p>
                   <p
                     contentEditable
                     suppressContentEditableWarning
-                    className="mt-2 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-blue-50 focus:ring-4 focus:ring-blue-100"
+                    className="mt-2 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
                   >
                     M.5.2.3. Resolver y plantear problemas que involucren áreas de figuras geométricas y relaciones de
                     proporcionalidad, justificando procedimientos en contextos reales.
@@ -347,12 +347,12 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Objetivo de aprendizaje</p>
+              <div className="mt-5 rounded-2xl border border-sand-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-sand-500">Objetivo de aprendizaje</p>
                 <p
                   contentEditable
                   suppressContentEditableWarning
-                  className="mt-2 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-blue-50 focus:ring-4 focus:ring-blue-100"
+                  className="mt-2 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
                 >
                   {objective}
                 </p>
@@ -364,15 +364,15 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                     key={phase.key}
                     className={`group relative rounded-2xl border p-5 transition sm:p-6 ${
                       phase.key === "application"
-                        ? "border-orange-300 bg-orange-50/50 hover:border-orange-400 hover:ring-4 hover:ring-orange-100"
-                        : "border-stone-200 hover:border-emerald-300"
+                        ? "border-hint-300 bg-hint-50/50 hover:border-hint-400 hover:ring-4 hover:ring-hint-100"
+                        : "border-sand-200 hover:border-ink-300"
                     }`}
                   >
                     {phase.key === "application" && (
                       <button
                         type="button"
                         onClick={() => setPisaModalOpen(true)}
-                        className="absolute -top-4 right-4 z-10 flex min-h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white opacity-100 shadow-lg shadow-violet-900/20 transition hover:bg-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        className="absolute -top-4 right-4 z-10 flex min-h-10 items-center gap-2 rounded-xl bg-ink-600 px-4 text-xs font-bold text-white opacity-100 shadow-lg shadow-ink-900/20 transition hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                       >
                         <AdvancedIcon name="sparkles" className="size-4" />
                         Insertar Ejercicio PISA aquí
@@ -381,7 +381,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                     <div className="flex items-start gap-4">
                       <span
                         className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ${
-                          phase.key === "application" ? "bg-violet-600" : "bg-blue-950"
+                          phase.key === "application" ? "bg-ink-600" : "bg-ink-950"
                         }`}
                       >
                         {index + 1}
@@ -390,19 +390,19 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p
                             className={`text-xs font-bold uppercase tracking-widest ${
-                              phase.key === "application" ? "text-violet-700" : "text-teal-700"
+                              phase.key === "application" ? "text-ink-700" : "text-ink-700"
                             }`}
                           >
                             {phase.label}
                           </p>
-                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-500 shadow-sm">
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-sand-500 shadow-sm">
                             {phase.time}
                           </span>
                         </div>
                         <h3
                           contentEditable
                           suppressContentEditableWarning
-                          className="mt-2 rounded-md text-lg font-bold text-blue-950 outline-none focus:bg-white focus:ring-4 focus:ring-blue-100"
+                          className="mt-2 rounded-md text-lg font-bold text-ink-950 outline-none focus:bg-white focus:ring-4 focus:ring-ink-100"
                         >
                           {phase.title}
                         </h3>
@@ -411,19 +411,19 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                           <p
                             contentEditable
                             suppressContentEditableWarning
-                            className="mt-3 rounded-md text-sm leading-7 text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-blue-100"
+                            className="mt-3 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-white focus:ring-4 focus:ring-ink-100"
                           >
                             {phase.body}
                           </p>
                         )}
 
                         {phase.key === "application" && !pisaInserted && (
-                          <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/80 p-4">
-                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Actividad actual</p>
+                          <div className="mt-4 rounded-xl border border-dashed border-sand-300 bg-white/80 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-sand-400">Actividad actual</p>
                             <p
                               contentEditable
                               suppressContentEditableWarning
-                              className="mt-2 text-sm leading-7 text-slate-600 outline-none"
+                              className="mt-2 text-sm leading-7 text-sand-600 outline-none"
                             >
                               Calcular el área de cinco triángulos usando los datos indicados en la ficha y copiar el
                               procedimiento.
@@ -433,29 +433,29 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
 
                         {phase.key === "application" && pisaInserted && (
                           <div className="mt-4">
-                            <div className="rounded-2xl border-2 border-violet-300 bg-white p-5 shadow-sm">
-                              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-violet-700">
+                            <div className="rounded-2xl border-2 border-ink-300 bg-white p-5 shadow-sm">
+                              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-700">
                                 <AdvancedIcon name="sparkles" className="size-4" />
                                 Ejercicio PISA · {pisaContext}
                               </div>
-                              <div className="mt-4 space-y-4 text-sm leading-7 text-slate-700">
+                              <div className="mt-4 space-y-4 text-sm leading-7 text-sand-700">
                                 <div>
-                                  <p className="font-bold text-blue-950">Contexto</p>
+                                  <p className="font-bold text-ink-950">Contexto</p>
                                   <p className="mt-1">
                                     El Municipio de Quito planea construir un puente peatonal cerca de una zona escolar. El
                                     diseño utiliza módulos triangulares para distribuir el peso de forma segura.
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="font-bold text-blue-950">Problema</p>
+                                  <p className="font-bold text-ink-950">Problema</p>
                                   <p className="mt-1">
                                     Cada módulo tiene 4 m de base y 3 m de altura. La propuesta emplea 12 módulos y cada
                                     metro cuadrado admite una carga máxima definida por la norma técnica.
                                   </p>
                                 </div>
-                                <div className="rounded-xl bg-violet-50 p-4">
-                                  <p className="font-bold text-violet-950">Pregunta de reflexión</p>
-                                  <p className="mt-1 text-violet-950">
+                                <div className="rounded-xl bg-ink-50 p-4">
+                                  <p className="font-bold text-ink-950">Pregunta de reflexión</p>
+                                  <p className="mt-1 text-ink-950">
                                     Justifica con tu procedimiento si el puente soportará el peso previsto según la norma
                                     de seguridad. ¿Qué dato adicional necesitarías para confirmar tu decisión?
                                   </p>
@@ -466,14 +466,14 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                               <button
                                 type="button"
                                 onClick={() => setPisaModalOpen(true)}
-                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-violet-700 hover:bg-violet-100"
+                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-ink-700 hover:bg-ink-100"
                               >
                                 🔄 Regenerar
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setNotice("Edición manual activada en el ejercicio")}
-                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-slate-600 hover:bg-white"
+                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-sand-600 hover:bg-white"
                               >
                                 ✏️ Editar a mano
                               </button>
@@ -488,7 +488,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
 
               <button
                 type="button"
-                className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-900"
+                className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sand-300 text-sm font-bold text-sand-600 hover:border-ink-400 hover:bg-ink-50 hover:text-ink-900"
               >
                 <AdvancedIcon name="plus" className="size-4" />
                 Añadir fase o actividad
@@ -499,7 +499,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
       </main>
 
       {pisaModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/45 p-4 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -515,21 +515,21 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             <button
               type="button"
               onClick={() => setPisaModalOpen(false)}
-              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-violet-100"
+              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-sand-500 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
               aria-label="Cerrar"
             >
               <AdvancedIcon name="x" />
             </button>
-            <span className="grid size-12 place-items-center rounded-2xl bg-violet-100 text-violet-700">
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink-100 text-ink-700">
               <AdvancedIcon name="sparkles" className="size-6" />
             </span>
-            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-violet-700">
+            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-ink-700">
               Asistencia de IA · Aplicación ERCA
             </p>
-            <h2 id="pisa-modal-title" className="mt-2 text-2xl font-bold leading-tight text-blue-950">
+            <h2 id="pisa-modal-title" className="mt-2 text-2xl font-bold leading-tight text-ink-950">
               Adaptando destreza a formato PISA
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            <p className="mt-3 text-sm leading-relaxed text-sand-600">
               ¿En qué contexto de la vida real quieres aplicarlo?
             </p>
 
@@ -541,7 +541,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               value={pisaContext}
               onChange={(event) => setPisaContext(event.target.value)}
               placeholder="Ej. Construcción de un puente en Quito"
-              className="mt-6 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-sm outline-none placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-100"
+              className="mt-6 min-h-12 w-full rounded-xl border border-sand-300 px-4 text-sm outline-none placeholder:text-sand-400 focus:border-ink-600 focus:ring-4 focus:ring-ink-100"
               autoFocus
             />
             <div className="mt-3 flex flex-wrap gap-2" aria-label="Contextos sugeridos">
@@ -552,8 +552,8 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                   onClick={() => setPisaContext(suggestion)}
                   className={`min-h-10 rounded-full border px-3 text-xs font-bold transition ${
                     pisaContext === suggestion
-                      ? "border-violet-600 bg-violet-100 text-violet-800"
-                      : "border-slate-300 bg-white text-slate-600 hover:border-violet-400 hover:bg-violet-50"
+                      ? "border-ink-600 bg-ink-100 text-ink-800"
+                      : "border-sand-300 bg-white text-sand-600 hover:border-ink-400 hover:bg-ink-50"
                   }`}
                 >
                   {suggestion}
@@ -565,7 +565,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               <button
                 type="button"
                 onClick={() => setPisaModalOpen(false)}
-                className="min-h-12 rounded-xl px-5 text-sm font-bold text-slate-600 hover:bg-slate-100"
+                className="min-h-12 rounded-xl px-5 text-sm font-bold text-sand-600 hover:bg-sand-100"
               >
                 Cancelar
               </button>
@@ -573,7 +573,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 type="button"
                 disabled={!pisaContext.trim() || isGeneratingPisa}
                 onClick={generatePisa}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-sm font-bold text-white shadow-lg shadow-violet-900/20 hover:bg-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-200 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink-600 px-5 text-sm font-bold text-white shadow-lg shadow-ink-900/20 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300 disabled:shadow-none"
               >
                 <AdvancedIcon
                   name="sparkles"
@@ -658,15 +658,15 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
 
   if (mode === "results") {
     return (
-      <div className="min-h-screen bg-slate-100 px-4 py-8 text-slate-950 sm:py-14">
+      <div className="min-h-screen bg-sand-100 px-4 py-8 text-sand-950 sm:py-14">
         <main className="mx-auto max-w-3xl">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xl shadow-slate-900/5 sm:p-10">
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-teal-100 text-teal-900">
+          <div className="rounded-3xl border border-sand-200 bg-white p-6 text-center shadow-xl shadow-sand-900/5 sm:p-10">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-100 text-ink-900">
               <AdvancedIcon name="check" className="size-7" />
             </span>
-            <p className="mt-6 text-xs font-bold uppercase tracking-widest text-teal-700">Simulador completado</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-blue-950">Tu práctica terminó. Ahora viene lo valioso.</h1>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
+            <p className="mt-6 text-xs font-bold uppercase tracking-widest text-ink-700">Simulador completado</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink-950">Tu práctica terminó. Ahora viene lo valioso.</h1>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-sand-600">
               La revisión no se limita a una nota: analizaremos las decisiones que tomaste para fortalecer tu estrategia.
             </p>
 
@@ -676,21 +676,21 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                 ["6", "marcadas para revisar"],
                 ["01:02:14", "tiempo utilizado"],
               ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl bg-slate-50 p-5">
-                  <p className="text-2xl font-bold text-blue-950">{value}</p>
-                  <p className="mt-1 text-xs text-slate-500">{label}</p>
+                <div key={label} className="rounded-2xl bg-sand-50 p-5">
+                  <p className="text-2xl font-bold text-ink-950">{value}</p>
+                  <p className="mt-1 text-xs text-sand-500">{label}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-left">
+            <div className="mt-8 rounded-2xl border border-ink-200 bg-ink-50 p-5 text-left">
               <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-950 text-white">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink-950 text-white">
                   <AdvancedIcon name="sparkles" className="size-5" />
                 </span>
                 <div>
-                  <h2 className="font-bold text-blue-950">Convierte errores en estrategia</h2>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                  <h2 className="font-bold text-ink-950">Convierte errores en estrategia</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-sand-600">
                     El tutor seleccionará los problemas clave y te hará preguntas para reconstruir el razonamiento.
                   </p>
                 </div>
@@ -700,15 +700,15 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
             <button
               type="button"
               onClick={() => setMode("review")}
-              className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-950 px-6 text-sm font-bold text-white hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+              className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink-950 px-6 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
             >
-              <AdvancedIcon name="sparkles" className="size-5 text-teal-300" />
+              <AdvancedIcon name="sparkles" className="size-5 text-ink-300" />
               Revisión Socrática
             </button>
             <button
               type="button"
               onClick={onBack}
-              className="mt-3 min-h-11 px-4 text-sm font-bold text-slate-500 hover:text-blue-950"
+              className="mt-3 min-h-11 px-4 text-sm font-bold text-sand-500 hover:text-ink-950"
             >
               Volver al centro de estudio
             </button>
@@ -720,54 +720,54 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
 
   if (mode === "review") {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-950">
-        <header className="border-b border-slate-200 bg-white">
+      <div className="min-h-screen bg-sand-100 text-sand-950">
+        <header className="border-b border-sand-200 bg-white">
           <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
             <button
               type="button"
               onClick={() => setMode("results")}
-              className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-bold text-slate-700 hover:bg-slate-100"
+              className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-100"
             >
               <AdvancedIcon name="arrow-left" />
               Resultados
             </button>
-            <p className="font-bold text-blue-950">Revisión Socrática</p>
-            <span className="rounded-full bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-900">Pregunta 12</span>
+            <p className="font-bold text-ink-950">Revisión Socrática</p>
+            <span className="rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold text-ink-900">Pregunta 12</span>
           </div>
         </header>
         <main className="mx-auto grid max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-2 lg:py-10">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Pregunta para revisar</p>
-            <h1 className="mt-3 text-xl font-bold leading-tight text-blue-950">Escalera apoyada contra una pared</h1>
-            <p className="mt-4 text-base leading-8 text-slate-700">{examQuestions[0].prompt}</p>
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Tu elección durante el examen</p>
-              <p className="mt-2 text-sm font-semibold text-slate-800">A. 5² + 3²</p>
+          <section className="rounded-3xl border border-sand-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-widest text-hint-700">Pregunta para revisar</p>
+            <h1 className="mt-3 text-xl font-bold leading-tight text-ink-950">Escalera apoyada contra una pared</h1>
+            <p className="mt-4 text-base leading-8 text-sand-700">{examQuestions[0].prompt}</p>
+            <div className="mt-6 rounded-2xl bg-sand-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-sand-500">Tu elección durante el examen</p>
+              <p className="mt-2 text-sm font-semibold text-sand-800">A. 5² + 3²</p>
             </div>
-            <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-slate-500">
-              <AdvancedIcon name="shield" className="mt-0.5 size-4 shrink-0 text-teal-700" />
+            <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-sand-500">
+              <AdvancedIcon name="shield" className="mt-0.5 size-4 shrink-0 text-ink-700" />
               No mostraremos la respuesta. El objetivo es que reconstruyas el procedimiento con una estrategia transferible.
             </p>
           </section>
 
-          <section className="flex min-h-[32rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center gap-3 border-b border-slate-200 p-5">
-              <span className="grid size-10 place-items-center rounded-xl bg-teal-100 text-teal-900">
+          <section className="flex min-h-[32rem] flex-col overflow-hidden rounded-3xl border border-sand-200 bg-white shadow-sm">
+            <div className="flex items-center gap-3 border-b border-sand-200 p-5">
+              <span className="grid size-10 place-items-center rounded-xl bg-ink-100 text-ink-900">
                 <AdvancedIcon name="sparkles" className="size-5" />
               </span>
               <div>
-                <h2 className="font-bold text-blue-950">Tutor de revisión</h2>
-                <p className="text-xs text-slate-500">Reconstruye, no memorices</p>
+                <h2 className="font-bold text-ink-950">Tutor de revisión</h2>
+                <p className="text-xs text-sand-500">Reconstruye, no memorices</p>
               </div>
             </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-5" aria-live="polite">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-sand-50 p-5" aria-live="polite">
               {reviewMessages.map((message, index) => (
                 <div
                   key={`${message}-${index}`}
                   className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     index % 2
-                      ? "ml-auto rounded-br-md bg-blue-950 text-white"
-                      : "rounded-tl-md border border-slate-200 bg-white text-slate-700"
+                      ? "ml-auto rounded-br-md bg-ink-950 text-white"
+                      : "rounded-tl-md border border-sand-200 bg-white text-sand-700"
                   }`}
                 >
                   {message}
@@ -775,7 +775,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
               ))}
             </div>
             <form
-              className="border-t border-slate-200 p-3"
+              className="border-t border-sand-200 p-3"
               onSubmit={async (event: FormEvent) => {
                 event.preventDefault();
                 if (!reviewInput.trim()) return;
@@ -804,7 +804,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                 }
               }}
             >
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-300 p-2 focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
+              <div className="flex items-center gap-2 rounded-2xl border border-sand-300 p-2 focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100">
                 <label htmlFor="review-input" className="sr-only">
                   Explica tu razonamiento
                 </label>
@@ -813,12 +813,12 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                   value={reviewInput}
                   onChange={(event) => setReviewInput(event.target.value)}
                   placeholder="Explica qué fórmula usaste..."
-                  className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-slate-400"
+                  className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-sand-400"
                 />
                 <button
                   type="submit"
                   disabled={!reviewInput.trim()}
-                  className="grid size-11 place-items-center rounded-xl bg-blue-950 text-white disabled:bg-slate-300"
+                  className="grid size-11 place-items-center rounded-xl bg-ink-950 text-white disabled:bg-sand-300"
                   aria-label="Enviar razonamiento"
                 >
                   <AdvancedIcon name="send" className="size-4" />
@@ -832,16 +832,16 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
-      <header className="sticky top-0 z-30 border-b-2 border-slate-950 bg-white">
+    <div className="min-h-screen bg-white text-sand-950">
+      <header className="sticky top-0 z-30 border-b-2 border-sand-950 bg-white">
         <div className="mx-auto grid min-h-20 max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 sm:px-6">
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold uppercase tracking-wide text-slate-500">Simulador Universidad Central</p>
-            <p className="mt-1 truncate text-sm font-bold text-slate-950">Matemáticas</p>
+            <p className="truncate text-xs font-bold uppercase tracking-wide text-sand-500">Simulador Universidad Central</p>
+            <p className="mt-1 truncate text-sm font-bold text-sand-950">Matemáticas</p>
           </div>
           <div
             className={`rounded-xl border-2 px-3 py-2 text-center sm:px-6 ${
-              isUrgent ? "border-amber-500 bg-amber-50 text-amber-950" : "border-slate-950 bg-white text-slate-950"
+              isUrgent ? "border-hint-500 bg-hint-50 text-hint-950" : "border-sand-950 bg-white text-sand-950"
             }`}
             role="timer"
             aria-label={`Tiempo restante ${formatTime(remaining)}`}
@@ -852,7 +852,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
           <button
             type="button"
             onClick={() => setFinishOpen(true)}
-            className="ml-auto min-h-11 rounded-xl border-2 border-slate-950 px-3 text-xs font-bold text-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus:ring-4 focus:ring-slate-300 sm:px-5 sm:text-sm"
+            className="ml-auto min-h-11 rounded-xl border-2 border-sand-950 px-3 text-xs font-bold text-sand-950 hover:bg-sand-950 hover:text-white focus:outline-none focus:ring-4 focus:ring-sand-300 sm:px-5 sm:text-sm"
           >
             Finalizar
             <span className="hidden sm:inline"> simulador</span>
@@ -862,14 +862,14 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
 
       <main className="mx-auto max-w-4xl px-4 py-7 pb-44 sm:px-6 sm:py-10">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-bold text-slate-600">Pregunta {currentNumber} de 40</p>
+          <p className="text-sm font-bold text-sand-600">Pregunta {currentNumber} de 40</p>
           <button
             type="button"
             onClick={toggleFlag}
             className={`flex min-h-11 items-center gap-2 rounded-xl border-2 px-3 text-xs font-bold ${
               flagged.has(currentNumber)
-                ? "border-amber-500 bg-amber-50 text-amber-950"
-                : "border-slate-300 text-slate-700 hover:border-slate-950"
+                ? "border-hint-500 bg-hint-50 text-hint-950"
+                : "border-sand-300 text-sand-700 hover:border-sand-950"
             }`}
           >
             <AdvancedIcon name="flag" className="size-4" />
@@ -878,8 +878,8 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
         </div>
 
         <section className="mt-7">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{question.area}</p>
-          <h1 className="mt-4 text-xl font-bold leading-relaxed text-slate-950 sm:text-3xl">{question.prompt}</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sand-500">{question.area}</p>
+          <h1 className="mt-4 text-xl font-bold leading-relaxed text-sand-950 sm:text-3xl">{question.prompt}</h1>
           <fieldset className="mt-8 space-y-3">
             <legend className="sr-only">Opciones de respuesta</legend>
             {question.options.map((option, index) => {
@@ -890,8 +890,8 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                   key={option}
                   className={`flex min-h-16 cursor-pointer items-center gap-4 rounded-2xl border-2 p-3 transition sm:p-4 ${
                     selected
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-300 bg-white text-slate-950 hover:border-slate-950"
+                      ? "border-sand-950 bg-sand-950 text-white"
+                      : "border-sand-300 bg-white text-sand-950 hover:border-sand-950"
                   }`}
                 >
                   <input
@@ -904,7 +904,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                   />
                   <span
                     className={`grid size-10 shrink-0 place-items-center rounded-xl border-2 text-sm font-bold ${
-                      selected ? "border-white bg-white text-slate-950" : "border-slate-300 bg-slate-50"
+                      selected ? "border-white bg-white text-sand-950" : "border-sand-300 bg-sand-50"
                     }`}
                   >
                     {letter}
@@ -921,14 +921,14 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
             type="button"
             disabled={current === 0}
             onClick={() => setCurrent((value) => Math.max(0, value - 1))}
-            className="min-h-12 rounded-xl border-2 border-slate-300 px-5 text-sm font-bold text-slate-700 hover:border-slate-950 disabled:opacity-40"
+            className="min-h-12 rounded-xl border-2 border-sand-300 px-5 text-sm font-bold text-sand-700 hover:border-sand-950 disabled:opacity-40"
           >
             Anterior
           </button>
           <button
             type="button"
             onClick={() => setCurrent((value) => Math.min(39, value + 1))}
-            className="flex min-h-12 items-center gap-2 rounded-xl bg-slate-950 px-6 text-sm font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-300"
+            className="flex min-h-12 items-center gap-2 rounded-xl bg-sand-950 px-6 text-sm font-bold text-white hover:bg-sand-800 focus:outline-none focus:ring-4 focus:ring-sand-300"
           >
             Siguiente
             <AdvancedIcon name="chevron" className="size-4" />
@@ -936,19 +936,19 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-950 bg-white px-4 py-3" aria-label="Preguntas del examen">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t-2 border-sand-950 bg-white px-4 py-3" aria-label="Preguntas del examen">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-2 flex items-center gap-4 text-[0.7rem] font-semibold text-slate-600">
+          <div className="mb-2 flex items-center gap-4 text-[0.7rem] font-semibold text-sand-600">
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded-sm bg-slate-700" />
+              <span className="size-3 rounded-sm bg-sand-700" />
               Respondida
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded-sm border border-slate-400 bg-white" />
+              <span className="size-3 rounded-sm border border-sand-400 bg-white" />
               Pendiente
             </span>
             <span className="flex items-center gap-1.5">
-              <AdvancedIcon name="flag" className="size-3 text-amber-700" />
+              <AdvancedIcon name="flag" className="size-3 text-hint-700" />
               Marcada
             </span>
           </div>
@@ -964,16 +964,16 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                   onClick={() => setCurrent(index)}
                   className={`relative grid size-10 place-items-center rounded-lg border-2 text-xs font-bold ${
                     active
-                      ? "border-blue-700 bg-blue-700 text-white"
+                      ? "border-ink-700 bg-ink-700 text-white"
                       : answered
-                        ? "border-slate-700 bg-slate-700 text-white"
-                        : "border-slate-300 bg-white text-slate-800"
+                        ? "border-sand-700 bg-sand-700 text-white"
+                        : "border-sand-300 bg-white text-sand-800"
                   }`}
                   aria-label={`Pregunta ${number}${answered ? ", respondida" : ", pendiente"}${flagged.has(number) ? ", marcada" : ""}`}
                 >
                   {number}
                   {flagged.has(number) && (
-                    <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
+                    <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-hint-500 ring-2 ring-white" />
                   )}
                 </button>
               );
@@ -983,7 +983,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
       </nav>
 
       {finishOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/55 p-4 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -994,16 +994,16 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
             <button
               type="button"
               onClick={() => setFinishOpen(false)}
-              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-sand-500 hover:bg-sand-100"
               aria-label="Cerrar"
             >
               <AdvancedIcon name="x" />
             </button>
-            <span className="grid size-12 place-items-center rounded-2xl bg-amber-100 text-amber-900">
+            <span className="grid size-12 place-items-center rounded-2xl bg-hint-100 text-hint-900">
               <AdvancedIcon name="flag" className="size-6" />
             </span>
-            <h2 className="mt-5 text-2xl font-bold text-slate-950">¿Finalizar el simulador?</h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            <h2 className="mt-5 text-2xl font-bold text-sand-950">¿Finalizar el simulador?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-sand-600">
               Has respondido {Object.keys(answers).length} de 40 preguntas y tienes {flagged.size} marcadas para revisar.
               Después de finalizar no podrás cambiar tus elecciones.
             </p>
@@ -1011,7 +1011,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
               <button
                 type="button"
                 onClick={() => setFinishOpen(false)}
-                className="min-h-12 rounded-xl border-2 border-slate-300 px-4 text-sm font-bold text-slate-700"
+                className="min-h-12 rounded-xl border-2 border-sand-300 px-4 text-sm font-bold text-sand-700"
               >
                 Seguir revisando
               </button>
@@ -1021,7 +1021,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
                   setFinishOpen(false);
                   setMode("results");
                 }}
-                className="min-h-12 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white"
+                className="min-h-12 rounded-xl bg-sand-950 px-4 text-sm font-bold text-white"
               >
                 Finalizar ahora
               </button>

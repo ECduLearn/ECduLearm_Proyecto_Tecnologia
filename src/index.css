@@ -1,18 +1,58 @@
 @import "tailwindcss";
 
+/* Sistema visual «Cuaderno de campo»: tinta verde, papel cálido y un único acento para las pistas. */
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
+
+  /* Tinta: marca, acciones principales y navegación */
+  --color-ink-50: #f0f5f2;
+  --color-ink-100: #e3efe8;
+  --color-ink-200: #c9ded2;
+  --color-ink-300: #a3c4b3;
+  --color-ink-400: #6e9e88;
+  --color-ink-500: #3f7a62;
+  --color-ink-600: #2a624d;
+  --color-ink-700: #1e5040;
+  --color-ink-800: #154535;
+  --color-ink-900: #113d2f;
+  --color-ink-950: #0f3b2e;
+
+  /* Pista: reservado para pistas, foco y avisos */
+  --color-hint-50: #fbf3ec;
+  --color-hint-100: #fbebdf;
+  --color-hint-200: #f6d9c6;
+  --color-hint-300: #ebb896;
+  --color-hint-400: #dd8e5c;
+  --color-hint-500: #c9692f;
+  --color-hint-600: #b4470f;
+  --color-hint-700: #9a3c0c;
+  --color-hint-800: #8a3409;
+  --color-hint-900: #6e2a08;
+  --color-hint-950: #431905;
+
+  /* Arena: papel y neutros cálidos (400+ cumplen 4.5:1 sobre blanco) */
+  --color-sand-50: #f7f4ec;
+  --color-sand-100: #f2eee3;
+  --color-sand-200: #e6e0d2;
+  --color-sand-300: #cfc7b4;
+  --color-sand-400: #77705f;
+  --color-sand-500: #625c50;
+  --color-sand-600: #57534b;
+  --color-sand-700: #3d3a34;
+  --color-sand-800: #2a2722;
+  --color-sand-900: #1c1a17;
+  --color-sand-950: #12110e;
+}
+
 @layer base {
   html {
     color-scheme: light;
   }
 
   body {
-    @apply m-0 min-w-80 bg-slate-50 font-sans;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: Georgia, Cambria, "Times New Roman", serif;
+    @apply m-0 min-w-80 bg-sand-50 font-sans text-sand-900;
   }
 
   button,

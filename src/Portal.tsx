@@ -134,13 +134,13 @@ function Brand({ dark = false }: { dark?: boolean }) {
     <div className="flex items-center gap-3" aria-label="ECduLearm">
       <span
         className={`grid size-10 place-items-center rounded-xl ${
-          dark ? "bg-emerald-950 text-white" : "bg-white text-emerald-950"
+          dark ? "bg-ink-950 text-white" : "bg-white text-ink-950"
         }`}
       >
         <PortalIcon name="book" className="size-5" />
       </span>
-      <span className={`text-lg font-bold tracking-tight ${dark ? "text-emerald-950" : "text-white"}`}>
-        EC<span className="text-teal-500">du</span>Learm
+      <span className={`text-lg font-bold tracking-tight ${dark ? "text-ink-950" : "text-white"}`}>
+        EC<span className="text-hint-600">du</span>Learm
       </span>
     </div>
   );
@@ -171,14 +171,14 @@ export function AccessPortal({
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6f2e8] text-stone-950">
-      <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-emerald-100/70 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-sand-50 text-sand-950">
+      <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-ink-100/70 blur-3xl" />
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={onBackToLanding}
-            className="rounded-xl text-left transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="rounded-xl text-left transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-ink-400"
             title="Volver a Inicio"
           >
             <Brand dark />
@@ -187,7 +187,7 @@ export function AccessPortal({
             <button
               type="button"
               onClick={onBackToLanding}
-              className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-sand-200 bg-sand-50 px-2.5 py-1 text-xs font-semibold text-sand-600 transition hover:bg-sand-100 hover:text-sand-900"
             >
               <span>←</span>
               <span>Inicio</span>
@@ -197,7 +197,7 @@ export function AccessPortal({
         <button
           type="button"
           onClick={() => setLoginOpen(true)}
-          className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-sand-600 transition hover:bg-sand-100 hover:text-ink-950 focus:outline-none focus:ring-4 focus:ring-ink-100"
         >
           <PortalIcon name="lock" className="size-4" />
           Acceso Docentes
@@ -206,26 +206,26 @@ export function AccessPortal({
 
       <main className="relative z-10 grid min-h-[calc(100vh-10rem)] place-items-center px-5 py-12">
         <div className="w-full max-w-xl text-center">
-          <span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-800 text-white">
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-ink-800 text-white">
             <PortalIcon name="arrow" className="size-6" />
           </span>
-          <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-emerald-800">Acceso para estudiantes</p>
-          <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">
+          <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-ink-800">Acceso para estudiantes</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-sand-950 sm:text-4xl">
             ¿Cuál es el código de tu clase?
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-stone-600">
+          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-sand-600">
             Escribe el PIN o pega el enlace que compartió tu docente. Sin cuenta y sin datos personales.
           </p>
 
           <form
             onSubmit={enterSession}
-            className="mt-9 rounded-xl border border-stone-200 bg-white p-3 text-left shadow-lg shadow-stone-900/5 sm:flex sm:items-center sm:gap-3"
+            className="mt-9 rounded-xl border border-sand-200 bg-white p-3 text-left shadow-lg shadow-sand-900/5 sm:flex sm:items-center sm:gap-3"
           >
             <label htmlFor="class-pin" className="sr-only">
               PIN o enlace de la clase
             </label>
             <div className="flex min-h-14 flex-1 items-center gap-3 px-3">
-              <PortalIcon name="link" className="size-5 shrink-0 text-emerald-800" />
+              <PortalIcon name="link" className="size-5 shrink-0 text-ink-800" />
               <input
                 id="class-pin"
                 value={pin}
@@ -234,40 +234,40 @@ export function AccessPortal({
                   setError("");
                 }}
                 placeholder="Ej. PISA26 o 482 917"
-                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400 uppercase"
+                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-sand-900 outline-none placeholder:font-normal placeholder:text-sand-400 uppercase"
                 autoComplete="off"
               />
             </div>
             <button
               type="submit"
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-6 text-sm font-bold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:w-auto"
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-6 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 sm:w-auto"
             >
               Entrar a la clase
               <PortalIcon name="arrow" className="size-4" />
             </button>
           </form>
-          <p className="mt-3 min-h-5 text-sm font-medium text-orange-800" role="alert">
+          <p className="mt-3 min-h-5 text-sm font-medium text-hint-800" role="alert">
             {error}
           </p>
 
-          <div className="mt-8 border-t border-stone-300 pt-5">
-            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-900">
-              <PortalIcon name="shield" className="size-5 text-emerald-800" />
+          <div className="mt-8 border-t border-sand-300 pt-5">
+            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-ink-900">
+              <PortalIcon name="shield" className="size-5 text-ink-800" />
               Tu privacidad primero
             </p>
-            <p className="mt-2 text-center text-xs leading-relaxed text-stone-600">
+            <p className="mt-2 text-center text-xs leading-relaxed text-sand-600">
               Tu colegio administra esta experiencia. No solicitamos nombres, correos ni perfiles.
             </p>
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 px-5 pb-6 text-center text-xs text-stone-500">
+      <footer className="relative z-10 px-5 pb-6 text-center text-xs text-sand-500">
         Tu colegio administra esta experiencia. ECduLearm no solicita nombres, correos ni perfiles a estudiantes.
       </footer>
 
       {loginOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/45 p-4 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -275,27 +275,27 @@ export function AccessPortal({
             aria-label="Cerrar acceso docente"
           />
           <section
-            className="relative w-full max-w-md border border-stone-200 bg-[#f6f2e8] p-6 shadow-2xl sm:p-8"
+            className="relative w-full max-w-md border border-sand-200 bg-sand-50 p-6 shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="teacher-login-title"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <span className="grid size-11 place-items-center rounded-xl bg-blue-950 text-white">
+                <span className="grid size-11 place-items-center rounded-xl bg-ink-950 text-white">
                   <PortalIcon name="lock" className="size-5" />
                 </span>
-                <h2 id="teacher-login-title" className="mt-5 text-2xl font-bold text-stone-950">
+                <h2 id="teacher-login-title" className="mt-5 text-2xl font-bold text-sand-950">
                   Acceso institucional
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                <p className="mt-2 text-sm leading-relaxed text-sand-500">
                   Usa las credenciales pre-creadas por tu colegio.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setLoginOpen(false)}
-                className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-sand-500 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 aria-label="Cerrar"
               >
                 <PortalIcon name="x" />
@@ -310,7 +310,7 @@ export function AccessPortal({
               }}
             >
               <div>
-                <label htmlFor="institutional-email" className="text-sm font-bold text-slate-800">
+                <label htmlFor="institutional-email" className="text-sm font-bold text-sand-800">
                   Correo institucional
                 </label>
                 <input
@@ -318,11 +318,11 @@ export function AccessPortal({
                   type="email"
                   required
                   placeholder="docente@colegio.edu.ec"
-                  className="mt-2 min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
+                  className="mt-2 min-h-12 w-full rounded-lg border border-sand-300 bg-white px-4 text-sm outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
                 />
               </div>
               <div>
-                <label htmlFor="teacher-password" className="text-sm font-bold text-slate-800">
+                <label htmlFor="teacher-password" className="text-sm font-bold text-sand-800">
                   Contraseña
                 </label>
                 <input
@@ -330,12 +330,12 @@ export function AccessPortal({
                   type="password"
                   required
                   placeholder="Ingresa tu contraseña"
-                  className="mt-2 min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
+                  className="mt-2 min-h-12 w-full rounded-lg border border-sand-300 bg-white px-4 text-sm outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
                 />
               </div>
               <button
                 type="submit"
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
               >
                 Ingresar al panel
                 <PortalIcon name="arrow" className="size-4" />
@@ -343,9 +343,9 @@ export function AccessPortal({
               <button
                 type="button"
                 onClick={() => onTeacherEnter()}
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-500/50 bg-teal-50 px-4 text-xs font-bold text-teal-900 transition hover:bg-teal-100 focus:outline-none focus:ring-4 focus:ring-teal-100"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-ink-500/50 bg-ink-50 px-4 text-xs font-bold text-ink-900 transition hover:bg-ink-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
               >
-                <PortalIcon name="sparkles" className="size-4 text-teal-700" />
+                <PortalIcon name="sparkles" className="size-4 text-ink-700" />
                 🔑 Autocompletar como Evaluador / Jurado
               </button>
             </form>
@@ -419,19 +419,19 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-sand-50 text-sand-950">
+      <header className="border-b border-sand-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Sesión activa</p>
-            <h1 className="mt-1 truncate text-sm font-bold text-blue-950 sm:text-lg">
+            <p className="text-xs font-bold uppercase tracking-widest text-ink-700">Sesión activa</p>
+            <h1 className="mt-1 truncate text-sm font-bold text-ink-950 sm:text-lg">
               Simulador: Examen de Admisión — Razonamiento Numérico
             </h1>
           </div>
           <button
             type="button"
             onClick={onExit}
-            className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-sand-500 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
             aria-label="Salir de la sesión"
           >
             <PortalIcon name="logout" className="size-5" />
@@ -443,27 +443,27 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
         <section>
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-sm font-bold text-sand-800">
                 Pregunta {questionIndex + 1} de {questions.length}
               </p>
-              <p className="mt-1 text-xs text-slate-500">Tu progreso se guarda solo durante esta sesión anónima.</p>
+              <p className="mt-1 text-xs text-sand-500">Tu progreso se guarda solo durante esta sesión anónima.</p>
             </div>
-            <span className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-900">
+            <span className="rounded-full bg-ink-100 px-3 py-1.5 text-xs font-bold text-ink-900">
               {Math.round(((questionIndex + 1) / questions.length) * 100)}%
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-2 overflow-hidden rounded-full bg-sand-200">
             <div
-              className={`h-full rounded-full bg-teal-600 transition-all ${
+              className={`h-full rounded-full bg-ink-600 transition-all ${
                 questionIndex === 0 ? "w-1/3" : questionIndex === 1 ? "w-2/3" : "w-full"
               }`}
             />
           </div>
 
-          <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">{question.eyebrow}</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl">{question.title}</h2>
-            <p className="mt-5 text-base leading-8 text-slate-700">{question.body}</p>
+          <article className="mt-6 rounded-3xl border border-sand-200 bg-white p-5 shadow-xl shadow-sand-900/5 sm:p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-700">{question.eyebrow}</p>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-950 sm:text-3xl">{question.title}</h2>
+            <p className="mt-5 text-base leading-8 text-sand-700">{question.body}</p>
 
             <fieldset className="mt-8 space-y-3">
               <legend className="sr-only">Selecciona una opción</legend>
@@ -472,8 +472,8 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
                   key={option}
                   className={`flex min-h-14 cursor-pointer items-center gap-4 rounded-2xl border p-3 transition sm:p-4 ${
                     selected === option
-                      ? "border-blue-800 bg-blue-50 ring-2 ring-blue-100"
-                      : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
+                      ? "border-ink-800 bg-ink-50 ring-2 ring-ink-100"
+                      : "border-sand-200 hover:border-ink-300 hover:bg-sand-50"
                   }`}
                 >
                   <input
@@ -482,21 +482,21 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
                     value={option}
                     checked={selected === option}
                     onChange={() => setSelected(option)}
-                    className="size-5 accent-blue-950"
+                    className="size-5 accent-ink-950"
                   />
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sand-100 text-sm font-bold text-sand-600">
                     {String.fromCharCode(65 + index)}
                   </span>
-                  <span className="text-sm font-semibold text-slate-800">{option}</span>
+                  <span className="text-sm font-semibold text-sand-800">{option}</span>
                 </label>
               ))}
             </fieldset>
 
-            <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-8 flex flex-col-reverse gap-3 border-t border-sand-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setChatOpen(true)}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-sand-300 px-4 text-sm font-bold text-sand-700 hover:bg-sand-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
               >
                 <PortalIcon name="help" className="size-5" />
                 Necesito una pista
@@ -510,7 +510,7 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
                     setSelected("");
                   }
                 }}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-950 px-6 text-sm font-bold text-white hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink-950 px-6 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300"
               >
                 {questionIndex === questions.length - 1 ? "Finalizar actividad" : "Continuar"}
                 <PortalIcon name="arrow" className="size-4" />
@@ -520,27 +520,27 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50 p-5">
-            <div className="flex items-center gap-2 text-sm font-bold text-teal-900">
+          <div className="rounded-2xl border border-ink-200 bg-ink-50 p-5">
+            <div className="flex items-center gap-2 text-sm font-bold text-ink-900">
               <PortalIcon name="shield" className="size-5" />
               Tu privacidad primero
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-teal-900/80">
+            <p className="mt-2 text-xs leading-relaxed text-ink-900/80">
               Estás participando sin perfil, nombre ni correo. Solo se comparten resultados grupales.
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2 text-sm font-bold text-blue-950">
-              <PortalIcon name="sparkles" className="size-5 text-teal-700" />
+          <div className="rounded-2xl border border-sand-200 bg-white p-5">
+            <div className="flex items-center gap-2 text-sm font-bold text-ink-950">
+              <PortalIcon name="sparkles" className="size-5 text-ink-700" />
               Chat Socrático
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+            <p className="mt-2 text-xs leading-relaxed text-sand-500">
               Recibe preguntas y pistas para avanzar. El tutor no revela la respuesta.
             </p>
             <button
               type="button"
               onClick={() => setChatOpen(true)}
-              className="mt-4 min-h-11 w-full rounded-xl bg-blue-50 px-4 text-sm font-bold text-blue-900 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="mt-4 min-h-11 w-full rounded-xl bg-ink-50 px-4 text-sm font-bold text-ink-900 hover:bg-ink-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
             >
               Abrir tutor
             </button>
@@ -551,14 +551,14 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
       <button
         type="button"
         onClick={() => setChatOpen(true)}
-        className="fixed bottom-5 right-5 z-30 flex min-h-14 items-center gap-2 rounded-2xl bg-blue-950 px-5 text-sm font-bold text-white shadow-2xl shadow-blue-950/25 focus:outline-none focus:ring-4 focus:ring-blue-200 lg:hidden"
+        className="fixed bottom-5 right-5 z-30 flex min-h-14 items-center gap-2 rounded-2xl bg-ink-950 px-5 text-sm font-bold text-white shadow-2xl shadow-ink-950/25 focus:outline-none focus:ring-4 focus:ring-ink-200 lg:hidden"
       >
-        <PortalIcon name="sparkles" className="size-5 text-teal-300" />
+        <PortalIcon name="sparkles" className="size-5 text-ink-300" />
         Pedir pista
       </button>
 
       {chatOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/30 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 bg-sand-950/30 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -571,39 +571,39 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
             aria-modal="true"
             aria-labelledby="socratic-title"
           >
-            <div className="flex items-center justify-between border-b border-slate-200 p-4">
+            <div className="flex items-center justify-between border-b border-sand-200 p-4">
               <div>
-                <h2 id="socratic-title" className="flex items-center gap-2 font-bold text-blue-950">
-                  <PortalIcon name="sparkles" className="size-5 text-teal-700" />
+                <h2 id="socratic-title" className="flex items-center gap-2 font-bold text-ink-950">
+                  <PortalIcon name="sparkles" className="size-5 text-ink-700" />
                   Tutor Socrático
                 </h2>
-                <p className="mt-1 text-xs text-slate-500">Pistas, no respuestas</p>
+                <p className="mt-1 text-xs text-sand-500">Pistas, no respuestas</p>
               </div>
               <button
                 type="button"
                 onClick={() => setChatOpen(false)}
-                className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+                className="grid size-11 place-items-center rounded-xl text-sand-500 hover:bg-sand-100"
                 aria-label="Cerrar tutor"
               >
                 <PortalIcon name="x" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-sand-50 p-4">
               {messages.map((message, index) => (
                 <div
                   key={`${message.text}-${index}`}
                   className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     message.role === "student"
-                      ? "ml-auto rounded-br-md bg-blue-950 text-white"
-                      : "rounded-tl-md border border-slate-200 bg-white text-slate-700"
+                      ? "ml-auto rounded-br-md bg-ink-950 text-white"
+                      : "rounded-tl-md border border-sand-200 bg-white text-sand-700"
                   }`}
                 >
                   {message.text}
                 </div>
               ))}
             </div>
-            <form onSubmit={sendHintRequest} className="border-t border-slate-200 bg-white p-3">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-300 p-2 focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
+            <form onSubmit={sendHintRequest} className="border-t border-sand-200 bg-white p-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-sand-300 p-2 focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100">
                 <label htmlFor="hint-input" className="sr-only">
                   Explica dónde te trabaste
                 </label>
@@ -612,12 +612,12 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   placeholder="¿En qué paso te trabaste?"
-                  className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-slate-400"
+                  className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-sand-400"
                 />
                 <button
                   type="submit"
                   disabled={!chatInput.trim()}
-                  className="grid size-11 place-items-center rounded-xl bg-blue-950 text-white disabled:bg-slate-300"
+                  className="grid size-11 place-items-center rounded-xl bg-ink-950 text-white disabled:bg-sand-300"
                   aria-label="Enviar al tutor"
                 >
                   <PortalIcon name="send" className="size-4" />
@@ -676,17 +676,17 @@ export function TeacherDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
+    <div className="min-h-screen bg-sand-50 text-sand-950">
       {sidebarOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-sand-950/40 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-label="Cerrar navegación"
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-emerald-950 p-4 text-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-ink-950 p-4 text-white transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -695,7 +695,7 @@ export function TeacherDashboard({
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="grid size-11 place-items-center rounded-xl text-blue-100 hover:bg-white/10 lg:hidden"
+            className="grid size-11 place-items-center rounded-xl text-ink-100 hover:bg-white/10 lg:hidden"
             aria-label="Cerrar menú"
           >
             <PortalIcon name="x" />
@@ -704,14 +704,14 @@ export function TeacherDashboard({
         <nav className="mt-8 space-y-1" aria-label="Panel docente">
           <button
             type="button"
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg border-l-2 border-orange-300 bg-white/10 px-3 text-left text-sm font-bold"
+            className="flex min-h-12 w-full items-center gap-3 rounded-lg border-l-2 border-hint-300 bg-white/10 px-3 text-left text-sm font-bold"
           >
-            <PortalIcon name="grid" className="size-5 text-teal-300" />
+            <PortalIcon name="grid" className="size-5 text-ink-300" />
             Resumen
           </button>
           <button
             type="button"
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-blue-100 hover:bg-white/10"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="book" className="size-5" />
             Salas y sesiones
@@ -719,7 +719,7 @@ export function TeacherDashboard({
           <button
             type="button"
             onClick={onCreateContent}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-blue-100 hover:bg-white/10"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="sparkles" className="size-5" />
             Crear con IA
@@ -727,32 +727,32 @@ export function TeacherDashboard({
           <button
             type="button"
             onClick={onOpenPlanner}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-blue-100 hover:bg-white/10"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="book" className="size-5" />
             Planificador de clase
           </button>
           <button
             type="button"
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-blue-100 hover:bg-white/10"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="chart" className="size-5" />
             Analítica grupal
           </button>
         </nav>
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/10 p-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-teal-200">
+          <div className="flex items-center gap-2 text-xs font-bold text-ink-200">
             <PortalIcon name="shield" className="size-4" />
             Privacidad B2B
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-blue-100">
+          <p className="mt-2 text-xs leading-relaxed text-ink-100">
             Las métricas son agregadas. No existen perfiles ni datos personales de estudiantes.
           </p>
         </div>
         <button
           type="button"
           onClick={onExit}
-          className="mt-3 flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-blue-100 hover:bg-white/10"
+          className="mt-3 flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-100 hover:bg-white/10"
         >
           <PortalIcon name="logout" className="size-5" />
           Cerrar sesión
@@ -760,26 +760,26 @@ export function TeacherDashboard({
       </aside>
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-sand-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-sand-600 hover:bg-sand-100 lg:hidden"
                 aria-label="Abrir menú"
               >
                 <PortalIcon name="menu" />
               </button>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-blue-950">Colegio Horizonte</p>
-                <p className="truncate text-xs text-slate-500">María Andrade · Docente</p>
+                <p className="truncate text-sm font-bold text-ink-950">Colegio Horizonte</p>
+                <p className="truncate text-xs text-sand-500">María Andrade · Docente</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setPinOpen(true)}
-              className="flex min-h-11 items-center gap-2 rounded-lg bg-emerald-800 px-3 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:px-5"
+              className="flex min-h-11 items-center gap-2 rounded-lg bg-ink-800 px-3 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 sm:px-5"
             >
               <PortalIcon name="link" className="size-4" />
               <span className="hidden sm:inline">Generar Enlace / PIN para Alumnos</span>
@@ -791,16 +791,16 @@ export function TeacherDashboard({
         <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <p className="text-sm font-bold text-teal-700">Panel del docente</p>
-              <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight text-stone-950">Buenos días, María</h1>
-              <p className="mt-2 text-sm text-stone-600">Orquesta tus sesiones y observa el avance anónimo del grupo.</p>
+              <p className="text-sm font-bold text-ink-700">Panel del docente</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-sand-950">Buenos días, María</h1>
+              <p className="mt-2 text-sm text-sand-600">Orquesta tus sesiones y observa el avance anónimo del grupo.</p>
             </div>
             <button
               type="button"
               onClick={onCreateContent}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-bold text-stone-700 hover:bg-stone-100 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-sand-300 bg-white px-4 text-sm font-bold text-sand-700 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
             >
-              <PortalIcon name="sparkles" className="size-4 text-teal-700" />
+              <PortalIcon name="sparkles" className="size-4 text-ink-700" />
               Crear contenido con IA
             </button>
           </div>
@@ -817,14 +817,14 @@ export function TeacherDashboard({
               { label: "Sesiones activas", value: "1", detail: "2 programadas", icon: "clock" as const },
               { label: "Participación", value: "88%", detail: "del grupo activo", icon: "check" as const },
             ].map((metric) => (
-              <article key={metric.label} className="border border-stone-200 bg-white p-5">
+              <article key={metric.label} className="border border-sand-200 bg-white p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{metric.label}</p>
-                    <p className="mt-3 font-serif text-3xl font-semibold text-stone-950">{metric.value}</p>
-                    <p className="mt-1 text-xs text-slate-500">{metric.detail}</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-sand-500">{metric.label}</p>
+                    <p className="mt-3 text-3xl font-semibold text-sand-950">{metric.value}</p>
+                    <p className="mt-1 text-xs text-sand-500">{metric.detail}</p>
                   </div>
-                  <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-emerald-900">
+                  <span className="grid size-10 place-items-center rounded-full bg-ink-100 text-ink-900">
                     <PortalIcon name={metric.icon} className="size-5" />
                   </span>
                 </div>
@@ -833,33 +833,33 @@ export function TeacherDashboard({
           </section>
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
-            <div className="overflow-hidden border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5 sm:p-6">
+            <div className="overflow-hidden border border-sand-200 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 p-5 sm:p-6">
                 <div>
-                  <h2 className="font-serif text-lg font-semibold text-stone-950">Salas y sesiones</h2>
-                  <p className="mt-1 text-sm text-slate-500">Contenido asignado a tus grupos.</p>
+                  <h2 className="text-lg font-semibold text-sand-950">Salas y sesiones</h2>
+                  <p className="mt-1 text-sm text-sand-500">Contenido asignado a tus grupos.</p>
                 </div>
                 <button
                   type="button"
                   onClick={onCreateContent}
-                  className="flex min-h-11 items-center gap-2 rounded-lg border border-stone-300 px-4 text-sm font-bold text-stone-700 hover:bg-stone-50"
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-sand-300 px-4 text-sm font-bold text-sand-700 hover:bg-sand-50"
                 >
                   <PortalIcon name="plus" className="size-4" />
                   Nueva sala
                 </button>
               </div>
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-sand-200">
                 {rooms.map((room) => (
                   <button
                     key={room.name}
                     type="button"
-                    className="grid w-full gap-3 p-5 text-left transition hover:bg-slate-50 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6"
+                    className="grid w-full gap-3 p-5 text-left transition hover:bg-sand-50 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6"
                   >
                     <span>
-                      <span className="block text-sm font-bold text-slate-900">{room.name}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{room.subject}</span>
+                      <span className="block text-sm font-bold text-sand-900">{room.name}</span>
+                      <span className="mt-1 block text-xs text-sand-500">{room.subject}</span>
                     </span>
-                    <span className="flex items-center gap-2 text-xs text-slate-500 sm:min-w-24">
+                    <span className="flex items-center gap-2 text-xs text-sand-500 sm:min-w-24">
                       <PortalIcon name="users" className="size-4" />
                       {room.students} activos
                     </span>
@@ -867,44 +867,44 @@ export function TeacherDashboard({
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                           room.status === "Activa"
-                            ? "bg-teal-100 text-teal-900"
+                            ? "bg-ink-100 text-ink-900"
                             : room.status === "Programada"
-                              ? "bg-blue-100 text-blue-900"
-                              : "bg-slate-100 text-slate-600"
+                              ? "bg-ink-100 text-ink-900"
+                              : "bg-sand-100 text-sand-600"
                         }`}
                       >
                         {room.status}
                       </span>
-                      <PortalIcon name="chevron" className="size-4 text-slate-400" />
+                      <PortalIcon name="chevron" className="size-4 text-sand-400" />
                     </span>
-                    <span className="text-xs text-slate-400 sm:col-start-3">{room.updated}</span>
+                    <span className="text-xs text-sand-400 sm:col-start-3">{room.updated}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <aside className="space-y-5">
-              <div className="border border-orange-200 bg-orange-50 p-6 text-stone-900">
-                <p className="text-xs font-bold uppercase tracking-widest text-orange-800">Atención requerida</p>
+              <div className="border border-hint-200 bg-hint-50 p-6 text-sand-900">
+                <p className="text-xs font-bold uppercase tracking-widest text-hint-800">Atención requerida</p>
                 <h2 className="mt-3 text-lg font-bold">Pregunta con más fallos</h2>
                 <p className="mt-2 text-2xl font-bold">Ecuaciones cuadráticas</p>
-                <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                <p className="mt-2 text-sm leading-relaxed text-sand-700">
                   El 46% del grupo pidió una pista al factorizar.
                 </p>
                 <button
                   type="button"
                   onClick={onCreateContent}
-                  className="mt-5 min-h-11 w-full rounded-lg bg-stone-900 px-4 text-sm font-bold text-white hover:bg-stone-800"
+                  className="mt-5 min-h-11 w-full rounded-lg bg-sand-900 px-4 text-sm font-bold text-white hover:bg-sand-800"
                 >
                   Crear refuerzo
                 </button>
               </div>
-              <div className="border border-stone-200 bg-white p-5">
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                  <PortalIcon name="shield" className="size-5 text-teal-700" />
+              <div className="border border-sand-200 bg-white p-5">
+                <div className="flex items-center gap-2 text-sm font-bold text-sand-800">
+                  <PortalIcon name="shield" className="size-5 text-ink-700" />
                   Datos agregados
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                <p className="mt-2 text-xs leading-relaxed text-sand-500">
                   Los indicadores describen al grupo, nunca a estudiantes individuales.
                 </p>
               </div>
@@ -914,7 +914,7 @@ export function TeacherDashboard({
       </div>
 
       {pinOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/45 p-4 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -922,7 +922,7 @@ export function TeacherDashboard({
             aria-label="Cerrar PIN"
           />
           <section
-            className="relative w-full max-w-lg border border-stone-200 bg-[#f6f2e8] p-6 text-center shadow-2xl sm:p-8"
+            className="relative w-full max-w-lg border border-sand-200 bg-sand-50 p-6 text-center shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="pin-title"
@@ -930,32 +930,32 @@ export function TeacherDashboard({
             <button
               type="button"
               onClick={() => setPinOpen(false)}
-              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-sand-500 hover:bg-sand-100"
               aria-label="Cerrar"
             >
               <PortalIcon name="x" />
             </button>
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-teal-100 text-teal-900">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-100 text-ink-900">
               <PortalIcon name="link" className="size-6" />
             </span>
-            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-teal-700">Sesión lista</p>
-            <h2 id="pin-title" className="mt-2 font-serif text-2xl font-semibold text-stone-950">
+            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-ink-700">Sesión lista</p>
+            <h2 id="pin-title" className="mt-2 text-2xl font-semibold text-sand-950">
               Comparte este PIN con tu clase
             </h2>
-            <div className="mt-6 border border-stone-300 bg-white p-5">
-              <p className="font-serif text-4xl font-semibold tracking-[0.2em] text-emerald-900">PISA26</p>
-              <p className="mt-3 text-sm text-slate-600">ecdu.io/s/PISA26</p>
+            <div className="mt-6 border border-sand-300 bg-white p-5">
+              <p className="text-4xl font-semibold tracking-[0.2em] text-ink-900">PISA26</p>
+              <p className="mt-3 text-sm text-sand-600">ecdu.io/s/PISA26</p>
             </div>
             <button
               type="button"
               onClick={copyPin}
-              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
             >
               <PortalIcon name={copied ? "check" : "copy"} className="size-5" />
               {copied ? "PIN y enlace copiados" : "Copiar PIN y enlace"}
             </button>
-            <p className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
-              <PortalIcon name="shield" className="size-4 text-teal-700" />
+            <p className="mt-4 flex items-center justify-center gap-2 text-xs text-sand-500">
+              <PortalIcon name="shield" className="size-4 text-ink-700" />
               Los estudiantes ingresan sin cuenta ni datos personales
             </p>
           </section>

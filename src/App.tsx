@@ -207,11 +207,11 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
 function Logo() {
   return (
     <div className="flex items-center gap-3" aria-label="ECduLearm">
-      <span className="grid size-10 place-items-center rounded-xl bg-white text-blue-950">
+      <span className="grid size-10 place-items-center rounded-xl bg-ink-950 text-sand-50">
         <Icon name="book" className="size-5" />
       </span>
-      <span className="text-lg font-bold tracking-tight text-white">
-        EC<span className="text-teal-300">du</span>Learm
+      <span className="text-lg font-bold tracking-tight text-sand-900">
+        EC<span className="text-hint-600">du</span>Learm
       </span>
     </div>
   );
@@ -237,33 +237,33 @@ function EditorTools({
   return (
     <div className="space-y-7">
       <section>
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-          <Icon name="paperclip" className="size-4 text-blue-800" />
+        <div className="flex items-center gap-2 text-sm font-bold text-sand-900">
+          <Icon name="paperclip" className="size-4 text-ink-800" />
           Contexto de la guía
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+        <p className="mt-1 text-xs leading-relaxed text-sand-500">
           Añade un sílabo, notas o el currículo para orientar a la IA.
         </p>
-        <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center transition hover:border-blue-400 hover:bg-blue-50">
+        <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sand-300 bg-sand-50 px-4 text-center transition hover:border-ink-400 hover:bg-ink-50">
           <input
             type="file"
             className="sr-only"
             accept=".pdf,.doc,.docx,.txt"
             onChange={(event) => onFileChange(event.target.files?.[0]?.name ?? "")}
           />
-          <span className="grid size-10 place-items-center rounded-xl bg-white text-blue-900 shadow-sm">
+          <span className="grid size-10 place-items-center rounded-xl bg-white text-ink-900 shadow-sm">
             <Icon name="upload" className="size-5" />
           </span>
-          <span className="mt-3 text-sm font-semibold text-slate-700">
+          <span className="mt-3 text-sm font-semibold text-sand-700">
             {fileName || "Subir archivo"}
           </span>
-          <span className="mt-1 text-xs text-slate-500">PDF, Word o TXT · máx. 10 MB</span>
+          <span className="mt-1 text-xs text-sand-500">PDF, Word o TXT · máx. 10 MB</span>
         </label>
       </section>
 
-      <section className="border-t border-slate-200 pt-6">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-          <Icon name="magic" className="size-4 text-blue-800" />
+      <section className="border-t border-sand-200 pt-6">
+        <div className="flex items-center gap-2 text-sm font-bold text-sand-900">
+          <Icon name="magic" className="size-4 text-ink-800" />
           Ajuste rápido con IA
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -272,7 +272,7 @@ function EditorTools({
               key={action}
               type="button"
               onClick={() => onQuickAction(action)}
-              className="min-h-10 rounded-full border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="min-h-10 rounded-full border border-sand-300 bg-white px-3 text-xs font-semibold text-sand-700 transition hover:border-ink-400 hover:bg-ink-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
             >
               {action}
             </button>
@@ -280,8 +280,8 @@ function EditorTools({
         </div>
       </section>
 
-      <section className="border-t border-slate-200 pt-6">
-        <label htmlFor="ai-command" className="text-sm font-bold text-slate-900">
+      <section className="border-t border-sand-200 pt-6">
+        <label htmlFor="ai-command" className="text-sm font-bold text-sand-900">
           Instrucción personalizada
         </label>
         <textarea
@@ -290,13 +290,13 @@ function EditorTools({
           value={command}
           onChange={(event) => onCommandChange(event.target.value)}
           placeholder='Ej: “Reescribe el problema 2 para que hable de economía local”'
-          className="mt-3 w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+          className="mt-3 w-full resize-none rounded-xl border border-sand-300 bg-white p-3 text-sm leading-relaxed text-sand-800 outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
         />
         <button
           type="button"
           disabled={!command.trim()}
           onClick={onApply}
-          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 text-sm font-bold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-100 disabled:cursor-not-allowed disabled:bg-sand-300"
         >
           <Icon name="sparkles" className="size-4" />
           Aplicar al documento
@@ -341,13 +341,13 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
   };
 
   return (
-    <div className="min-h-screen bg-slate-200 text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
+    <div className="min-h-screen bg-sand-200 text-sand-950">
+      <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur print:hidden">
         <div className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3 px-3 sm:px-5">
           <button
             type="button"
             onClick={onBack}
-            className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
           >
             <Icon name="arrow-left" className="size-5" />
             <span className="hidden sm:inline">Volver al chat</span>
@@ -365,10 +365,10 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
                 setNotice("Guardando cambios...");
               }}
               onBlur={() => setNotice("Todos los cambios guardados")}
-              className="w-full truncate rounded-lg bg-transparent px-2 py-1 text-center text-sm font-bold text-slate-950 outline-none hover:bg-slate-100 focus:bg-slate-100 focus:ring-4 focus:ring-blue-100 sm:text-base"
+              className="w-full truncate rounded-lg bg-transparent px-2 py-1 text-center text-sm font-bold text-sand-950 outline-none hover:bg-sand-100 focus:bg-sand-100 focus:ring-4 focus:ring-ink-100 sm:text-base"
             />
-            <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-slate-500" aria-live="polite">
-              <Icon name="check" className="size-3.5 text-teal-600" />
+            <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-sand-500" aria-live="polite">
+              <Icon name="check" className="size-3.5 text-ink-600" />
               {notice}
             </p>
           </div>
@@ -377,7 +377,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
             <button
               type="button"
               onClick={shareDocument}
-              className="grid size-11 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="grid size-11 place-items-center rounded-xl text-sand-700 transition hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
               aria-label="Compartir guía"
             >
               <Icon name="share" className="size-5" />
@@ -385,7 +385,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
             <button
               type="button"
               onClick={() => window.print()}
-              className="hidden min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 md:flex"
+              className="hidden min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100 md:flex"
             >
               <Icon name="printer" className="size-4" />
               Imprimir
@@ -393,7 +393,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
             <button
               type="button"
               onClick={() => window.print()}
-              className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-3 text-sm font-bold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:px-4"
+              className="flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-3 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-100 sm:px-4"
             >
               <Icon name="download" className="size-4" />
               <span className="hidden sm:inline">Exportar</span>
@@ -404,7 +404,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
       </header>
 
       <div className="flex min-h-[calc(100vh-4rem)]">
-        <aside className="hidden w-80 shrink-0 border-r border-slate-200 bg-white p-6 print:hidden lg:block">
+        <aside className="hidden w-80 shrink-0 border-r border-sand-200 bg-white p-6 print:hidden lg:block">
           <EditorTools
             fileName={fileName}
             command={command}
@@ -420,11 +420,11 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
 
         <main className="min-w-0 flex-1 overflow-auto px-3 py-6 pb-28 sm:px-8 sm:py-10 lg:pb-10">
           <div className="mx-auto mb-4 flex max-w-4xl items-center justify-between print:hidden">
-            <div className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white p-1 shadow-sm">
+            <div className="flex items-center gap-1 rounded-xl border border-sand-300 bg-white p-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => document.execCommand("undo")}
-                className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid size-11 place-items-center rounded-lg text-sand-600 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 aria-label="Deshacer"
               >
                 <Icon name="undo" className="size-4" />
@@ -432,16 +432,16 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               <button
                 type="button"
                 onClick={() => document.execCommand("redo")}
-                className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid size-11 place-items-center rounded-lg text-sand-600 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 aria-label="Rehacer"
               >
                 <Icon name="redo" className="size-4" />
               </button>
-              <span className="mx-1 h-5 w-px bg-slate-200" />
+              <span className="mx-1 h-5 w-px bg-sand-200" />
               <button
                 type="button"
                 onClick={() => formatSelection("bold")}
-                className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid size-11 place-items-center rounded-lg text-sand-600 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 aria-label="Negrita"
               >
                 <Icon name="bold" className="size-4" />
@@ -449,30 +449,30 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               <button
                 type="button"
                 onClick={() => formatSelection("italic")}
-                className="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid size-11 place-items-center rounded-lg text-sand-600 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 aria-label="Cursiva"
               >
                 <Icon name="italic" className="size-4" />
               </button>
             </div>
-            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm">
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-sand-500 shadow-sm">
               Página 1 de 1 · A4
             </span>
           </div>
 
           <article
             id="guide-document"
-            className="relative mx-auto min-h-[70rem] max-w-4xl bg-white px-6 py-10 shadow-2xl shadow-slate-900/10 sm:px-12 sm:py-14 md:px-16"
+            className="relative mx-auto min-h-[70rem] max-w-4xl bg-white px-6 py-10 shadow-2xl shadow-sand-900/10 sm:px-12 sm:py-14 md:px-16"
             onMouseUp={checkSelection}
             onKeyUp={checkSelection}
           >
             {selectionOpen && (
-              <div className="absolute left-1/2 top-5 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl bg-slate-950 p-1.5 text-white shadow-xl print:hidden">
+              <div className="absolute left-1/2 top-5 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl bg-sand-950 p-1.5 text-white shadow-xl print:hidden">
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => formatSelection("bold")}
-                  className="grid size-9 place-items-center rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className="grid size-11 place-items-center rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
                   aria-label="Poner en negrita"
                 >
                   <Icon name="bold" className="size-4" />
@@ -481,7 +481,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => formatSelection("italic")}
-                  className="grid size-9 place-items-center rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className="grid size-11 place-items-center rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
                   aria-label="Poner en cursiva"
                 >
                   <Icon name="italic" className="size-4" />
@@ -491,59 +491,59 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => applyAI("Mejorar redacción")}
-                  className="flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50"
                 >
-                  <Icon name="sparkles" className="size-4 text-teal-300" />
+                  <Icon name="sparkles" className="size-4 text-ink-300" />
                   Mejorar
                 </button>
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => applyAI("Simplificar texto")}
-                  className="hidden min-h-9 items-center rounded-lg px-2.5 text-xs font-semibold hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50 sm:flex"
+                  className="hidden min-h-11 items-center rounded-lg px-2.5 text-xs font-semibold hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50 sm:flex"
                 >
                   Simplificar
                 </button>
               </div>
             )}
 
-            <div className="border-b-2 border-blue-950 pb-6">
+            <div className="border-b-2 border-ink-950 pb-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-xl bg-blue-950 text-white">
+                  <span className="grid size-10 place-items-center rounded-xl bg-ink-950 text-white">
                     <Icon name="book" className="size-5" />
                   </span>
-                  <span className="text-lg font-bold tracking-tight text-blue-950">ECduLearm</span>
+                  <span className="text-lg font-bold tracking-tight text-ink-950">ECduLearm</span>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-blue-900">
+                <span className="rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-900">
                   Guía docente · {exercise.level}
                 </span>
               </div>
-              <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-teal-700">
+              <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-ink-700">
                 Razonamiento lógico · {exercise.context}
               </p>
               <h1
                 contentEditable
                 suppressContentEditableWarning
-                className="mt-2 rounded-lg text-3xl font-bold leading-tight tracking-tight text-blue-950 outline-none hover:bg-blue-50/60 focus:bg-blue-50 focus:ring-4 focus:ring-blue-100 sm:text-4xl"
+                className="mt-2 rounded-lg text-3xl font-bold leading-tight tracking-tight text-ink-950 outline-none hover:bg-ink-50/60 focus:bg-ink-50 focus:ring-4 focus:ring-ink-100 sm:text-4xl"
                 onInput={() => setNotice("Guardando cambios...")}
                 onBlur={() => setNotice("Todos los cambios guardados")}
               >
                 Análisis de estructuras civiles
               </h1>
-              <p className="mt-3 text-sm text-slate-500">Actividad contextualizada tipo PISA · Dificultad intermedia</p>
+              <p className="mt-3 text-sm text-sand-500">Actividad contextualizada tipo PISA · Dificultad intermedia</p>
             </div>
 
             <div
-              className="mt-9 space-y-9 text-[0.95rem] leading-7 text-slate-700"
+              className="mt-9 space-y-9 text-[0.95rem] leading-7 text-sand-700"
               contentEditable
               suppressContentEditableWarning
               onInput={() => setNotice("Guardando cambios...")}
               onBlur={() => setNotice("Todos los cambios guardados")}
             >
               <section>
-                <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Situación</p>
-                <h2 className="mt-2 text-xl font-bold text-slate-950">Un centro comunitario seguro y sostenible</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">Situación</p>
+                <h2 className="mt-2 text-xl font-bold text-sand-950">Un centro comunitario seguro y sostenible</h2>
                 <p className="mt-3">
                   El municipio construirá un centro comunitario en una zona de alta actividad sísmica. Un equipo de
                   estudiantes analiza dos propuestas estructurales que utilizan módulos triangulares de 4 metros de base y
@@ -552,43 +552,43 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
                 </p>
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Datos para el análisis</p>
+              <section className="rounded-2xl border border-sand-200 bg-sand-50 p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-sand-500">Datos para el análisis</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-white p-4">
-                    <p className="font-bold text-blue-950">Propuesta A</p>
+                    <p className="font-bold text-ink-950">Propuesta A</p>
                     <p className="mt-1 text-sm">12 módulos · 28 kg de acero por módulo</p>
                   </div>
                   <div className="rounded-xl bg-white p-4">
-                    <p className="font-bold text-blue-950">Propuesta B</p>
+                    <p className="font-bold text-ink-950">Propuesta B</p>
                     <p className="mt-1 text-sm">10 módulos · 34 kg de acero por módulo</p>
                   </div>
                 </div>
               </section>
 
               <section>
-                <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Preguntas de desarrollo</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">Preguntas de desarrollo</p>
                 <ol className="mt-4 space-y-5">
                   <li>
-                    <strong className="text-slate-950">1. Comprender.</strong> Calcula el área de uno de los módulos
+                    <strong className="text-sand-950">1. Comprender.</strong> Calcula el área de uno de los módulos
                     triangulares. Explica el procedimiento utilizado.
-                    <div className="mt-4 h-16 border-b border-dashed border-slate-300" />
+                    <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
                   </li>
                   <li>
-                    <strong className="text-slate-950">2. Analizar.</strong> Compara la cantidad total de acero requerida
+                    <strong className="text-sand-950">2. Analizar.</strong> Compara la cantidad total de acero requerida
                     por cada propuesta. ¿Cuál utiliza menos material?
-                    <div className="mt-4 h-16 border-b border-dashed border-slate-300" />
+                    <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
                   </li>
                   <li>
-                    <strong className="text-slate-950">3. Reflexionar.</strong> ¿Qué propuesta recomendarías al municipio?
+                    <strong className="text-sand-950">3. Reflexionar.</strong> ¿Qué propuesta recomendarías al municipio?
                     Sustenta tu decisión usando los datos y un criterio de seguridad.
-                    <div className="mt-4 h-20 border-b border-dashed border-slate-300" />
+                    <div className="mt-4 h-20 border-b border-dashed border-sand-300" />
                   </li>
                 </ol>
               </section>
             </div>
 
-            <div className="mt-12 flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-400">
+            <div className="mt-12 flex flex-wrap justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-400">
               <span>ECduLearm · Material para uso educativo</span>
               <span>Generado con asistencia de IA · Revisión docente recomendada</span>
             </div>
@@ -596,14 +596,14 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-3 print:hidden lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-sand-200 bg-white p-3 print:hidden lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-2">
           {editorActions.slice(0, 2).map((action) => (
             <button
               key={action}
               type="button"
               onClick={() => applyAI(action)}
-              className="min-h-11 flex-1 rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-700"
+              className="min-h-11 flex-1 rounded-full border border-sand-300 px-3 text-xs font-semibold text-sand-700"
             >
               {action}
             </button>
@@ -611,7 +611,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
           <button
             type="button"
             onClick={() => setToolsOpen(true)}
-            className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-4 text-sm font-bold text-white"
+            className="flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-4 text-sm font-bold text-white"
           >
             <Icon name="magic" className="size-4" />
             Más
@@ -620,7 +620,7 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
       </div>
 
       {toolsOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm print:hidden lg:hidden">
+        <div className="fixed inset-0 z-50 bg-sand-950/40 backdrop-blur-sm print:hidden lg:hidden">
           <button
             type="button"
             className="absolute inset-0"
@@ -629,11 +629,11 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
           />
           <aside className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <p className="font-bold text-slate-950">Herramientas de IA</p>
+              <p className="font-bold text-sand-950">Herramientas de IA</p>
               <button
                 type="button"
                 onClick={() => setToolsOpen(false)}
-                className="grid size-11 place-items-center rounded-xl text-slate-600 hover:bg-slate-100"
+                className="grid size-11 place-items-center rounded-xl text-sand-600 hover:bg-sand-100"
                 aria-label="Cerrar herramientas"
               >
                 <Icon name="x" />
@@ -664,22 +664,22 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
   return (
     <article
       id="exercise-document"
-      className="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 sm:ml-12"
+      className="mt-4 overflow-hidden rounded-3xl border border-sand-200 bg-white shadow-xl shadow-sand-900/5 sm:ml-12"
     >
-      <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
+      <div className="border-b border-sand-200 bg-sand-50 px-5 py-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             {[exercise.context, exercise.level, "Razonamiento lógico"].map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-blue-900"
+                className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink-900"
               >
                 {tag}
               </span>
             ))}
           </div>
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-            <Icon name="check" className="size-4 text-teal-600" />
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-sand-500">
+            <Icon name="check" className="size-4 text-ink-600" />
             Versión {exercise.version}
           </span>
         </div>
@@ -687,23 +687,23 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
 
       <div className="p-5 sm:p-8">
         <div className="flex items-start gap-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white shadow-sm">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink-950 text-white shadow-sm">
             <Icon name="file" className="size-5" />
           </span>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Desafío aplicado PISA</p>
-            <h2 className="mt-1 text-xl font-bold leading-tight text-blue-950 sm:text-2xl">
+            <p className="text-xs font-bold uppercase tracking-wider text-ink-700">Desafío aplicado PISA</p>
+            <h2 className="mt-1 text-xl font-bold leading-tight text-ink-950 sm:text-2xl">
               {exercise.topic}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-sand-500">
               Dificultad {exercise.difficulty.toLowerCase()} · {exercise.questions} preguntas
             </p>
           </div>
         </div>
 
-        <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <p className="text-sm font-bold text-slate-900">Situación</p>
-          <p className="mt-2 text-sm leading-7 text-slate-700">
+        <div className="mt-7 rounded-2xl border border-sand-200 bg-sand-50 p-5 sm:p-6">
+          <p className="text-sm font-bold text-sand-900">Situación</p>
+          <p className="mt-2 text-sm leading-7 text-sand-700">
             {exercise.situation ||
               "Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario. El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir, deben comparar alternativas y justificar cuál distribuye mejor las cargas."}
           </p>
@@ -713,22 +713,22 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
           {exercise.questionList && exercise.questionList.length > 0
             ? exercise.questionList.map((q, index) => (
                 <div key={index} className="flex gap-4">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-100 text-sm font-bold text-ink-950">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold leading-6 text-slate-800">{q}</p>
-                    <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
+                    <p className="text-sm font-semibold leading-6 text-sand-800">{q}</p>
+                    <div className="mt-3 h-8 border-b border-dashed border-sand-300" />
                   </div>
                 </div>
               ))
             : Array.from({ length: Math.min(exercise.questions, 4) }, (_, index) => (
                 <div key={index} className="flex gap-4">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-950">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-100 text-sm font-bold text-ink-950">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold leading-6 text-slate-800">
+                    <p className="text-sm font-semibold leading-6 text-sand-800">
                       {index === 0
                         ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
                         : index === 1
@@ -737,13 +737,13 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
                             ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
                             : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
                     </p>
-                    <div className="mt-3 h-8 border-b border-dashed border-slate-300" />
+                    <div className="mt-3 h-8 border-b border-dashed border-sand-300" />
                   </div>
                 </div>
               ))}
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-500">
           <span>ECduLearm · Guía docente generada con Google Gemini</span>
           <span>Solucionario disponible al exportar</span>
         </div>
@@ -976,12 +976,12 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-sand-100 text-sand-950">
       <EvaluatorTopBar currentView={view} onViewChange={setView} />
       {sidebarOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-sand-950/50 backdrop-blur-sm lg:hidden"
           aria-label="Cerrar navegación"
           onClick={() => setSidebarOpen(false)}
         />
@@ -989,7 +989,7 @@ function App() {
 
       <aside
         id="app-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-blue-950 p-4 text-white transition-transform duration-300 print:hidden lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-sand-200 bg-sand-100 p-4 text-sand-900 transition-transform duration-300 print:hidden lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Navegación e historial"
@@ -998,7 +998,7 @@ function App() {
           <Logo />
           <button
             type="button"
-            className="grid size-11 place-items-center rounded-xl text-blue-100 hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/20 lg:hidden"
+            className="grid size-11 place-items-center rounded-xl text-sand-700 hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200 lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-label="Cerrar menú"
           >
@@ -1009,7 +1009,7 @@ function App() {
         <button
           type="button"
           onClick={() => setView("dashboard")}
-          className="mt-5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15"
+          className="mt-5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200"
         >
           <Icon name="arrow-left" className="size-4" />
           Volver al panel docente
@@ -1018,62 +1018,62 @@ function App() {
         <button
           type="button"
           onClick={startNewExercise}
-          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-blue-950 shadow-lg shadow-slate-950/20 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/20"
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 text-sm font-bold text-white transition hover:bg-ink-800 focus:outline-none focus:ring-4 focus:ring-ink-200"
         >
           <Icon name="plus" className="size-5" />
           Nuevo ejercicio
         </button>
 
         <nav className="mt-8 min-h-0 flex-1 overflow-y-auto" aria-label="Ejercicios recientes">
-          <p className="px-2 text-xs font-bold uppercase tracking-widest text-blue-200">Recientes</p>
+          <p className="px-2 text-xs font-bold uppercase tracking-widest text-sand-600">Recientes</p>
           <div className="mt-3 space-y-1">
             {recentItems.map((item, index) => (
               <button
                 key={item.title}
                 type="button"
                 onClick={() => openRecent(item)}
-                className={`min-h-16 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15 ${
-                  index === 0 && hasExercise ? "bg-white/10" : ""
+                className={`min-h-16 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200 ${
+                  index === 0 && hasExercise ? "bg-white ring-1 ring-sand-200" : ""
                 }`}
               >
-                <span className="block truncate text-sm font-semibold text-white">{item.title}</span>
-                <span className="mt-1 block truncate text-xs text-blue-200">{item.meta}</span>
+                <span className="block truncate text-sm font-semibold text-sand-900">{item.title}</span>
+                <span className="mt-1 block truncate text-xs text-sand-600">{item.meta}</span>
               </button>
             ))}
           </div>
         </nav>
 
-        <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-teal-200">
+        <div className="rounded-2xl bg-hint-50 p-4">
+          <div className="flex items-center gap-2 text-xs font-bold text-hint-800">
             <Icon name="info" className="size-4" />
             Tip para iterar
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-blue-100">
+          <p className="mt-2 text-xs leading-relaxed text-sand-700">
             Escribe “contexto de arquitectura” para adaptar la guía al instante.
           </p>
         </div>
 
         <button
           type="button"
-          className="mt-4 flex min-h-14 items-center gap-3 rounded-xl px-2 text-left hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/15"
+          className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border-t border-sand-200 px-2 text-left hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200"
         >
-          <span className="grid size-10 place-items-center rounded-full bg-teal-100 text-blue-950">
+          <span className="grid size-10 place-items-center rounded-full bg-ink-100 text-ink-950">
             <Icon name="user" className="size-5" />
           </span>
           <span>
             <span className="block text-sm font-semibold">María Andrade</span>
-            <span className="block text-xs text-blue-200">Docente · 2do BGU</span>
+            <span className="block text-xs text-sand-600">Docente · 2do BGU</span>
           </span>
         </button>
       </aside>
 
       <div className="flex min-h-screen flex-col lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
+        <header className="sticky top-0 z-30 border-b border-sand-200 bg-white/95 backdrop-blur print:hidden">
           <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="grid size-11 shrink-0 place-items-center rounded-xl text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 lg:hidden"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-sand-700 hover:bg-sand-100 focus:outline-none focus:ring-4 focus:ring-ink-100 lg:hidden"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
                 aria-controls="app-sidebar"
@@ -1082,11 +1082,11 @@ function App() {
                 <Icon name="menu" />
               </button>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-slate-950">
+                <p className="truncate text-sm font-bold text-sand-950">
                   {hasExercise ? exercise.topic : "Nuevo ejercicio"}
                 </p>
-                <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="size-1.5 rounded-full bg-teal-500" />
+                <p className="flex items-center gap-1.5 text-xs text-sand-500">
+                  <span className="size-1.5 rounded-full bg-ink-500" />
                   Asistente pedagógico
                 </p>
               </div>
@@ -1097,7 +1097,7 @@ function App() {
                 <button
                   type="button"
                   onClick={undoVersion}
-                  className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-sand-200 px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
                 >
                   <Icon name="undo" className="size-4" />
                   <span className="hidden sm:inline">Deshacer</span>
@@ -1107,7 +1107,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setView("editor")}
-                  className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-3 text-sm font-semibold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:px-4"
+                  className="flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-3 text-sm font-semibold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-100 sm:px-4"
                 >
                   <Icon name="file" className="size-4" />
                   <span className="hidden sm:inline">Editar guía</span>
@@ -1119,7 +1119,7 @@ function App() {
 
         <main className="flex-1">
           <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
-            <div className="mb-8 flex items-center justify-center gap-2 text-xs font-medium text-slate-500 print:hidden">
+            <div className="mb-8 flex items-center justify-center gap-2 text-xs font-medium text-sand-500 print:hidden">
               <Icon name="clock" className="size-4" />
               Hoy
             </div>
@@ -1128,23 +1128,21 @@ function App() {
               {messages.map((message) =>
                 message.role === "user" ? (
                   <div key={message.id} className="flex justify-end">
-                    <div className="max-w-xl rounded-2xl rounded-br-md bg-blue-950 px-4 py-3 text-sm leading-relaxed text-white shadow-sm sm:px-5">
+                    <div className="max-w-xl rounded-2xl rounded-br-md bg-ink-950 px-4 py-3 text-sm leading-relaxed text-white shadow-sm sm:px-5">
                       {message.text}
                     </div>
                   </div>
                 ) : (
                   <div key={message.id} className="space-y-4">
                     <div className="flex items-start gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 shadow-sm">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-800 shadow-sm">
                         <Icon name="sparkles" className="size-4" />
                       </span>
-                      <div className="max-w-2xl rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm sm:px-5">
-                        <div className="mb-2 flex items-center gap-2 border-b border-slate-100 pb-1.5 text-[11px] font-bold text-teal-700">
-                          <span className="inline-block size-2 rounded-full bg-teal-500 animate-pulse" />
-                          <span>Gemini Flash IA</span>
-                          <span className="text-slate-400 font-normal">· Asistente Pedagógico</span>
+                      <div className="max-w-2xl rounded-2xl rounded-tl-md border border-sand-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-sand-800 shadow-sm sm:px-5">
+                        <div className="mb-2 border-b border-sand-100 pb-1.5 text-xs font-bold text-ink-700">
+                          Asistente pedagógico
                         </div>
-                        <div className="whitespace-pre-line text-slate-700 leading-relaxed font-normal">
+                        <div className="whitespace-pre-line text-sand-700 leading-relaxed font-normal">
                           {message.text}
                         </div>
                       </div>
@@ -1158,14 +1156,14 @@ function App() {
 
               {isGenerating && (
                 <div className="flex items-start gap-3" aria-live="polite">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-800">
                     <Icon name="sparkles" className="size-4 animate-spin" />
                   </span>
                   <div
-                    className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-teal-200 bg-teal-50/80 px-5 text-sm font-semibold text-teal-900 shadow-sm"
+                    className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-ink-200 bg-ink-50/80 px-5 text-sm font-semibold text-ink-900 shadow-sm"
                     role="status"
                   >
-                    <span className="size-4 animate-spin rounded-full border-2 border-teal-400 border-t-teal-700" />
+                    <span className="size-4 animate-spin rounded-full border-2 border-ink-400 border-t-ink-700" />
                     Consultando Google Gemini en tiempo real...
                   </div>
                 </div>
@@ -1175,13 +1173,13 @@ function App() {
 
             {!hasExercise && !isGenerating && (
               <div className="mx-auto mt-10 max-w-2xl text-center print:hidden">
-                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-950 text-white shadow-lg shadow-blue-950/15">
+                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-950 text-white shadow-lg shadow-ink-950/15">
                   <Icon name="sparkles" className="size-6" />
                 </span>
-                <h1 className="mt-5 text-2xl font-bold tracking-tight text-blue-950 sm:text-3xl">
+                <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink-950 sm:text-3xl">
                   ¿Qué vamos a crear hoy?
                 </h1>
-                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-sand-600">
                   Describe un tema, curso o contexto. ECduLearm lo convertirá en una actividad de razonamiento lista para usar.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -1191,7 +1189,7 @@ function App() {
                         key={suggestion}
                         type="button"
                         onClick={() => processPrompt(suggestion)}
-                        className="min-h-11 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                        className="min-h-11 rounded-full border border-sand-300 bg-white px-4 text-sm font-semibold text-sand-700 shadow-sm transition hover:border-ink-300 hover:bg-ink-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
                       >
                         {suggestion}
                       </button>
@@ -1204,23 +1202,23 @@ function App() {
           </div>
         </main>
 
-        <footer className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
+        <footer className="sticky bottom-0 z-20 border-t border-sand-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
           <form onSubmit={submitPrompt} className="mx-auto max-w-4xl">
             <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-              <span className="shrink-0 font-bold text-slate-400">Atajos rápidos:</span>
+              <span className="shrink-0 font-bold text-sand-400">Atajos rápidos:</span>
               {quickActions.map((action) => (
                 <button
                   key={action}
                   type="button"
                   disabled={isGenerating}
                   onClick={() => processPrompt(action)}
-                  className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
+                  className="shrink-0 rounded-full border border-sand-200 bg-sand-50 px-3.5 py-1 text-xs font-semibold text-sand-700 shadow-sm transition hover:border-ink-400 hover:bg-ink-50 focus:outline-none focus:ring-2 focus:ring-ink-200 disabled:opacity-50"
                 >
                   {action}
                 </button>
               ))}
             </div>
-            <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-white p-2 shadow-lg shadow-slate-900/5 transition focus-within:border-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
+            <div className="flex items-end gap-2 rounded-2xl border border-sand-300 bg-white p-2 shadow-lg shadow-sand-900/5 transition focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100">
               <label htmlFor="chat-input" className="sr-only">
                 Escribe una instrucción para ECduLearm
               </label>
@@ -1237,18 +1235,18 @@ function App() {
                   }
                 }}
                 placeholder='Ej: “más fácil”, “contexto de arquitectura”, “agrega una pregunta”...'
-                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-wait"
+                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-sand-900 outline-none placeholder:text-sand-400 disabled:cursor-wait"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isGenerating}
-                className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-950 text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink-950 text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300"
                 aria-label="Enviar instrucción"
               >
                 <Icon name="send" className="size-5" />
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-slate-400">
+            <p className="mt-2 text-center text-xs text-sand-400">
               ECduLearm puede equivocarse. Revisa los resultados antes de usarlos en clase.
             </p>
           </form>
@@ -1317,7 +1315,7 @@ function EvaluatorTopBar({
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          className="flex items-center gap-1.5 rounded-full bg-slate-950/90 border border-amber-400/60 px-3 py-1 text-[11px] font-bold text-amber-300 shadow-lg backdrop-blur hover:bg-slate-900"
+          className="flex items-center gap-1.5 rounded-full bg-sand-950/90 border border-hint-400/60 px-3 py-1 text-[11px] font-bold text-hint-300 shadow-lg backdrop-blur hover:bg-sand-900"
           title="Mostrar barra de evaluación rápida"
         >
           <span>⚖️ Barra Evaluador</span>
@@ -1330,15 +1328,15 @@ function EvaluatorTopBar({
     <>
       <aside
         aria-label="Barra de evaluación rápida para el jurado"
-        className="sticky top-0 z-50 w-full bg-slate-950/95 border-b border-slate-800 text-white backdrop-blur-md px-3 py-1.5 text-xs font-sans print:hidden shadow-md"
+        className="sticky top-0 z-50 w-full bg-sand-950/95 border-b border-sand-800 text-white backdrop-blur-md px-3 py-1.5 text-xs font-sans print:hidden shadow-md"
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 font-bold text-amber-300">
-              <span className="inline-block size-2 rounded-full bg-teal-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 font-bold text-hint-300">
+              <span className="inline-block size-2 rounded-full bg-ink-400 animate-pulse" />
               ⚖️ Modo Demo Evaluador
             </span>
-            <span className="hidden sm:inline text-slate-400 text-[11px]">| Control 1</span>
+            <span className="hidden sm:inline text-sand-400 text-[11px]">| Control 1</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1347,8 +1345,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("landing")}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "landing"
-                  ? "bg-teal-500 text-slate-950 shadow-sm font-bold ring-1 ring-teal-300"
-                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+                  ? "bg-ink-500 text-sand-950 shadow-sm font-bold ring-1 ring-ink-300"
+                  : "bg-sand-800/80 text-sand-200 hover:bg-sand-700"
               }`}
             >
               🏠 Inicio / Landing
@@ -1358,8 +1356,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("chat")}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "chat" || currentView === "editor"
-                  ? "bg-blue-600 text-white shadow-sm font-bold ring-1 ring-blue-400"
-                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+                  ? "bg-ink-600 text-white shadow-sm font-bold ring-1 ring-ink-400"
+                  : "bg-sand-800/80 text-sand-200 hover:bg-sand-700"
               }`}
             >
               💬 Chat Docente (Gemini IA)
@@ -1369,8 +1367,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("dashboard")}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "dashboard"
-                  ? "bg-indigo-600 text-white shadow-sm font-bold ring-1 ring-indigo-400"
-                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+                  ? "bg-ink-600 text-white shadow-sm font-bold ring-1 ring-ink-400"
+                  : "bg-sand-800/80 text-sand-200 hover:bg-sand-700"
               }`}
             >
               📊 Panel Métricas
@@ -1383,8 +1381,8 @@ function EvaluatorTopBar({
               }}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "student"
-                  ? "bg-teal-500 text-slate-950 shadow-sm font-bold ring-1 ring-teal-300"
-                  : "bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+                  ? "bg-ink-500 text-sand-950 shadow-sm font-bold ring-1 ring-ink-300"
+                  : "bg-sand-800/80 text-sand-200 hover:bg-sand-700"
               }`}
             >
               🎓 Vista Estudiante (PIN: PISA26)
@@ -1394,8 +1392,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("portal")}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                 currentView === "portal"
-                  ? "bg-slate-700 text-white font-bold"
-                  : "text-slate-300 hover:bg-slate-800"
+                  ? "bg-sand-700 text-white font-bold"
+                  : "text-sand-300 hover:bg-sand-800"
               }`}
             >
               🚪 Portal Acceso
@@ -1405,8 +1403,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("planner")}
               className={`hidden md:inline-block rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                 currentView === "planner"
-                  ? "bg-slate-700 text-white font-bold"
-                  : "text-slate-300 hover:bg-slate-800"
+                  ? "bg-sand-700 text-white font-bold"
+                  : "text-sand-300 hover:bg-sand-800"
               }`}
             >
               📋 Planificador ERCA
@@ -1416,8 +1414,8 @@ function EvaluatorTopBar({
               onClick={() => onViewChange("simulator")}
               className={`hidden md:inline-block rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                 currentView === "simulator"
-                  ? "bg-slate-700 text-white font-bold"
-                  : "text-slate-300 hover:bg-slate-800"
+                  ? "bg-sand-700 text-white font-bold"
+                  : "text-sand-300 hover:bg-sand-800"
               }`}
             >
               🎯 Simulador Admisión
@@ -1430,12 +1428,12 @@ function EvaluatorTopBar({
               onClick={() => setKeyModalOpen(true)}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
                 currentKey
-                  ? "border-emerald-500/60 bg-emerald-950/70 text-emerald-300 hover:bg-emerald-900/60"
-                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                  ? "border-ink-500/60 bg-ink-950/70 text-ink-300 hover:bg-ink-900/60"
+                  : "border-sand-700 bg-sand-900 text-sand-300 hover:bg-sand-800"
               }`}
               title="Configurar o probar API Key de Google Gemini"
             >
-              <span className={`inline-block size-1.5 rounded-full ${currentKey ? "bg-emerald-400" : "bg-amber-400"}`} />
+              <span className={`inline-block size-1.5 rounded-full ${currentKey ? "bg-ink-400" : "bg-hint-400"}`} />
               <span>{currentKey ? "Gemini Online" : "Motor Offline"}</span>
               <span className="text-[10px]">⚙️</span>
             </button>
@@ -1443,16 +1441,16 @@ function EvaluatorTopBar({
             <button
               type="button"
               onClick={copyPin}
-              className="flex items-center gap-1 rounded bg-teal-950/80 border border-teal-500/40 px-2 py-0.5 text-[11px] font-mono text-teal-300 hover:bg-teal-900/80 transition"
+              className="flex items-center gap-1 rounded bg-ink-950/80 border border-ink-500/40 px-2 py-0.5 text-[11px] font-mono text-ink-300 hover:bg-ink-900/80 transition"
               title="Copiar PIN PISA26 al portapapeles"
             >
               <span>PIN: <strong>PISA26</strong></span>
-              <span className="text-[10px] text-teal-400">{copied ? "✓ Copiado" : "📋"}</span>
+              <span className="text-[10px] text-ink-400">{copied ? "✓ Copiado" : "📋"}</span>
             </button>
             <button
               type="button"
               onClick={() => setCollapsed(true)}
-              className="text-slate-400 hover:text-slate-200 px-1 py-0.5 text-xs"
+              className="text-sand-400 hover:text-sand-200 px-1 py-0.5 text-xs"
               title="Ocultar barra evaluador"
               aria-label="Ocultar barra evaluador"
             >
@@ -1463,44 +1461,44 @@ function EvaluatorTopBar({
       </aside>
 
       {keyModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
+          <div className="w-full max-w-md rounded-2xl border border-sand-700 bg-sand-900 p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-sand-800 pb-3">
               <div>
-                <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                <h3 className="text-base font-bold text-hint-300 flex items-center gap-2">
                   <span>🤖 Conexión de Inteligencia Artificial</span>
                 </h3>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-sand-400">
                   Google Gemini (Flash-Lite / Flash con Balanceo Inteligente) o Motor Offline
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setKeyModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-sand-400 hover:text-white text-sm"
               >
                 ✕
               </button>
             </div>
 
             <div className="mt-4 space-y-4 text-xs">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                <p className="text-slate-300 font-semibold mb-1">Estado de la IA en este momento:</p>
+              <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
+                <p className="text-sand-300 font-semibold mb-1">Estado de la IA en este momento:</p>
                 {currentKey ? (
-                  <p className="text-emerald-400 flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-emerald-400" />
+                  <p className="text-ink-400 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-ink-400" />
                     <strong>Modo Online Activo:</strong> Se envían peticiones optimizadas con balanceo multimodelo (Flash-Lite / Flash) para máximo ahorro de tokens y alta disponibilidad.
                   </p>
                 ) : (
-                  <p className="text-amber-400 flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-amber-400" />
+                  <p className="text-hint-400 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-hint-400" />
                     <strong>Modo Offline Inteligente:</strong> Respuestas automáticas dinámicas adaptadas al currículo ecuatoriano (sin necesidad de API Key).
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="gemini-key-input" className="block font-semibold text-slate-200 mb-1">
+                <label htmlFor="gemini-key-input" className="block font-semibold text-sand-200 mb-1">
                   API Key de Google Gemini (opcional):
                 </label>
                 <input
@@ -1509,15 +1507,15 @@ function EvaluatorTopBar({
                   value={inputKey}
                   onChange={(e) => setInputKey(e.target.value)}
                   placeholder="AIzaSy..."
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-teal-400 font-mono"
+                  className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-ink-400 font-mono"
                 />
-                <p className="mt-1.5 text-[11px] text-slate-400">
+                <p className="mt-1.5 text-[11px] text-sand-400">
                   Puedes obtener tu clave gratuita en{" "}
                   <a
                     href="https://aistudio.google.com/app/apikey"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-teal-400 underline hover:text-teal-300"
+                    className="text-ink-400 underline hover:text-ink-300"
                   >
                     Google AI Studio
                   </a>
@@ -1529,7 +1527,7 @@ function EvaluatorTopBar({
                 <div
                   className={`rounded-xl border p-3 ${
                     testResult.success
-                      ? "border-emerald-500/50 bg-emerald-950/50 text-emerald-200"
+                      ? "border-ink-500/50 bg-ink-950/50 text-ink-200"
                       : "border-rose-500/50 bg-rose-950/50 text-rose-200"
                   }`}
                 >
@@ -1543,7 +1541,7 @@ function EvaluatorTopBar({
                   type="button"
                   disabled={isTesting}
                   onClick={handleSaveAndTest}
-                  className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
                 >
                   {isTesting ? "Probando..." : "Guardar y Probar Conexión"}
                 </button>
@@ -1580,10 +1578,10 @@ function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; on
   return (
     <div className="fixed bottom-3 right-3 z-50 print:hidden font-sans">
       {open ? (
-        <div className="rounded-2xl border border-slate-700 bg-slate-950/95 p-3 text-white shadow-2xl backdrop-blur-md text-xs">
+        <div className="rounded-2xl border border-sand-700 bg-sand-950/95 p-3 text-white shadow-2xl backdrop-blur-md text-xs">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2 mb-2">
-            <span className="font-bold text-amber-300">⚖️ Modo Jurado / Evaluador</span>
-            <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-white px-1">✕</button>
+            <span className="font-bold text-hint-300">⚖️ Modo Jurado / Evaluador</span>
+            <button type="button" onClick={() => setOpen(false)} className="text-sand-400 hover:text-white px-1">✕</button>
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             {viewsList.map(([v, label]) => (
@@ -1592,7 +1590,7 @@ function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; on
                 type="button"
                 onClick={() => { onViewChange(v); setOpen(false); }}
                 className={`rounded-lg px-2.5 py-1.5 text-left font-medium transition ${
-                  currentView === v ? "bg-teal-500 text-slate-950 font-bold" : "hover:bg-white/10 text-slate-200"
+                  currentView === v ? "bg-ink-500 text-sand-950 font-bold" : "hover:bg-white/10 text-sand-200"
                 }`}
               >
                 {label}
@@ -1604,7 +1602,7 @@ function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; on
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-slate-900/90 border border-amber-400/50 px-3 py-1.5 text-xs font-bold text-amber-300 shadow-xl backdrop-blur hover:bg-slate-800"
+          className="flex items-center gap-1.5 rounded-full bg-sand-900/90 border border-hint-400/50 px-3 py-1.5 text-xs font-bold text-hint-300 shadow-xl backdrop-blur hover:bg-sand-800"
           title="Menú rápido para jurado / evaluador"
         >
           <span>⚖️ Evaluador</span>
