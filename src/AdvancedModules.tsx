@@ -182,7 +182,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6">
           <button
@@ -206,12 +206,12 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
         </div>
       </header>
 
-      <main className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[23rem_1fr]">
-        <aside className="border-b border-slate-200 bg-white p-5 lg:border-b-0 lg:border-r lg:p-6">
+      <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1600px] lg:grid-cols-[22rem_1fr]">
+        <aside className="border-b border-stone-200 bg-[#eee8da] p-5 lg:border-b-0 lg:border-r lg:p-7">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-teal-700">1. Fuente pedagógica</p>
-            <h1 className="mt-2 text-xl font-bold text-blue-950">Añade el contexto de tu clase</h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">01 · Fuente pedagógica</p>
+            <h1 className="mt-2 font-serif text-xl font-semibold text-stone-950">Añade el contexto de tu clase</h1>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600">
               El sistema acepta documentos completos y conserva su estructura.
             </p>
           </div>
@@ -222,7 +222,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 ? "border-blue-600 bg-blue-50"
                 : uploadState === "ready"
                   ? "border-teal-400 bg-teal-50"
-                  : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"
+                  : "border-stone-300 bg-white/70 hover:border-emerald-700 hover:bg-emerald-50"
             }`}
             onDragEnter={(event) => {
               event.preventDefault();
@@ -291,7 +291,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             <button
               type="button"
               onClick={() => applyAI("Estructurar plan de clase")}
-              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-5 text-sm font-bold text-white shadow-lg shadow-blue-950/15 hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
             >
               <AdvancedIcon name="magic" className="size-5" />
               Estructurar Plan de Clase
@@ -303,8 +303,8 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
           <div className="mx-auto max-w-4xl">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Lienzo editable</p>
-                <h2 className="mt-1 text-xl font-bold text-blue-950">Estructuras estables y distribución de cargas</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Lienzo editable</p>
+                <h2 className="mt-1 text-xl font-bold text-stone-950">Estructuras estables y distribución de cargas</h2>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <AdvancedIcon name="clock" className="size-4" />
@@ -312,15 +312,15 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
-              <div className="border-b-2 border-blue-950 pb-6 text-center">
+            <article className="border border-stone-300 bg-white p-5 shadow-lg shadow-stone-900/5 sm:p-8">
+              <div className="border-b-2 border-emerald-900 pb-6 text-center">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                   Ministerio de Educación del Ecuador
                 </p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-blue-950">
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-950">
                   Planificación Microcurricular
                 </h2>
-                <p className="mt-1 text-xs font-semibold text-teal-700">Modelo ERCA · Año lectivo 2025–2026</p>
+                <p className="mt-1 text-xs font-semibold text-emerald-800">Modelo ERCA · Año lectivo 2025–2026</p>
               </div>
 
               <div className="mt-6 grid overflow-hidden rounded-2xl border border-slate-200 sm:grid-cols-2">
@@ -364,8 +364,8 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                     key={phase.key}
                     className={`group relative rounded-2xl border p-5 transition sm:p-6 ${
                       phase.key === "application"
-                        ? "border-blue-300 bg-blue-50/40 hover:border-violet-400 hover:ring-4 hover:ring-violet-100"
-                        : "border-slate-200 hover:border-blue-300"
+                        ? "border-orange-300 bg-orange-50/50 hover:border-orange-400 hover:ring-4 hover:ring-orange-100"
+                        : "border-stone-200 hover:border-emerald-300"
                     }`}
                   >
                     {phase.key === "application" && (

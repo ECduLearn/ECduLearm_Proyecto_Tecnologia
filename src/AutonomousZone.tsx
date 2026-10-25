@@ -175,10 +175,10 @@ function StudentHeader({
           </button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-blue-600 text-white">
+            <span className="grid size-10 place-items-center rounded-full bg-emerald-800 text-white">
               <ZoneIcon name="book" className="size-5" />
             </span>
-            <span className="font-bold tracking-tight text-blue-950">
+            <span className="font-serif font-semibold tracking-tight text-stone-950">
               EC<span className="text-teal-500">du</span>Learm
             </span>
           </div>
@@ -307,16 +307,16 @@ export default function AutonomousZone({
 
   if (view === "dashboard") {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-950">
+      <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
         <StudentHeader />
         <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-bold text-teal-700">Zona de estudio autónomo</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-blue-950 sm:text-4xl">
+              <p className="text-sm font-bold text-emerald-800">Zona de estudio autónomo</p>
+              <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">
                 ¡Hola! ¿Qué vamos a entrenar hoy?
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-500">
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-600">
                 Continúa un reto de tu colegio o elige un tema para practicar a tu ritmo.
               </p>
             </div>
@@ -330,11 +330,11 @@ export default function AutonomousZone({
                 }
               }}
             >
-              <label htmlFor="new-class-pin" className="text-xs font-bold text-slate-500">
+              <label htmlFor="new-class-pin" className="text-xs font-bold text-stone-600">
                 Ingresar nuevo PIN de clase
               </label>
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-100">
-                <ZoneIcon name="key" className="ml-2 size-4 text-slate-400" />
+              <div className="mt-2 flex items-center gap-2 border border-stone-300 bg-white p-1.5 focus-within:border-emerald-700 focus-within:ring-4 focus-within:ring-emerald-100">
+                <ZoneIcon name="key" className="ml-2 size-4 text-emerald-800" />
                 <input
                   id="new-class-pin"
                   value={newPin}
@@ -344,7 +344,7 @@ export default function AutonomousZone({
                 />
                 <button
                   type="submit"
-                  className="min-h-10 rounded-lg bg-blue-950 px-3 text-xs font-bold text-white hover:bg-blue-900"
+                  className="min-h-10 rounded-md bg-emerald-800 px-3 text-xs font-bold text-white hover:bg-emerald-900"
                 >
                   Vincular
                 </button>
@@ -358,45 +358,45 @@ export default function AutonomousZone({
           <section className="mt-10">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Prioridad alta</p>
-                <h2 className="mt-1 text-xl font-bold text-blue-950">Retos del colegio</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Tu ruta</p>
+                  <h2 className="mt-1 font-serif text-xl font-semibold text-stone-950">Retos del colegio</h2>
               </div>
               <span className="text-xs font-medium text-slate-400">Desliza para explorar</span>
             </div>
 
             <div className="-mx-4 mt-5 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-              <article className="min-w-[88%] snap-center rounded-3xl bg-blue-950 p-6 text-white shadow-xl shadow-blue-950/15 sm:min-w-[30rem]">
+              <article className="min-w-[88%] snap-center border border-stone-300 bg-white p-6 shadow-md shadow-stone-900/5 sm:min-w-[30rem]">
                 <div className="flex items-start justify-between gap-4">
-                  <span className="grid size-11 place-items-center rounded-xl bg-white/10 text-teal-300">
+                  <span className="grid size-11 place-items-center rounded-full bg-emerald-100 text-emerald-900">
                     <ZoneIcon name="target" className="size-5" />
                   </span>
-                  <span className="rounded-full bg-teal-300 px-2.5 py-1 text-xs font-bold text-teal-950">En curso</span>
+                  <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-900">En curso</span>
                 </div>
-                <p className="mt-7 text-xs font-bold uppercase tracking-widest text-blue-200">Matemática · 2do BGU</p>
-                <h3 className="mt-2 text-xl font-bold">Guía PISA: Análisis de Estructuras</h3>
-                <div className="mt-6 flex items-center justify-between text-xs font-semibold text-blue-100">
+                <p className="mt-7 text-xs font-bold uppercase tracking-widest text-emerald-800">Matemática · 2do BGU</p>
+                <h3 className="mt-2 font-serif text-xl font-semibold text-stone-950">Guía PISA: Análisis de Estructuras</h3>
+                <div className="mt-6 flex items-center justify-between text-xs font-semibold text-stone-600">
                   <span>2 de 5 completados</span>
                   <span>40%</span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
-                  <div className="h-full w-2/5 rounded-full bg-teal-300" />
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-200">
+                  <div className="h-full w-2/5 rounded-full bg-orange-500" />
                 </div>
                 <button
                   type="button"
                   onClick={() => setView("school")}
-                  className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-blue-950 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30"
+                  className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
                 >
                   Continuar reto
                   <ZoneIcon name="chevron" className="size-4" />
                 </button>
               </article>
 
-              <article className="min-w-[82%] snap-center rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:min-w-[25rem]">
+              <article className="min-w-[82%] snap-center border border-stone-300 bg-white p-6 sm:min-w-[25rem]">
                 <span className="grid size-11 place-items-center rounded-xl bg-amber-100 text-amber-900">
                   <ZoneIcon name="graduation" className="size-5" />
                 </span>
                 <p className="mt-7 text-xs font-bold uppercase tracking-widest text-slate-500">Simulador asignado</p>
-                <h3 className="mt-2 text-xl font-bold text-blue-950">Preparación para admisión</h3>
+                <h3 className="mt-2 font-serif text-xl font-semibold text-stone-950">Preparación para admisión</h3>
                 <p className="mt-3 text-sm text-slate-500">Disponible hasta el viernes · 20 preguntas</p>
                 <button
                   type="button"
@@ -410,15 +410,15 @@ export default function AutonomousZone({
           </section>
 
           <section className="mt-10">
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Explora a tu ritmo</p>
-            <h2 className="mt-1 text-xl font-bold text-blue-950">Práctica libre</h2>
+            <p className="text-xs font-bold uppercase tracking-widest text-orange-800">A tu ritmo</p>
+            <h2 className="mt-1 font-serif text-xl font-semibold text-stone-950">Práctica libre</h2>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {practiceCategories.map((category) => (
-                <article key={category.name} className="flex min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <article key={category.name} className="flex min-h-56 flex-col border border-stone-200 bg-white p-4 sm:p-5">
                   <span className={`grid size-11 place-items-center rounded-xl ${category.tone}`}>
                     <ZoneIcon name={category.icon} className="size-5" />
                   </span>
-                  <h3 className="mt-5 text-base font-bold leading-tight text-blue-950">{category.name}</h3>
+                  <h3 className="mt-5 font-serif text-base font-semibold leading-tight text-stone-950">{category.name}</h3>
                   <p className="mt-2 text-xs text-slate-500">{category.detail}</p>
                   <button
                     type="button"
@@ -435,7 +435,7 @@ export default function AutonomousZone({
             </div>
           </section>
 
-          <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-teal-200 bg-teal-50 p-5 text-center sm:flex-row sm:text-left">
+          <div className="mt-10 flex flex-col items-center justify-between gap-4 border border-emerald-200 bg-emerald-50 p-5 text-center sm:flex-row sm:text-left">
             <div className="flex items-center gap-3">
               <ZoneIcon name="shield" className="size-5 shrink-0 text-teal-800" />
               <p className="text-xs leading-relaxed text-teal-900">
@@ -453,18 +453,18 @@ export default function AutonomousZone({
 
   if (view === "free") {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-950">
+      <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
         <StudentHeader onBack={() => setView("dashboard")} title="Práctica libre · Razonamiento Lógico" />
         <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <section className="border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-blue-100 text-blue-900">
+                <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-emerald-900">
                   <ZoneIcon name="logic" className="size-5" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Microreto 1</p>
-                  <h1 className="mt-0.5 font-bold text-blue-950">Patrones de construcción</h1>
+                  <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Microreto 1</p>
+                  <h1 className="mt-0.5 font-serif font-semibold text-stone-950">Patrones de construcción</h1>
                 </div>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">Nivel medio</span>
@@ -485,21 +485,21 @@ export default function AutonomousZone({
               <ZoneIcon name="chevron" className={`size-4 transition ${formulaOpen ? "rotate-90" : ""}`} />
             </button>
             {formulaOpen && (
-              <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-sm leading-relaxed text-blue-950">
+              <div className="mt-4 border-l-2 border-orange-500 bg-orange-50 p-4 text-sm leading-relaxed text-stone-800">
                 En una secuencia lineal puedes explorar: <strong>término = valor inicial + cambio × posición</strong>.
                 Decide primero si el cambio entre figuras es constante.
               </div>
             )}
           </section>
 
-          <section className="flex min-h-[40vh] flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <section className="flex min-h-[40vh] flex-1 flex-col overflow-hidden border border-stone-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div className="flex items-center gap-3">
                 <span className="grid size-10 place-items-center rounded-xl bg-teal-100 text-teal-900">
                   <ZoneIcon name="sparkles" className="size-5" />
                 </span>
                 <div>
-                  <h2 className="font-bold text-blue-950">Tutor Socrático</h2>
+                  <h2 className="font-serif font-semibold text-stone-950">Tutor Socrático</h2>
                   <p className="text-xs text-slate-500">Pistas para construir tu estrategia</p>
                 </div>
               </div>
@@ -508,13 +508,13 @@ export default function AutonomousZone({
                 Sin respuestas directas
               </span>
             </div>
-            <div className="max-h-72 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 sm:p-5" aria-live="polite">
+            <div className="max-h-72 flex-1 space-y-3 overflow-y-auto bg-[#f6f2e8] p-4 sm:p-5" aria-live="polite">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === "student" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       message.role === "student"
-                        ? "rounded-br-md bg-blue-600 text-white"
+                        ? "rounded-br-md bg-emerald-800 text-white"
                         : "rounded-tl-md border border-slate-200 bg-white text-slate-700"
                     }`}
                   >
@@ -567,22 +567,22 @@ export default function AutonomousZone({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
       <StudentHeader onBack={() => setView("dashboard")} title="Guía PISA: Análisis de Estructuras" />
       <main className="mx-auto max-w-4xl px-4 py-5 pb-10 sm:px-6 sm:py-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-teal-700">Reto del colegio</p>
-              <h1 className="mt-1 text-lg font-bold text-blue-950">Reto PISA · Pregunta 1 de 3</h1>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Reto del colegio</p>
+              <h1 className="mt-1 font-serif text-lg font-semibold text-stone-950">Reto PISA · Pregunta 1 de 3</h1>
             </div>
             <span className="text-sm font-bold text-blue-900">33%</span>
           </div>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full w-1/3 rounded-full bg-blue-600" />
+            <div className="h-full w-1/3 rounded-full bg-orange-500" />
           </div>
 
-          <div className="mt-8 rounded-2xl bg-slate-50 p-5 sm:p-6">
+          <div className="mt-8 border-l-2 border-orange-500 bg-[#f6f2e8] p-5 sm:p-6">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Centro comunitario seguro</p>
             <p className="mt-3 text-base leading-8 text-slate-700">
               Un equipo evalúa una estructura modular para un centro comunitario. Un vehículo transporta las piezas a
@@ -592,7 +592,7 @@ export default function AutonomousZone({
           </div>
         </section>
 
-        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="mt-4 border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-start gap-4">
             <span
               className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${
@@ -603,7 +603,7 @@ export default function AutonomousZone({
             </span>
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Paso {schoolStep} de 3</p>
-              <h2 className="mt-1 text-xl font-bold text-blue-950">
+              <h2 className="mt-1 font-serif text-xl font-semibold text-stone-950">
                 {schoolStep === 1 ? "Identifica las variables" : "Unifica las unidades"}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
