@@ -134,12 +134,12 @@ function Brand({ dark = false }: { dark?: boolean }) {
     <div className="flex items-center gap-3" aria-label="ECduLearm">
       <span
         className={`grid size-10 place-items-center rounded-xl ${
-          dark ? "bg-blue-950 text-white" : "bg-white text-blue-950"
+          dark ? "bg-emerald-950 text-white" : "bg-white text-emerald-950"
         }`}
       >
         <PortalIcon name="book" className="size-5" />
       </span>
-      <span className={`text-lg font-bold tracking-tight ${dark ? "text-blue-950" : "text-white"}`}>
+      <span className={`text-lg font-bold tracking-tight ${dark ? "text-emerald-950" : "text-white"}`}>
         EC<span className="text-teal-500">du</span>Learm
       </span>
     </div>
@@ -171,8 +171,8 @@ export function AccessPortal({
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white text-slate-950">
-      <div className="pointer-events-none absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-50 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-[#f6f2e8] text-stone-950">
+      <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-emerald-100/70 blur-3xl" />
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <div className="flex items-center gap-4">
           <button
@@ -206,26 +206,26 @@ export function AccessPortal({
 
       <main className="relative z-10 grid min-h-[calc(100vh-10rem)] place-items-center px-5 py-12">
         <div className="w-full max-w-xl text-center">
-          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-950 text-white shadow-lg shadow-blue-950/15">
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-800 text-white">
             <PortalIcon name="arrow" className="size-6" />
           </span>
-          <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-teal-700">Acceso para estudiantes</p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-blue-950 sm:text-4xl">
-            Ingresa el PIN de tu clase o pega tu enlace
+          <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-emerald-800">Acceso para estudiantes</p>
+          <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">
+            ¿Cuál es el código de tu clase?
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-slate-600">
-            Entra directamente a tu actividad. No necesitas una cuenta y no guardamos datos personales.
+          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-stone-600">
+            Escribe el PIN o pega el enlace que compartió tu docente. Sin cuenta y sin datos personales.
           </p>
 
           <form
             onSubmit={enterSession}
-            className="mt-9 rounded-3xl border border-slate-200 bg-white p-3 text-left shadow-2xl shadow-blue-950/10 sm:flex sm:items-center sm:gap-3"
+            className="mt-9 rounded-xl border border-stone-200 bg-white p-3 text-left shadow-lg shadow-stone-900/5 sm:flex sm:items-center sm:gap-3"
           >
             <label htmlFor="class-pin" className="sr-only">
               PIN o enlace de la clase
             </label>
             <div className="flex min-h-14 flex-1 items-center gap-3 px-3">
-              <PortalIcon name="link" className="size-5 shrink-0 text-slate-400" />
+              <PortalIcon name="link" className="size-5 shrink-0 text-emerald-800" />
               <input
                 id="class-pin"
                 value={pin}
@@ -234,30 +234,35 @@ export function AccessPortal({
                   setError("");
                 }}
                 placeholder="Ej. PISA26 o 482 917"
-                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 uppercase"
+                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400 uppercase"
                 autoComplete="off"
               />
             </div>
             <button
               type="submit"
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-950 px-6 text-sm font-bold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:w-auto"
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-6 text-sm font-bold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:w-auto"
             >
               Entrar a la clase
               <PortalIcon name="arrow" className="size-4" />
             </button>
           </form>
-          <p className="mt-3 min-h-5 text-sm font-medium text-rose-700" role="alert">
+          <p className="mt-3 min-h-5 text-sm font-medium text-orange-800" role="alert">
             {error}
           </p>
 
-          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-500">
-            <PortalIcon name="shield" className="size-5 text-teal-700" />
-            Acceso anónimo y protegido por diseño
+          <div className="mt-8 border-t border-stone-300 pt-5">
+            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-900">
+              <PortalIcon name="shield" className="size-5 text-emerald-800" />
+              Tu privacidad primero
+            </p>
+            <p className="mt-2 text-center text-xs leading-relaxed text-stone-600">
+              Tu colegio administra esta experiencia. No solicitamos nombres, correos ni perfiles.
+            </p>
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 px-5 pb-6 text-center text-xs text-slate-400">
+      <footer className="relative z-10 px-5 pb-6 text-center text-xs text-stone-500">
         Tu colegio administra esta experiencia. ECduLearm no solicita nombres, correos ni perfiles a estudiantes.
       </footer>
 
@@ -270,7 +275,7 @@ export function AccessPortal({
             aria-label="Cerrar acceso docente"
           />
           <section
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+            className="relative w-full max-w-md border border-stone-200 bg-[#f6f2e8] p-6 shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="teacher-login-title"
@@ -280,7 +285,7 @@ export function AccessPortal({
                 <span className="grid size-11 place-items-center rounded-xl bg-blue-950 text-white">
                   <PortalIcon name="lock" className="size-5" />
                 </span>
-                <h2 id="teacher-login-title" className="mt-5 text-2xl font-bold text-blue-950">
+                <h2 id="teacher-login-title" className="mt-5 text-2xl font-bold text-stone-950">
                   Acceso institucional
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
@@ -313,7 +318,7 @@ export function AccessPortal({
                   type="email"
                   required
                   placeholder="docente@colegio.edu.ec"
-                  className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-sm outline-none placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+                  className="mt-2 min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
               <div>
@@ -325,12 +330,12 @@ export function AccessPortal({
                   type="password"
                   required
                   placeholder="Ingresa tu contraseña"
-                  className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-sm outline-none placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+                  className="mt-2 min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
               <button
                 type="submit"
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-5 text-sm font-bold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
               >
                 Ingresar al panel
                 <PortalIcon name="arrow" className="size-4" />
@@ -671,7 +676,7 @@ export function TeacherDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-[#f6f2e8] text-stone-950">
       {sidebarOpen && (
         <button
           type="button"
@@ -681,7 +686,7 @@ export function TeacherDashboard({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-blue-950 p-4 text-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-emerald-950 p-4 text-white transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -699,7 +704,7 @@ export function TeacherDashboard({
         <nav className="mt-8 space-y-1" aria-label="Panel docente">
           <button
             type="button"
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-white/10 px-3 text-left text-sm font-bold"
+            className="flex min-h-12 w-full items-center gap-3 rounded-lg border-l-2 border-orange-300 bg-white/10 px-3 text-left text-sm font-bold"
           >
             <PortalIcon name="grid" className="size-5 text-teal-300" />
             Resumen
@@ -774,7 +779,7 @@ export function TeacherDashboard({
             <button
               type="button"
               onClick={() => setPinOpen(true)}
-              className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-3 text-sm font-bold text-white shadow-lg shadow-blue-950/15 hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:px-5"
+              className="flex min-h-11 items-center gap-2 rounded-lg bg-emerald-800 px-3 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:px-5"
             >
               <PortalIcon name="link" className="size-4" />
               <span className="hidden sm:inline">Generar Enlace / PIN para Alumnos</span>
@@ -787,13 +792,13 @@ export function TeacherDashboard({
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <p className="text-sm font-bold text-teal-700">Panel del docente</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight text-blue-950">Buenos días, María</h1>
-              <p className="mt-2 text-sm text-slate-500">Orquesta tus sesiones y observa el avance anónimo del grupo.</p>
+              <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight text-stone-950">Buenos días, María</h1>
+              <p className="mt-2 text-sm text-stone-600">Orquesta tus sesiones y observa el avance anónimo del grupo.</p>
             </div>
             <button
               type="button"
               onClick={onCreateContent}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-bold text-stone-700 hover:bg-stone-100 focus:outline-none focus:ring-4 focus:ring-emerald-100"
             >
               <PortalIcon name="sparkles" className="size-4 text-teal-700" />
               Crear contenido con IA
@@ -812,14 +817,14 @@ export function TeacherDashboard({
               { label: "Sesiones activas", value: "1", detail: "2 programadas", icon: "clock" as const },
               { label: "Participación", value: "88%", detail: "del grupo activo", icon: "check" as const },
             ].map((metric) => (
-              <article key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={metric.label} className="border border-stone-200 bg-white p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{metric.label}</p>
-                    <p className="mt-3 text-3xl font-bold text-blue-950">{metric.value}</p>
+                    <p className="mt-3 font-serif text-3xl font-semibold text-stone-950">{metric.value}</p>
                     <p className="mt-1 text-xs text-slate-500">{metric.detail}</p>
                   </div>
-                  <span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-900">
+                  <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-emerald-900">
                     <PortalIcon name={metric.icon} className="size-5" />
                   </span>
                 </div>
@@ -828,16 +833,16 @@ export function TeacherDashboard({
           </section>
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden border border-stone-200 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5 sm:p-6">
                 <div>
-                  <h2 className="text-lg font-bold text-blue-950">Salas y sesiones</h2>
+                  <h2 className="font-serif text-lg font-semibold text-stone-950">Salas y sesiones</h2>
                   <p className="mt-1 text-sm text-slate-500">Contenido asignado a tus grupos.</p>
                 </div>
                 <button
                   type="button"
                   onClick={onCreateContent}
-                  className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-stone-300 px-4 text-sm font-bold text-stone-700 hover:bg-stone-50"
                 >
                   <PortalIcon name="plus" className="size-4" />
                   Nueva sala
@@ -879,22 +884,22 @@ export function TeacherDashboard({
             </div>
 
             <aside className="space-y-5">
-              <div className="rounded-3xl bg-blue-950 p-6 text-white shadow-xl shadow-blue-950/15">
-                <p className="text-xs font-bold uppercase tracking-widest text-teal-300">Atención requerida</p>
+              <div className="border border-orange-200 bg-orange-50 p-6 text-stone-900">
+                <p className="text-xs font-bold uppercase tracking-widest text-orange-800">Atención requerida</p>
                 <h2 className="mt-3 text-lg font-bold">Pregunta con más fallos</h2>
                 <p className="mt-2 text-2xl font-bold">Ecuaciones cuadráticas</p>
-                <p className="mt-2 text-sm leading-relaxed text-blue-100">
+                <p className="mt-2 text-sm leading-relaxed text-stone-700">
                   El 46% del grupo pidió una pista al factorizar.
                 </p>
                 <button
                   type="button"
                   onClick={onCreateContent}
-                  className="mt-5 min-h-11 w-full rounded-xl bg-white px-4 text-sm font-bold text-blue-950 hover:bg-blue-50"
+                  className="mt-5 min-h-11 w-full rounded-lg bg-stone-900 px-4 text-sm font-bold text-white hover:bg-stone-800"
                 >
                   Crear refuerzo
                 </button>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="border border-stone-200 bg-white p-5">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
                   <PortalIcon name="shield" className="size-5 text-teal-700" />
                   Datos agregados
@@ -917,7 +922,7 @@ export function TeacherDashboard({
             aria-label="Cerrar PIN"
           />
           <section
-            className="relative w-full max-w-lg rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8"
+            className="relative w-full max-w-lg border border-stone-200 bg-[#f6f2e8] p-6 text-center shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="pin-title"
@@ -934,17 +939,17 @@ export function TeacherDashboard({
               <PortalIcon name="link" className="size-6" />
             </span>
             <p className="mt-5 text-xs font-bold uppercase tracking-widest text-teal-700">Sesión lista</p>
-            <h2 id="pin-title" className="mt-2 text-2xl font-bold text-blue-950">
+            <h2 id="pin-title" className="mt-2 font-serif text-2xl font-semibold text-stone-950">
               Comparte este PIN con tu clase
             </h2>
-            <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-              <p className="text-4xl font-bold tracking-[0.2em] text-blue-950">PISA26</p>
+            <div className="mt-6 border border-stone-300 bg-white p-5">
+              <p className="font-serif text-4xl font-semibold tracking-[0.2em] text-emerald-900">PISA26</p>
               <p className="mt-3 text-sm text-slate-600">ecdu.io/s/PISA26</p>
             </div>
             <button
               type="button"
               onClick={copyPin}
-              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-5 text-sm font-bold text-white hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-5 text-sm font-bold text-white hover:bg-emerald-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
             >
               <PortalIcon name={copied ? "check" : "copy"} className="size-5" />
               {copied ? "PIN y enlace copiados" : "Copiar PIN y enlace"}
