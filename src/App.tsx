@@ -11,6 +11,12 @@ import {
   setGeminiApiKey,
   testGeminiConnection,
 } from "./services/aiService";
+import {
+  getSupabaseConfig,
+  setSupabaseConfig,
+  isSupabaseConnected,
+  getSupabaseClient,
+} from "./services/supabaseClient";
 import type { Exercise } from "./models/types";
 
 type IconName =
@@ -1267,15 +1273,30 @@ function EvaluatorTopBar({
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<"ai" | "database">("ai");
+
+  // Gemini state
   const [currentKey, setCurrentKey] = useState("");
   const [inputKey, setInputKey] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
+  // Supabase state
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  const [supabaseKey, setSupabaseKey] = useState("");
+  const [isDbConnected, setIsDbConnected] = useState(false);
+  const [dbTestResult, setDbTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isDbTesting, setIsDbTesting] = useState(false);
+
   useEffect(() => {
     const key = getGeminiApiKey();
     setCurrentKey(key);
     setInputKey(key);
+
+    const dbConfig = getSupabaseConfig();
+    setSupabaseUrl(dbConfig.url);
+    setSupabaseKey(dbConfig.anonKey);
+    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey));
   }, [keyModalOpen]);
 
   const handleSaveAndTest = async () => {
@@ -1295,6 +1316,56 @@ function EvaluatorTopBar({
     setTestResult({
       success: true,
       message: "Clave eliminada. El sistema operará con el motor de Fallback Offline Inteligente.",
+    });
+  };
+
+  const handleSaveAndTestDb = async () => {
+    setIsDbTesting(true);
+    setDbTestResult(null);
+    setSupabaseConfig(supabaseUrl, supabaseKey);
+    setIsDbConnected(Boolean(supabaseUrl.trim() && supabaseKey.trim()));
+
+    const client = getSupabaseClient();
+    if (!client) {
+      setDbTestResult({
+        success: false,
+        message: "Por favor proporciona la URL y la Anon Key de tu proyecto de Supabase.",
+      });
+      setIsDbTesting(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await client.from("pin_sessions").select("pin, active").limit(5);
+      if (error) {
+        setDbTestResult({
+          success: false,
+          message: `Error al consultar Supabase (${error.code}): ${error.message}. Recuerda ejecutar el script 'supabase/schema.sql' en el SQL Editor de Supabase.`,
+        });
+      } else {
+        setDbTestResult({
+          success: true,
+          message: `¡Conexión exitosa a Supabase PostgreSQL! Tabla 'pin_sessions' activa con ${data?.length || 0} sesiones registradas (${data?.map((d) => d.pin).join(", ") || "lista vacía"}).`,
+        });
+      }
+    } catch (err) {
+      setDbTestResult({
+        success: false,
+        message: `Fallo de conexión: ${(err as Error).message}`,
+      });
+    } finally {
+      setIsDbTesting(false);
+    }
+  };
+
+  const handleClearDb = () => {
+    setSupabaseConfig("", "");
+    setSupabaseUrl("");
+    setSupabaseKey("");
+    setIsDbConnected(false);
+    setDbTestResult({
+      success: true,
+      message: "Configuración de Supabase eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
     });
   };
 
@@ -1425,7 +1496,10 @@ function EvaluatorTopBar({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setKeyModalOpen(true)}
+              onClick={() => {
+                setModalTab("ai");
+                setKeyModalOpen(true);
+              }}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
                 currentKey
                   ? "border-ink-500/60 bg-ink-950/70 text-ink-300 hover:bg-ink-900/60"
@@ -1436,6 +1510,24 @@ function EvaluatorTopBar({
               <span className={`inline-block size-1.5 rounded-full ${currentKey ? "bg-ink-400" : "bg-hint-400"}`} />
               <span>{currentKey ? "Gemini Online" : "Motor Offline"}</span>
               <span className="text-[10px]">⚙️</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setModalTab("database");
+                setKeyModalOpen(true);
+              }}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
+                isDbConnected
+                  ? "border-teal-500/60 bg-teal-950/70 text-teal-300 hover:bg-teal-900/60"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+              }`}
+              title="Configurar o probar persistencia en base de datos Supabase PostgreSQL"
+            >
+              <span className={`inline-block size-1.5 rounded-full ${isDbConnected ? "bg-teal-400" : "bg-amber-400"}`} />
+              <span>{isDbConnected ? "Supabase Cloud" : "DB Local"}</span>
+              <span className="text-[10px]">🗄️</span>
             </button>
 
             <button
@@ -1462,14 +1554,14 @@ function EvaluatorTopBar({
 
       {keyModalOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
-          <div className="w-full max-w-md rounded-2xl border border-sand-700 bg-sand-900 p-6 text-white shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl border border-sand-700 bg-sand-900 p-6 text-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-sand-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-hint-300 flex items-center gap-2">
-                  <span>🤖 Conexión de Inteligencia Artificial</span>
+                  <span>⚙️ Configuración de Conectividad & Servicios</span>
                 </h3>
                 <p className="mt-1 text-xs text-sand-400">
-                  Google Gemini (Flash-Lite / Flash con Balanceo Inteligente) o Motor Offline
+                  Gestión para el jurado / evaluador: Inteligencia Artificial y Base de Datos
                 </p>
               </div>
               <button
@@ -1481,81 +1573,199 @@ function EvaluatorTopBar({
               </button>
             </div>
 
-            <div className="mt-4 space-y-4 text-xs">
-              <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
-                <p className="text-sand-300 font-semibold mb-1">Estado de la IA en este momento:</p>
-                {currentKey ? (
-                  <p className="text-ink-400 flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-ink-400" />
-                    <strong>Modo Online Activo:</strong> Se envían peticiones optimizadas con balanceo multimodelo (Flash-Lite / Flash) para máximo ahorro de tokens y alta disponibilidad.
-                  </p>
-                ) : (
-                  <p className="text-hint-400 flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-hint-400" />
-                    <strong>Modo Offline Inteligente:</strong> Respuestas automáticas dinámicas adaptadas al currículo ecuatoriano (sin necesidad de API Key).
-                  </p>
-                )}
-              </div>
+            {/* Pestañas Modal */}
+            <div className="flex items-center gap-2 border-b border-sand-800 pt-3 pb-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setModalTab("ai")}
+                className={`rounded-lg px-3 py-1.5 font-bold transition ${
+                  modalTab === "ai"
+                    ? "bg-ink-600 text-white shadow"
+                    : "text-sand-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                🤖 IA Google Gemini
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("database")}
+                className={`rounded-lg px-3 py-1.5 font-bold transition ${
+                  modalTab === "database"
+                    ? "bg-hint-500 text-sand-950 shadow"
+                    : "text-sand-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                🗄️ Base de Datos Supabase (PostgreSQL)
+              </button>
+            </div>
 
-              <div>
-                <label htmlFor="gemini-key-input" className="block font-semibold text-sand-200 mb-1">
-                  API Key de Google Gemini (opcional):
-                </label>
-                <input
-                  id="gemini-key-input"
-                  type="password"
-                  value={inputKey}
-                  onChange={(e) => setInputKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-ink-400 font-mono"
-                />
-                <p className="mt-1.5 text-[11px] text-sand-400">
-                  Puedes obtener tu clave gratuita en{" "}
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-ink-400 underline hover:text-ink-300"
-                  >
-                    Google AI Studio
-                  </a>
-                  .
-                </p>
-              </div>
-
-              {testResult && (
-                <div
-                  className={`rounded-xl border p-3 ${
-                    testResult.success
-                      ? "border-ink-500/50 bg-ink-950/50 text-ink-200"
-                      : "border-rose-500/50 bg-rose-950/50 text-rose-200"
-                  }`}
-                >
-                  <p className="font-semibold">{testResult.success ? "✅ Éxito" : "⚠️ Aviso"}</p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed">{testResult.message}</p>
+            {modalTab === "ai" ? (
+              <div className="mt-4 space-y-4 text-xs">
+                <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
+                  <p className="text-sand-300 font-semibold mb-1">Estado de la IA en este momento:</p>
+                  {currentKey ? (
+                    <p className="text-ink-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-ink-400" />
+                      <strong>Modo Online Activo:</strong> Se envían peticiones optimizadas con balanceo multimodelo (Flash-Lite / Flash) para máximo ahorro de tokens y alta disponibilidad.
+                    </p>
+                  ) : (
+                    <p className="text-hint-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-hint-400" />
+                      <strong>Modo Offline Inteligente:</strong> Respuestas automáticas dinámicas adaptadas al currículo ecuatoriano (sin necesidad de API Key).
+                    </p>
+                  )}
                 </div>
-              )}
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={isTesting}
-                  onClick={handleSaveAndTest}
-                  className="flex-1 rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
-                >
-                  {isTesting ? "Probando..." : "Guardar y Probar Conexión"}
-                </button>
-                {currentKey && (
+                <div>
+                  <label htmlFor="gemini-key-input" className="block font-semibold text-sand-200 mb-1">
+                    API Key de Google Gemini (opcional):
+                  </label>
+                  <input
+                    id="gemini-key-input"
+                    type="password"
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-ink-400 font-mono"
+                  />
+                  <p className="mt-1.5 text-[11px] text-sand-400">
+                    Puedes obtener tu clave gratuita en{" "}
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-ink-400 underline hover:text-ink-300"
+                    >
+                      Google AI Studio
+                    </a>
+                    .
+                  </p>
+                </div>
+
+                {testResult && (
+                  <div
+                    className={`rounded-xl border p-3 ${
+                      testResult.success
+                        ? "border-ink-500/50 bg-ink-950/50 text-ink-200"
+                        : "border-rose-500/50 bg-rose-950/50 text-rose-200"
+                    }`}
+                  >
+                    <p className="font-semibold">{testResult.success ? "✅ Éxito" : "⚠️ Aviso"}</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed">{testResult.message}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={handleClearKey}
-                    className="rounded-xl border border-rose-800 bg-rose-950/40 px-3 py-2.5 font-semibold text-rose-300 hover:bg-rose-900/60"
+                    disabled={isTesting}
+                    onClick={handleSaveAndTest}
+                    className="flex-1 rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
                   >
-                    Quitar Clave
+                    {isTesting ? "Probando..." : "Guardar y Probar Conexión IA"}
                   </button>
-                )}
+                  {currentKey && (
+                    <button
+                      type="button"
+                      onClick={handleClearKey}
+                      className="rounded-xl border border-rose-800 bg-rose-950/40 px-3 py-2.5 font-semibold text-rose-300 hover:bg-rose-900/60"
+                    >
+                      Quitar Clave
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-4 space-y-4 text-xs">
+                <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
+                  <p className="text-sand-300 font-semibold mb-1">Estado de la Base de Datos:</p>
+                  {isDbConnected ? (
+                    <p className="text-hint-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-hint-400" />
+                      <strong>Supabase Cloud Activo:</strong> Sincronización en tiempo real de PINs y ejercicios entre diferentes computadoras y teléfonos.
+                    </p>
+                  ) : (
+                    <p className="text-amber-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-400" />
+                      <strong>Modo LocalStorage:</strong> Las aulas y PINs se almacenan localmente en el navegador de este dispositivo.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="supabase-url-input" className="block font-semibold text-sand-200 mb-1">
+                    Project URL de Supabase:
+                  </label>
+                  <input
+                    id="supabase-url-input"
+                    type="text"
+                    value={supabaseUrl}
+                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                    placeholder="https://xyzcompany.supabase.co"
+                    className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-hint-400 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="supabase-key-input" className="block font-semibold text-sand-200 mb-1">
+                    Anon Public Key (Clave Pública Anónima):
+                  </label>
+                  <input
+                    id="supabase-key-input"
+                    type="password"
+                    value={supabaseKey}
+                    onChange={(e) => setSupabaseKey(e.target.value)}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-hint-400 font-mono"
+                  />
+                  <p className="mt-1.5 text-[11px] text-sand-400">
+                    Crea tu proyecto gratuito en{" "}
+                    <a
+                      href="https://supabase.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-hint-400 underline hover:text-hint-300"
+                    >
+                      supabase.com
+                    </a>{" "}
+                    y ejecuta el script disponible en <span className="font-mono text-amber-300">supabase/schema.sql</span>.
+                  </p>
+                </div>
+
+                {dbTestResult && (
+                  <div
+                    className={`rounded-xl border p-3 ${
+                      dbTestResult.success
+                        ? "border-emerald-500/50 bg-emerald-950/50 text-emerald-200"
+                        : "border-rose-500/50 bg-rose-950/50 text-rose-200"
+                    }`}
+                  >
+                    <p className="font-semibold">{dbTestResult.success ? "✅ Conexión Exitosa" : "⚠️ Aviso de Base de Datos"}</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed">{dbTestResult.message}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    disabled={isDbTesting}
+                    onClick={handleSaveAndTestDb}
+                    className="flex-1 rounded-xl bg-hint-500 px-4 py-2.5 font-bold text-sand-950 transition hover:bg-hint-400 disabled:opacity-50"
+                  >
+                    {isDbTesting ? "Comprobando..." : "Guardar y Probar Conexión BD"}
+                  </button>
+                  {isDbConnected && (
+                    <button
+                      type="button"
+                      onClick={handleClearDb}
+                      className="rounded-xl border border-sand-700 bg-sand-800 px-3 py-2.5 font-semibold text-sand-300 hover:bg-sand-700"
+                    >
+                      Usar Solo Local
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
