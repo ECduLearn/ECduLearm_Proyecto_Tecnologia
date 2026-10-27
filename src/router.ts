@@ -33,13 +33,43 @@ export const VIEW_TITLES: Record<AppView, string> = {
 };
 
 /**
+ * Detecta el prefijo base de la aplicación (para GitHub Pages u otros subdirectorios).
+ */
+export function getBasePrefix(): string {
+  if (typeof window === "undefined") return "";
+
+  // 1. Si Vite definió import.meta.env.BASE_URL distinta de "./" y "/"
+  const envBase = import.meta.env.BASE_URL;
+  if (envBase && envBase !== "./" && envBase !== "/") {
+    return envBase.replace(/\/+$/, "");
+  }
+
+  // 2. Auto-detección en GitHub Pages (ej. /ECduLearm_Proyecto_Tecnologia)
+  const pathname = window.location.pathname;
+  const segments = pathname.split("/").filter(Boolean);
+  if (window.location.hostname.endsWith("github.io") && segments.length > 0) {
+    return `/${segments[0]}`;
+  }
+
+  return "";
+}
+
+/**
  * Normaliza y resuelve la vista de la aplicación según la ruta amigable de la URL.
  */
 export function getViewFromPath(pathname: string): AppView {
   if (!pathname) return "landing";
 
+  const basePrefix = getBasePrefix();
+  let clean = pathname.toLowerCase();
+
+  // Si la ruta contiene el prefijo base del repo en GitHub Pages, removerlo para evaluar la vista
+  if (basePrefix && clean.startsWith(basePrefix.toLowerCase())) {
+    clean = clean.slice(basePrefix.length);
+  }
+
   // Normalizar ruta: minúsculas, sin barra final repetida
-  const clean = pathname.toLowerCase().replace(/\/+$/, "") || "/";
+  clean = clean.replace(/\/+$/, "") || "/";
 
   switch (clean) {
     case "/":
@@ -90,10 +120,14 @@ export function getViewFromPath(pathname: string): AppView {
 }
 
 /**
- * Obtiene la URL canónica (Friendly URL) para una vista específica.
+ * Obtiene la URL canónica (Friendly URL) para una vista específica,
+ * incluyendo el prefijo base si está presente.
  */
 export function getPathForView(view: AppView): string {
-  return VIEW_PATHS[view] || "/";
+  const basePrefix = getBasePrefix();
+  const path = VIEW_PATHS[view] || "/";
+  if (!basePrefix) return path;
+  return path === "/" ? `${basePrefix}/` : `${basePrefix}${path}`;
 }
 
 /**
@@ -114,7 +148,7 @@ export function useAppRouter() {
       const targetView: AppView =
         typeof next === "string" && next in VIEW_PATHS
           ? (next as AppView)
-          : typeof next === "string" && next.startsWith("/")
+          : typeof next === "string" && (next.startsWith("/") || next.includes("/"))
           ? getViewFromPath(next)
           : (next as AppView);
 
@@ -149,10 +183,14 @@ export function useAppRouter() {
     setViewState(initialView);
     document.title = VIEW_TITLES[initialView] || "ECduLearm";
 
-    // Si la ruta escrita fue un alias como /acceso o /inicio, normalizar a la URL canónica
+    // Si la ruta escrita fue un alias como /acceso o le falta el trailing slash al prefijo base,
+    // normalizar a la URL canónica respetando el basePrefix
     const canonical = getPathForView(initialView);
-    if (window.location.pathname !== canonical && window.location.pathname !== "/") {
-      window.history.replaceState({ view: initialView }, "", canonical);
+    if (window.location.pathname !== canonical) {
+      const isBaseRoot = !getBasePrefix() && (window.location.pathname === "/" || window.location.pathname === "");
+      if (!isBaseRoot) {
+        window.history.replaceState({ view: initialView }, "", canonical);
+      }
     }
 
     // Escuchar botones de Atrás y Adelante del navegador
