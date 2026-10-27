@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Exercise, PinSession, TeacherUser, ViewType } from "./types";
+import { fetchPinFromDatabase, savePinSessionToDatabase } from "../services/supabaseClient";
 
 export const DEFAULT_EXERCISE: Exercise = {
   id: "ex-default-1",
@@ -67,6 +68,7 @@ interface AppContextType {
   pinSessions: Record<string, PinSession>;
   createPinForExercise: (exercise: Exercise) => string;
   getPinSession: (pin: string) => PinSession | null;
+  resolvePinSession: (pin: string) => Promise<PinSession | null>;
   evaluatorMode: boolean;
   setEvaluatorMode: (val: boolean) => void;
   resetAll: () => void;
@@ -220,12 +222,33 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       [pin]: newSession,
     }));
     setActivePin(pin);
+    // Persistencia en Supabase en segundo plano
+    savePinSessionToDatabase(newSession).catch((err) =>
+      console.warn("[ECduLearm Store] Error persistiendo PIN en Supabase:", err)
+    );
     return pin;
   };
 
   const getPinSession = (pin: string): PinSession | null => {
-    const cleanPin = pin.trim().replace(/\s+/g, "");
+    const cleanPin = pin.trim().replace(/\s+/g, "").toUpperCase();
     return pinSessions[cleanPin] || null;
+  };
+
+  const resolvePinSession = async (pin: string): Promise<PinSession | null> => {
+    const cleanPin = pin.trim().replace(/\s+/g, "").toUpperCase();
+    if (pinSessions[cleanPin]) {
+      return pinSessions[cleanPin];
+    }
+    // Si no está en memoria local, consultar en la base de datos Supabase
+    const dbSession = await fetchPinFromDatabase(cleanPin);
+    if (dbSession) {
+      setPinSessions((prev) => ({
+        ...prev,
+        [cleanPin]: dbSession,
+      }));
+      return dbSession;
+    }
+    return null;
   };
 
   const resetAll = () => {
@@ -256,6 +279,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         pinSessions,
         createPinForExercise,
         getPinSession,
+        resolvePinSession,
         evaluatorMode,
         setEvaluatorMode,
         resetAll,
