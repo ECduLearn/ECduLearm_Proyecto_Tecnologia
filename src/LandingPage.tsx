@@ -633,7 +633,7 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
                 Política de Privacidad
               </button>
               <a
-                href="https://github.com/eisefaaabri/ECduLearm_Proyecto_Tecnologia"
+                href="https://github.com/ECduLearn/ECduLearm_Proyecto_Tecnologia"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 font-medium text-sand-700 hover:text-sand-950"
