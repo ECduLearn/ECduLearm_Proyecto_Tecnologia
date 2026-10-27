@@ -43,4 +43,11 @@ CLAUDE.md
 .agents/
 .figma/
 .mise.toml
+skills-lock.json
+
+# Archivos de apoyo y diseño local
+diseños/
+*.pdf
+Burndown_*.png
+
 

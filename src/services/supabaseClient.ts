@@ -72,7 +72,7 @@ export function isSupabaseConnected(): boolean {
 }
 
 /**
- * Consulta un PIN de aula en la base de datos Supabase.
+ * Consulta un PIN de aula en la base de datos Supabase (Soporta esquema v2 'aulas_virtuales' y v1 'pin_sessions').
  * Si Supabase no está configurado o falla, devuelve null (para fallback en localStorage).
  */
 export async function fetchPinFromDatabase(pin: string): Promise<PinSession | null> {
@@ -81,6 +81,70 @@ export async function fetchPinFromDatabase(pin: string): Promise<PinSession | nu
 
   const clean = pin.trim().replace(/\s+/g, "").toUpperCase();
 
+  // 1. Intentar consultar en esquema v2: aulas_virtuales
+  try {
+    const { data: aulaV2 } = await supabase
+      .from("aulas_virtuales")
+      .select("pin_acceso, titulo_sesion, activa, created_at, docente_id, usuarios_institucionales(nombre_completo, instituciones(nombre))")
+      .eq("pin_acceso", clean)
+      .eq("activa", true)
+      .single();
+
+    if (aulaV2) {
+      const teacherName = (aulaV2.usuarios_institucionales as any)?.nombre_completo || "Docente Asignado";
+      const schoolName = (aulaV2.usuarios_institucionales as any)?.instituciones?.nombre || "Institución Educativa";
+
+      // Intentar obtener el primer ejercicio vinculado a esta aula
+      let exData: Exercise = {
+        id: `ex-${clean.toLowerCase()}`,
+        topic: aulaV2.titulo_sesion,
+        context: "Razonamiento y Aplicación",
+        level: "2do BGU",
+        difficulty: "Intermedia",
+        questions: 3,
+        version: 1,
+        situation: "Reto contextualizado asignado por el docente para el aula activa.",
+        questionList: ["Analiza el escenario, identifica las variables y aplica el modelo."],
+      };
+
+      try {
+        const { data: aeData } = await supabase
+          .from("aula_ejercicios")
+          .select("ejercicios_pisa(*)")
+          .eq("aula_id", (aulaV2 as any).id)
+          .limit(1)
+          .single();
+
+        if (aeData?.ejercicios_pisa) {
+          const ep = aeData.ejercicios_pisa as any;
+          exData = {
+            id: ep.id,
+            topic: ep.tema_curricular,
+            context: ep.contexto_pisa,
+            level: ep.curso_bgu,
+            difficulty: ep.nivel_dificultad,
+            questions: 3,
+            version: 1,
+            situation: ep.enunciado_contexto,
+            questionList: ep.pregunta_razonamiento ? ep.pregunta_razonamiento.split("\n") : [],
+            rubric: `Estándar PISA Nivel ${ep.nivel_pisa || 4}`,
+          };
+        }
+      } catch {}
+
+      return {
+        pin: aulaV2.pin_acceso,
+        schoolName,
+        teacherName,
+        subject: "Matemática y Razonamiento Lógico",
+        active: aulaV2.activa,
+        createdAt: new Date(aulaV2.created_at || Date.now()).getTime(),
+        exercise: exData,
+      };
+    }
+  } catch {}
+
+  // 2. Consulta en tabla v1: pin_sessions
   try {
     const { data, error } = await supabase
       .from("pin_sessions")
@@ -111,14 +175,40 @@ export async function fetchPinFromDatabase(pin: string): Promise<PinSession | nu
 }
 
 /**
- * Guarda una nueva sesión de aula y ejercicio en Supabase.
+ * Guarda una nueva sesión de aula y ejercicio en Supabase (con sincronización v1 y v2).
  */
 export async function savePinSessionToDatabase(session: PinSession): Promise<boolean> {
   const supabase = getSupabaseClient();
   if (!supabase) return false;
 
+  const cleanPin = session.pin.toUpperCase().trim();
+
+  // 1. Guardar en esquema v2 (ejercicios_pisa y aulas_virtuales)
   try {
-    // 1. Guardar ejercicio
+    if (session.exercise) {
+      await supabase.from("ejercicios_pisa").upsert({
+        tema_curricular: session.exercise.topic,
+        contexto_pisa: session.exercise.context,
+        curso_bgu: session.exercise.level,
+        nivel_dificultad: session.exercise.difficulty,
+        enunciado_contexto: session.exercise.situation || "",
+        pregunta_razonamiento: session.exercise.questionList?.join("\n") || "",
+        solucion_paso_a_paso_docente: "Procedimiento guiado",
+        respuesta_correcta: "Solución en revisión",
+        es_publico: true,
+      });
+    }
+
+    await supabase.from("aulas_virtuales").upsert({
+      pin_acceso: cleanPin,
+      titulo_sesion: session.exercise?.topic || `Aula ${cleanPin}`,
+      modo_aula: "RETO_CLASE",
+      activa: session.active,
+    });
+  } catch {}
+
+  // 2. Guardar en esquema v1 (pin_sessions) para compatibilidad
+  try {
     if (session.exercise) {
       await supabase.from("exercises").upsert({
         id: session.exercise.id || `ex-${Date.now()}`,
@@ -134,9 +224,8 @@ export async function savePinSessionToDatabase(session: PinSession): Promise<boo
       });
     }
 
-    // 2. Guardar sesión de PIN
     const { error } = await supabase.from("pin_sessions").upsert({
-      pin: session.pin.toUpperCase(),
+      pin: cleanPin,
       school_name: session.schoolName,
       teacher_name: session.teacherName,
       subject: session.subject,
@@ -146,12 +235,7 @@ export async function savePinSessionToDatabase(session: PinSession): Promise<boo
       updated_at: new Date().toISOString(),
     });
 
-    if (error) {
-      console.warn("[ECduLearm DB] Error guardando sesión PIN:", error.message);
-      return false;
-    }
-
-    return true;
+    return !error;
   } catch (err) {
     console.warn("[ECduLearm DB] Excepción al guardar en Supabase:", err);
     return false;

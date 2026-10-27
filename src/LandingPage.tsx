@@ -108,6 +108,16 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
                 </button>
               </div>
 
+              {/* Acceso rápido / Credenciales de prueba para el Evaluador / Jurado */}
+              <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-sand-300 bg-sand-100/90 px-4 py-2 text-xs text-sand-800">
+                <span className="font-bold text-ink-950 flex items-center gap-1.5">
+                  <span>🔑</span> Credenciales Evaluador:
+                </span>
+                <span>Docente: <strong className="font-mono text-ink-900">docente@puce.edu.ec</strong> (<span className="font-mono text-sand-600">demo123</span>)</span>
+                <span className="text-sand-400">·</span>
+                <span>Estudiante: <strong className="font-mono text-ink-900">PIN: PISA26</strong></span>
+              </div>
+
               {/* Métricas destacadas en el Hero */}
               <div className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-sand-300 pt-6">
                 <div>
@@ -262,24 +272,24 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
             <div className="mt-10 rounded-3xl border border-sand-300 bg-white p-6 card-pop sm:p-8">
               <div className="grid grid-cols-2 gap-y-6 sm:grid-cols-4 sm:divide-x sm:divide-sand-200">
                 <div className="sm:px-6 sm:first:pl-0">
-                  <span className="block text-3xl font-black text-ink-900">17,4%</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Desempeño básico PISA en Ecuador</span>
+                  <span className="block text-3xl font-black text-ink-900">78,6%</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">22 de 28 docentes necesitan adaptar razonamiento frecuentemente</span>
                 </div>
                 <div className="sm:px-6">
-                  <span className="block text-3xl font-black text-ink-900">22 de 28</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Docentes encuestados adaptan material</span>
+                  <span className="block text-3xl font-black text-hint-700">85,7%</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">24 de 28 validaron como útil la orientación tipo PISA</span>
                 </div>
                 <div className="sm:px-6">
-                  <span className="block text-3xl font-black text-hint-700">0 PII</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Cero recolección de datos de menores</span>
+                  <span className="block text-3xl font-black text-ink-900">0 PII</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Cero recolección de datos de menores (acceso PIN)</span>
                 </div>
                 <div className="sm:px-6 sm:last:pr-0">
                   <span className="block text-3xl font-black text-ink-900">4 Fases</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Estructura oficial ERCA ministerial</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-sand-600">Estructura curricular oficial ERCA ministerial</span>
                 </div>
               </div>
               <p className="mt-6 border-t border-sand-200 pt-4 text-center text-[11px] text-sand-500">
-                Fuentes: Informes oficiales PISA, 28 encuestas directas a docentes de bachillerato y 12 entrevistas de profundidad del equipo Scrum.
+                Fuentes: Informes oficiales PISA (80% bajo Nivel 2 en Ecuador), 28 encuestas directas a docentes de bachillerato en Quito (93,3% de cobertura) y 12 entrevistas en profundidad.
               </p>
             </div>
           </div>

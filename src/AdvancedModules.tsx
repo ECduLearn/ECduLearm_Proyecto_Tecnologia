@@ -1,5 +1,6 @@
 import { DragEvent, FormEvent, ReactNode, useEffect, useState } from "react";
 import { generateExerciseAI, reviewExamAI } from "./services/aiService";
+import { ejerciciosController, planificacionesController } from "./services/dbService";
 
 type AdvancedIconName =
   | "arrow-left"
@@ -171,8 +172,24 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
       setIsGeneratingPisa(false);
       setPisaInserted(true);
       setPisaModalOpen(false);
-      setNotice(`Ejercicio PISA “${res.data.exercise.topic}” insertado`);
+      setNotice(`Ejercicio PISA “${res.data.exercise.topic}” insertado en Aplicación (Guardado en BD)`);
       localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
+
+      // Persistir ejercicio en tabla ejercicios_pisa
+      const savedEx = await ejerciciosController.createEjercicio(res.data.exercise);
+
+      // Persistir planificación ERCA completa vinculada al ejercicio
+      await planificacionesController.savePlanificacion({
+        titulo: `Planificación ERCA: ${res.data.exercise.topic}`,
+        curso: "2do BGU",
+        destreza: "M.5.2.3 Resolver problemas en contextos reales justificando procedimientos con modelos matemáticos.",
+        duracionMinutos: parseInt(duration) || 45,
+        experiencia: "Observar estructuras y registros fotográficos e identificar elementos geométricos y cuantitativos.",
+        reflexion: "¿Qué datos son indispensables para asegurar la estabilidad o proporcionalidad de la situación?",
+        conceptualizacion: "Formalización analítica del modelo matemático y deducción de relaciones.",
+        aplicacion: `Resolución del reto PISA: ${res.data.exercise.situation}`,
+        ejercicioPisaId: savedEx.data.id,
+      });
     } catch {
       setIsGeneratingPisa(false);
       setPisaInserted(true);

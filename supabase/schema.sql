@@ -1,550 +1,1412 @@
 -- ==============================================================================
--- ECduLearm: Esquema Profesional de Base de Datos PostgreSQL para Supabase
--- Plataforma SaaS B2B EdTech con Tutor Socrático y Acceso Anónimo por PIN
--- Arquitectura: Relacional Normalizada (3NF) + RLS + Triggers + Realtime + Vistas
--- Pontificia Universidad Católica del Ecuador (PUCE) - Emprendimiento Tecnológico
+-- ECduLearn · Esquema relacional v2.0.0 (PostgreSQL 15+ / Supabase)
+-- Versión auditada de supabase/schema.sql v1 · Cambio MAJOR (tablas renombradas)
+--
+-- PARTE A (secciones 1-9): PostgreSQL estándar. Se puede migrar a otro PostgreSQL
+--                         (p. ej. un VPS en Hostinger) sin cambios.
+-- PARTE B (secciones 10-14): solo para Supabase (auth.uid(), roles anon/authenticated,
+--                          RLS, Realtime). Si migras fuera de Supabase, quítala.
+--
+-- Coexiste con las tablas v1 (pin_sessions, exercises, student_interactions):
+-- los nombres no chocan, así que el frontend actual sigue funcionando mientras migran.
 -- ==============================================================================
 
--- 1. EXTENSIONES
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ==============================================================================
--- 2. FUNCIÓN DISPARADORA GENÉRICA PARA ACTUALIZACIÓN DE TIMESTAMPS
+-- PARTE A · 1. FUNCIONES UTILITARIAS
 -- ==============================================================================
-CREATE OR REPLACE FUNCTION public.fn_handle_updated_at()
-RETURNS TRIGGER AS $$
+
+-- now() en TIMESTAMPTZ guarda el instante absoluto (no usar TIMEZONE('utc', NOW())).
+CREATE OR REPLACE FUNCTION public.fn_set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
-    NEW.updated_at = TIMEZONE('utc'::text, NOW());
+    NEW.updated_at := now();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+-- Supuesto de negocio: 45 min (2700 s) para adaptar a mano un ejercicio PISA.
+-- Viene de las entrevistas de campo (4 a 10 h semanales). Se define una sola vez aquí.
+CREATE OR REPLACE FUNCTION public.fn_baseline_segundos_manual()
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+SET search_path = ''
+AS $$ SELECT 2700 $$;
 
 -- ==============================================================================
--- 3. TABLA: INSTITUCIONES_EDUCATIVAS (Entidad Institucional B2B)
+-- PARTE A · 2. CATÁLOGOS
 -- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.instituciones_educativas (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nombre VARCHAR(200) NOT NULL,
-    codigo_amie VARCHAR(30) UNIQUE, -- Código oficial del Ministerio de Educación de Ecuador
-    ciudad VARCHAR(100) DEFAULT 'Quito' NOT NULL,
-    provincia VARCHAR(100) DEFAULT 'Pichincha' NOT NULL,
-    tipo VARCHAR(50) DEFAULT 'Fiscal' CHECK (tipo IN ('Fiscal', 'Particular', 'Municipal', 'Fiscomisional')),
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
 
--- Trigger updated_at para instituciones
-DROP TRIGGER IF EXISTS trg_instituciones_updated_at ON public.instituciones_educativas;
-CREATE TRIGGER trg_instituciones_updated_at
-    BEFORE UPDATE ON public.instituciones_educativas
-    FOR EACH ROW EXECUTE FUNCTION public.fn_handle_updated_at();
-
--- ==============================================================================
--- 4. TABLA: DOCENTES (Perfiles de Profesores y Coordinadores de Área)
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.docentes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    institucion_id UUID REFERENCES public.instituciones_educativas(id) ON DELETE SET NULL,
-    email_institucional VARCHAR(150) UNIQUE NOT NULL,
-    nombre_completo VARCHAR(150) NOT NULL,
-    especialidad VARCHAR(100) DEFAULT 'Matemáticas y Razonamiento Lógico',
-    rol VARCHAR(30) DEFAULT 'docente' CHECK (rol IN ('docente', 'coordinador_area', 'administrador')),
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- Trigger updated_at para docentes
-DROP TRIGGER IF EXISTS trg_docentes_updated_at ON public.docentes;
-CREATE TRIGGER trg_docentes_updated_at
-    BEFORE UPDATE ON public.docentes
-    FOR EACH ROW EXECUTE FUNCTION public.fn_handle_updated_at();
-
--- ==============================================================================
--- 5. TABLA: EXERCISES (Guías Didácticas ERCA y Retos Cuantitativos PISA)
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.exercises (
-    id TEXT PRIMARY KEY DEFAULT ('ex-' || substr(md5(random()::text), 1, 8)),
-    docente_id UUID REFERENCES public.docentes(id) ON DELETE SET NULL,
-    topic TEXT NOT NULL,
-    context TEXT DEFAULT 'Razonamiento Cuantitativo' NOT NULL,
-    level TEXT DEFAULT '2do BGU' NOT NULL,
-    difficulty TEXT DEFAULT 'Intermedia' CHECK (difficulty IN ('Básica', 'Intermedia', 'Avanzada')),
-    questions INTEGER DEFAULT 3 CHECK (questions >= 1 AND questions <= 10),
-    version INTEGER DEFAULT 1 CHECK (version >= 1),
-    situation TEXT NOT NULL,
-    question_list JSONB DEFAULT '[]'::jsonb NOT NULL,
-    rubric TEXT DEFAULT 'Estándar PISA: Modelado de situaciones reales y razonamiento cuantitativo.',
-    fases_erca JSONB DEFAULT '[]'::jsonb, -- Estructura en 4 fases: Experiencia, Reflexión, Conceptualización, Aplicación
-    solucion_docente TEXT, -- Procedimiento guiado exclusivo para el docente
-    is_public BOOLEAN DEFAULT TRUE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- Trigger updated_at para exercises
-DROP TRIGGER IF EXISTS trg_exercises_updated_at ON public.exercises;
-CREATE TRIGGER trg_exercises_updated_at
-    BEFORE UPDATE ON public.exercises
-    FOR EACH ROW EXECUTE FUNCTION public.fn_handle_updated_at();
-
--- ==============================================================================
--- 6. TABLA: PIN_SESSIONS (Aulas Virtuales y Sesiones Efímeras por PIN)
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.pin_sessions (
-    pin VARCHAR(10) PRIMARY KEY,
-    docente_id UUID REFERENCES public.docentes(id) ON DELETE SET NULL,
-    exercise_id TEXT REFERENCES public.exercises(id) ON DELETE SET NULL,
-    school_name TEXT DEFAULT 'Institución Educativa' NOT NULL,
-    teacher_name TEXT DEFAULT 'Docente Responsable' NOT NULL,
-    subject TEXT DEFAULT 'Razonamiento Lógico Matemático' NOT NULL,
-    active BOOLEAN DEFAULT TRUE NOT NULL,
-    estado VARCHAR(20) DEFAULT 'activa' CHECK (estado IN ('activa', 'cerrada', 'archivada', 'expirada')),
-    exercise_data JSONB NOT NULL, -- Snapshot inmutable del ejercicio al momento de crear el aula
-    max_students INTEGER DEFAULT 50,
-    expires_at TIMESTAMPTZ DEFAULT (TIMEZONE('utc'::text, NOW()) + INTERVAL '7 days'),
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- Trigger updated_at para pin_sessions
-DROP TRIGGER IF EXISTS trg_pin_sessions_updated_at ON public.pin_sessions;
-CREATE TRIGGER trg_pin_sessions_updated_at
-    BEFORE UPDATE ON public.pin_sessions
-    FOR EACH ROW EXECUTE FUNCTION public.fn_handle_updated_at();
-
--- ==============================================================================
--- 7. TABLA: STUDENT_INTERACTIONS (Telemetría Pedagógica y Tutor Socrático)
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.student_interactions (
-    id BIGSERIAL PRIMARY KEY,
-    pin VARCHAR(10) REFERENCES public.pin_sessions(pin) ON DELETE CASCADE NOT NULL,
-    student_session_id VARCHAR(100) NOT NULL, -- Identificador anónimo efímero del navegador (sin PII)
-    pregunta_numero INTEGER DEFAULT 1 CHECK (pregunta_numero >= 1),
-    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'tutor', 'system')),
-    message TEXT NOT NULL,
-    is_blocked_attempt BOOLEAN DEFAULT FALSE NOT NULL, -- Intento de solicitar respuesta directa o copia
-    pistas_solicitadas INTEGER DEFAULT 0,
-    paso_bloqueo VARCHAR(100), -- Etapa cognitiva: 'comprensión_lectora', 'variables', 'ecuación', 'cálculo'
-    completado BOOLEAN DEFAULT FALSE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+CREATE TABLE IF NOT EXISTS public.asignaturas (
+    id      SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre  VARCHAR(80) NOT NULL,
+    CONSTRAINT uq_asignaturas_nombre UNIQUE (nombre)
 );
 
 -- ==============================================================================
--- 8. TABLA: ADMISSION_QUESTIONS (Banco de Preguntas del Simulador Universitario)
+-- PARTE A · 3. TENANT B2B Y USUARIOS ADULTOS
 -- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.admission_questions (
-    id SERIAL PRIMARY KEY,
-    area VARCHAR(100) NOT NULL, -- 'Geometría', 'Álgebra', 'Razonamiento numérico'
-    prompt TEXT NOT NULL,
-    options JSONB NOT NULL, -- Array con opciones de respuesta
-    correct_option VARCHAR(5) NOT NULL, -- 'A', 'B', 'C', 'D'
-    explanation TEXT,
-    difficulty VARCHAR(20) DEFAULT 'Intermedia' CHECK (difficulty IN ('Básica', 'Intermedia', 'Avanzada')),
-    active BOOLEAN DEFAULT TRUE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+
+CREATE TABLE IF NOT EXISTS public.instituciones (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre              VARCHAR(200) NOT NULL,
+    codigo_amie         VARCHAR(12),
+    tipo_institucion    VARCHAR(20)  NOT NULL DEFAULT 'PARTICULAR',
+    plan_suscripcion    VARCHAR(20)  NOT NULL DEFAULT 'PILOTO',
+    pin_grado_autonomo  VARCHAR(6),
+    limite_docentes     SMALLINT     NOT NULL DEFAULT 10,
+    ciudad              VARCHAR(100) NOT NULL DEFAULT 'Quito',
+    provincia           VARCHAR(100) NOT NULL DEFAULT 'Pichincha',
+    activa              BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT uq_instituciones_amie       UNIQUE (codigo_amie),
+    CONSTRAINT uq_instituciones_pin_grado  UNIQUE (pin_grado_autonomo),
+    -- FISCOMISIONAL incluye a la red Fe y Alegría
+    CONSTRAINT ck_instituciones_tipo   CHECK (tipo_institucion IN ('PARTICULAR', 'FISCOMISIONAL', 'FISCAL', 'MUNICIPAL')),
+    CONSTRAINT ck_instituciones_plan   CHECK (plan_suscripcion IN ('ACTIVA', 'PILOTO', 'CONVENIO', 'SUSPENDIDA')),
+    CONSTRAINT ck_instituciones_pin    CHECK (pin_grado_autonomo IS NULL OR pin_grado_autonomo ~ '^[A-Z0-9]{6}$'),
+    CONSTRAINT ck_instituciones_limite CHECK (limite_docentes BETWEEN 1 AND 500)
+);
+
+-- Aquí nunca se guardan estudiantes.
+CREATE TABLE IF NOT EXISTS public.usuarios_institucionales (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institucion_id           UUID         NOT NULL,
+    auth_user_id             UUID,                 -- vínculo con auth.users (Supabase Auth)
+    nombre_completo          VARCHAR(150) NOT NULL,
+    email_institucional      VARCHAR(254) NOT NULL,
+    password_hash            VARCHAR(255),         -- NULL con Supabase Auth; bcrypt/argon2 en backend propio
+    rol                      VARCHAR(20)  NOT NULL DEFAULT 'DOCENTE',
+    asignatura_principal_id  SMALLINT,
+    activo                   BOOLEAN      NOT NULL DEFAULT TRUE,
+    ultimo_acceso_en         TIMESTAMPTZ,
+    created_at               TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT fk_usuarios_institucion FOREIGN KEY (institucion_id)
+        REFERENCES public.instituciones (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_usuarios_asignatura FOREIGN KEY (asignatura_principal_id)
+        REFERENCES public.asignaturas (id) ON DELETE SET NULL,
+    CONSTRAINT uq_usuarios_email  UNIQUE (email_institucional),
+    CONSTRAINT uq_usuarios_auth   UNIQUE (auth_user_id),
+    CONSTRAINT ck_usuarios_rol    CHECK (rol IN ('DOCENTE', 'COORDINADOR_RECTOR', 'ADMIN')),
+    CONSTRAINT ck_usuarios_email  CHECK (email_institucional ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
+    -- Al forzar minúsculas, el UNIQUE ya no distingue mayúsculas (y funciona igual en MySQL)
+    CONSTRAINT ck_usuarios_email_minusculas CHECK (email_institucional = lower(email_institucional)),
+    -- Impide guardar contraseñas en texto plano
+    CONSTRAINT ck_usuarios_password_hash CHECK (password_hash IS NULL OR password_hash ~ '^\$(2[aby]\$|argon2)')
 );
 
 -- ==============================================================================
--- 9. ÍNDICES DE ALTO RENDIMIENTO
--- ==============================================================================
-CREATE INDEX IF NOT EXISTS idx_docentes_email ON public.docentes(email_institucional);
-CREATE INDEX IF NOT EXISTS idx_exercises_docente ON public.exercises(docente_id);
-CREATE INDEX IF NOT EXISTS idx_exercises_topic ON public.exercises(topic);
-CREATE INDEX IF NOT EXISTS idx_exercises_level ON public.exercises(level);
-CREATE INDEX IF NOT EXISTS idx_pin_sessions_active ON public.pin_sessions(active);
-CREATE INDEX IF NOT EXISTS idx_pin_sessions_docente ON public.pin_sessions(docente_id);
-CREATE INDEX IF NOT EXISTS idx_pin_sessions_expires ON public.pin_sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_student_interactions_pin ON public.student_interactions(pin);
-CREATE INDEX IF NOT EXISTS idx_student_interactions_session ON public.student_interactions(student_session_id);
-CREATE INDEX IF NOT EXISTS idx_student_interactions_blocked ON public.student_interactions(is_blocked_attempt);
-CREATE INDEX IF NOT EXISTS idx_admission_questions_area ON public.admission_questions(area);
-
--- ==============================================================================
--- 10. VISTAS ANALÍTICAS INTELIGENTES (Para Panel Docente y Coordinación)
+-- PARTE A · 4. CONTENIDO PEDAGÓGICO (PISA + ERCA)
 -- ==============================================================================
 
--- Vista 1: Resumen de actividad por Aula Virtual (alumnos únicos, interacciones y copias bloqueadas)
-CREATE OR REPLACE VIEW public.vw_resumen_aulas AS
-SELECT 
-    p.pin,
-    p.school_name,
-    p.teacher_name,
-    p.subject,
-    p.active,
-    p.expires_at,
-    (p.expires_at > TIMEZONE('utc'::text, NOW()) AND p.active = true) AS esta_vigente,
-    COALESCE(COUNT(DISTINCT si.student_session_id), 0) AS total_estudiantes_unicos,
-    COALESCE(COUNT(si.id), 0) AS total_mensajes_socrativos,
-    COALESCE(COUNT(CASE WHEN si.is_blocked_attempt = true THEN 1 END), 0) AS intentos_copia_bloqueados,
-    p.created_at
-FROM public.pin_sessions p
-LEFT JOIN public.student_interactions si ON p.pin = si.pin
-GROUP BY p.pin, p.school_name, p.teacher_name, p.subject, p.active, p.expires_at, p.created_at;
+CREATE TABLE IF NOT EXISTS public.ejercicios_pisa (
+    id                            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    docente_creador_id            UUID,            -- NULL = banco base de ECduLearn
+    ejercicio_padre_id            UUID,            -- agrupa Versión A/B/C e iteraciones
+    etiqueta_version              VARCHAR(20)  NOT NULL DEFAULT 'Original',
+    curso_bgu                     VARCHAR(7)   NOT NULL,
+    asignatura_id                 SMALLINT     NOT NULL,
+    tema_curricular               VARCHAR(150) NOT NULL,
+    contexto_pisa                 VARCHAR(100) NOT NULL,
+    nivel_dificultad              VARCHAR(10)  NOT NULL DEFAULT 'Intermedia',
+    nivel_pisa                    SMALLINT,
+    enunciado_contexto            TEXT         NOT NULL,
+    pregunta_razonamiento         TEXT         NOT NULL,
+    opciones_respuesta            JSONB,           -- solo opción múltiple (simulador)
+    respuesta_correcta            TEXT         NOT NULL,  -- en opción múltiple: letra 'A'..'F'
+    solucion_paso_a_paso_docente  TEXT         NOT NULL,  -- nunca se expone al estudiante
+    pistas_socraticas_base        JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    es_publico                    BOOLEAN      NOT NULL DEFAULT FALSE,
+    generado_por_ia               BOOLEAN      NOT NULL DEFAULT TRUE,
+    tiempo_creacion_segundos      INTEGER,
+    created_at                    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at                    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT fk_ejercicios_docente FOREIGN KEY (docente_creador_id)
+        REFERENCES public.usuarios_institucionales (id) ON DELETE SET NULL,
+    CONSTRAINT fk_ejercicios_padre FOREIGN KEY (ejercicio_padre_id)
+        REFERENCES public.ejercicios_pisa (id) ON DELETE SET NULL,
+    CONSTRAINT fk_ejercicios_asignatura FOREIGN KEY (asignatura_id)
+        REFERENCES public.asignaturas (id) ON DELETE RESTRICT,
+    CONSTRAINT uq_ejercicios_version UNIQUE (ejercicio_padre_id, etiqueta_version),
+    CONSTRAINT ck_ejercicios_curso      CHECK (curso_bgu IN ('1ro BGU', '2do BGU', '3ro BGU')),
+    CONSTRAINT ck_ejercicios_dificultad CHECK (nivel_dificultad IN ('Básica', 'Intermedia', 'Avanzada')),
+    CONSTRAINT ck_ejercicios_nivel_pisa CHECK (nivel_pisa IS NULL OR nivel_pisa BETWEEN 1 AND 6),
+    CONSTRAINT ck_ejercicios_etiqueta   CHECK (etiqueta_version ~ '^(Original|Iteración [0-9]{1,3}|Versión [A-Z])$'),
+    CONSTRAINT ck_ejercicios_no_autorref CHECK (ejercicio_padre_id IS NULL OR ejercicio_padre_id <> id),
+    CONSTRAINT ck_ejercicios_opciones   CHECK (
+        opciones_respuesta IS NULL
+        OR (jsonb_typeof(opciones_respuesta) = 'array' AND jsonb_array_length(opciones_respuesta) BETWEEN 2 AND 6)
+    ),
+    CONSTRAINT ck_ejercicios_respuesta_mc CHECK (opciones_respuesta IS NULL OR respuesta_correcta ~ '^[A-F]$'),
+    CONSTRAINT ck_ejercicios_pistas     CHECK (jsonb_typeof(pistas_socraticas_base) = 'array'),
+    CONSTRAINT ck_ejercicios_tiempo     CHECK (tiempo_creacion_segundos IS NULL OR tiempo_creacion_segundos >= 0),
+    CONSTRAINT ck_ejercicios_banco_base CHECK (docente_creador_id IS NOT NULL OR es_publico)
+);
 
--- Vista 2: Analítica de Dificultad y Pasos de Bloqueo por Pregunta
-CREATE OR REPLACE VIEW public.vw_analitica_bloqueos_pisa AS
-SELECT 
-    si.pin,
-    si.pregunta_numero,
-    COALESCE(si.paso_bloqueo, 'Comprensión general') AS paso_critico,
-    COUNT(*) AS frecuencia_bloqueos,
-    SUM(si.pistas_solicitadas) AS total_pistas_pedidas,
-    COUNT(CASE WHEN si.is_blocked_attempt = true THEN 1 END) AS solicitudes_respuesta_directa
-FROM public.student_interactions si
-WHERE si.role = 'student'
-GROUP BY si.pin, si.pregunta_numero, si.paso_bloqueo;
+CREATE TABLE IF NOT EXISTS public.planificaciones_erca (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    docente_id              UUID         NOT NULL,
+    titulo_guia             VARCHAR(200) NOT NULL,
+    curso_bgu               VARCHAR(7)   NOT NULL,
+    asignatura_id           SMALLINT     NOT NULL,
+    destreza_dcd            VARCHAR(400) NOT NULL,
+    duracion_minutos        SMALLINT     NOT NULL DEFAULT 45,
+    fase_experiencia        TEXT         NOT NULL,
+    fase_reflexion          TEXT         NOT NULL,
+    fase_conceptualizacion  TEXT         NOT NULL,
+    fase_aplicacion_texto   TEXT         NOT NULL,
+    archivo_silabo_url      VARCHAR(500),
+    created_at              TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at              TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT fk_planificaciones_docente FOREIGN KEY (docente_id)
+        REFERENCES public.usuarios_institucionales (id) ON DELETE CASCADE,
+    CONSTRAINT fk_planificaciones_asignatura FOREIGN KEY (asignatura_id)
+        REFERENCES public.asignaturas (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_planificaciones_curso    CHECK (curso_bgu IN ('1ro BGU', '2do BGU', '3ro BGU')),
+    CONSTRAINT ck_planificaciones_duracion CHECK (duracion_minutos BETWEEN 15 AND 240),
+    CONSTRAINT ck_planificaciones_url      CHECK (archivo_silabo_url IS NULL OR archivo_silabo_url ~ '^https://')
+);
 
--- ==============================================================================
--- 11. FUNCIÓN RPC: VALIDACIÓN DE PIN SEGURO PARA EL ESTUDIANTE
--- ==============================================================================
-CREATE OR REPLACE FUNCTION public.fn_validar_pin_aula(p_pin TEXT)
-RETURNS TABLE (
-    valido BOOLEAN,
-    pin TEXT,
-    school_name TEXT,
-    teacher_name TEXT,
-    subject TEXT,
-    exercise_data JSONB
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        true AS valido,
-        ps.pin::TEXT,
-        ps.school_name,
-        ps.teacher_name,
-        ps.subject,
-        ps.exercise_data
-    FROM public.pin_sessions ps
-    WHERE ps.pin = UPPER(TRIM(p_pin))
-      AND ps.active = true
-      AND (ps.expires_at IS NULL OR ps.expires_at > TIMEZONE('utc'::text, NOW()))
-    LIMIT 1;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ==============================================================================
--- 12. SEGURIDAD A NIVEL DE FILAS (ROW LEVEL SECURITY - RLS)
--- ==============================================================================
-ALTER TABLE public.instituciones_educativas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.docentes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.exercises ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.pin_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.student_interactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admission_questions ENABLE ROW LEVEL SECURITY;
-
--- Políticas para instituciones_educativas:
-DROP POLICY IF EXISTS "Lectura pública de instituciones" ON public.instituciones_educativas;
-CREATE POLICY "Lectura pública de instituciones"
-    ON public.instituciones_educativas FOR SELECT
-    USING (true);
-
--- Políticas para docentes:
-DROP POLICY IF EXISTS "Lectura pública de docentes" ON public.docentes;
-CREATE POLICY "Lectura pública de docentes"
-    ON public.docentes FOR SELECT
-    USING (true);
-
-DROP POLICY IF EXISTS "Gestión de docentes" ON public.docentes;
-CREATE POLICY "Gestión de docentes"
-    ON public.docentes FOR ALL
-    USING (true)
-    WITH CHECK (true);
-
--- Políticas para exercises:
-DROP POLICY IF EXISTS "Lectura pública de ejercicios" ON public.exercises;
-CREATE POLICY "Lectura pública de ejercicios"
-    ON public.exercises FOR SELECT
-    USING (is_public = true OR true);
-
-DROP POLICY IF EXISTS "Creación y edición de ejercicios" ON public.exercises;
-CREATE POLICY "Creación y edición de ejercicios"
-    ON public.exercises FOR ALL
-    USING (true)
-    WITH CHECK (true);
-
--- Políticas para pin_sessions:
--- Estudiantes pueden leer sesiones activas sin autenticarse (acceso anónimo por PIN)
-DROP POLICY IF EXISTS "Lectura de sesiones de PIN activas" ON public.pin_sessions;
-CREATE POLICY "Lectura de sesiones de PIN activas"
-    ON public.pin_sessions FOR SELECT
-    USING (true);
-
-DROP POLICY IF EXISTS "Creación y actualización de sesiones de PIN" ON public.pin_sessions;
-CREATE POLICY "Creación y actualización de sesiones de PIN"
-    ON public.pin_sessions FOR ALL
-    USING (true)
-    WITH CHECK (true);
-
--- Políticas para student_interactions:
--- Los estudiantes pueden insertar sus preguntas y consultar sus propias interacciones anónimas
-DROP POLICY IF EXISTS "Inserción de interacciones de alumnos" ON public.student_interactions;
-CREATE POLICY "Inserción de interacciones de alumnos"
-    ON public.student_interactions FOR INSERT
-    WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Lectura de interacciones socráticas" ON public.student_interactions;
-CREATE POLICY "Lectura de interacciones socráticas"
-    ON public.student_interactions FOR SELECT
-    USING (true);
-
--- Políticas para admission_questions:
-DROP POLICY IF EXISTS "Lectura pública del banco del simulador" ON public.admission_questions;
-CREATE POLICY "Lectura pública del banco del simulador"
-    ON public.admission_questions FOR SELECT
-    USING (active = true);
+-- Relación N:M: qué ejercicios van en la fase de Aplicación de cada guía
+CREATE TABLE IF NOT EXISTS public.planificacion_ejercicios (
+    planificacion_id  UUID     NOT NULL,
+    ejercicio_id      UUID     NOT NULL,
+    orden             SMALLINT NOT NULL,
+    CONSTRAINT pk_planificacion_ejercicios PRIMARY KEY (planificacion_id, ejercicio_id),
+    CONSTRAINT fk_plan_ej_planificacion FOREIGN KEY (planificacion_id)
+        REFERENCES public.planificaciones_erca (id) ON DELETE CASCADE,
+    CONSTRAINT fk_plan_ej_ejercicio FOREIGN KEY (ejercicio_id)
+        REFERENCES public.ejercicios_pisa (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_plan_ej_orden CHECK (orden >= 1),
+    CONSTRAINT uq_plan_ej_orden UNIQUE (planificacion_id, orden)
+);
 
 -- ==============================================================================
--- 13. HABILITACIÓN DE PUBLICACIÓN EN TIEMPO REAL (SUPABASE REALTIME)
+-- PARTE A · 5. AULAS POR PIN Y TELEMETRÍA ANÓNIMA (ZERO-PII)
 -- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.aulas_virtuales (
+    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pin_acceso             VARCHAR(6)   NOT NULL,
+    docente_id             UUID         NOT NULL,
+    planificacion_id       UUID,
+    titulo_sesion          VARCHAR(150) NOT NULL,
+    modo_aula              VARCHAR(20)  NOT NULL DEFAULT 'RETO_CLASE',
+    tiempo_limite_minutos  SMALLINT,
+    max_estudiantes        SMALLINT     NOT NULL DEFAULT 45,
+    activa                 BOOLEAN      NOT NULL DEFAULT TRUE,
+    expires_at             TIMESTAMPTZ  NOT NULL DEFAULT (now() + INTERVAL '7 days'),
+    created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    -- RESTRICT: un docente con aulas se desactiva (activo=false); no se borra, para no perder métricas
+    CONSTRAINT fk_aulas_docente FOREIGN KEY (docente_id)
+        REFERENCES public.usuarios_institucionales (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_aulas_planificacion FOREIGN KEY (planificacion_id)
+        REFERENCES public.planificaciones_erca (id) ON DELETE SET NULL,
+    CONSTRAINT uq_aulas_pin        UNIQUE (pin_acceso),
+    CONSTRAINT ck_aulas_pin        CHECK (pin_acceso ~ '^[A-Z0-9]{6}$'),
+    CONSTRAINT ck_aulas_modo       CHECK (modo_aula IN ('RETO_CLASE', 'PRACTICA_LIBRE', 'SIMULADOR_ADMISION')),
+    CONSTRAINT ck_aulas_cronometro CHECK (modo_aula <> 'SIMULADOR_ADMISION' OR tiempo_limite_minutos IS NOT NULL),
+    CONSTRAINT ck_aulas_tiempo     CHECK (tiempo_limite_minutos IS NULL OR tiempo_limite_minutos BETWEEN 5 AND 240),
+    CONSTRAINT ck_aulas_capacidad  CHECK (max_estudiantes BETWEEN 1 AND 60),
+    CONSTRAINT ck_aulas_expiracion CHECK (expires_at > created_at)
+);
+
+CREATE TABLE IF NOT EXISTS public.aula_ejercicios (
+    aula_id       UUID     NOT NULL,
+    ejercicio_id  UUID     NOT NULL,
+    orden         SMALLINT NOT NULL,
+    CONSTRAINT pk_aula_ejercicios PRIMARY KEY (aula_id, ejercicio_id),
+    CONSTRAINT fk_aula_ej_aula FOREIGN KEY (aula_id)
+        REFERENCES public.aulas_virtuales (id) ON DELETE CASCADE,
+    CONSTRAINT fk_aula_ej_ejercicio FOREIGN KEY (ejercicio_id)
+        REFERENCES public.ejercicios_pisa (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_aula_ej_orden CHECK (orden >= 1),
+    CONSTRAINT uq_aula_ej_orden UNIQUE (aula_id, orden)
+);
+
+-- Arco exclusivo: la sesión pertenece a un aula (PIN de aula) O a una institución (PIN de grado).
+CREATE TABLE IF NOT EXISTS public.sesiones_estudiantes_anonimas (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aula_id                 UUID,
+    institucion_id          UUID,
+    alias_temporal          VARCHAR(20)  NOT NULL,
+    token_dispositivo_hash  VARCHAR(64)  NOT NULL,  -- SHA-256 de un token aleatorio del navegador
+    estado                  VARCHAR(12)  NOT NULL DEFAULT 'EN_PROGRESO',
+    iniciado_en             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    ultima_actividad_en     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    finalizado_en           TIMESTAMPTZ,
+    -- Columna calculada: no se guarda a mano, así evitamos inconsistencias (atributo derivado)
+    tiempo_total_segundos   INTEGER GENERATED ALWAYS AS (
+        CASE WHEN finalizado_en IS NULL THEN NULL
+             ELSE EXTRACT(EPOCH FROM (finalizado_en - iniciado_en))::integer END
+    ) STORED,
+    puntaje_simulador       NUMERIC(5,2),
+    CONSTRAINT fk_sesiones_aula FOREIGN KEY (aula_id)
+        REFERENCES public.aulas_virtuales (id) ON DELETE CASCADE,
+    CONSTRAINT fk_sesiones_institucion FOREIGN KEY (institucion_id)
+        REFERENCES public.instituciones (id) ON DELETE CASCADE,
+    CONSTRAINT uq_sesiones_alias UNIQUE (aula_id, alias_temporal),
+    CONSTRAINT uq_sesiones_token UNIQUE (aula_id, token_dispositivo_hash),
+    CONSTRAINT ck_sesiones_ambito CHECK ((aula_id IS NULL) <> (institucion_id IS NULL)),
+    -- Zero-PII a nivel de motor: el alias solo puede tener este formato, nunca un nombre real
+    CONSTRAINT ck_sesiones_alias  CHECK (alias_temporal ~ '^Estudiante #[0-9]{1,6}$'),
+    CONSTRAINT ck_sesiones_token  CHECK (token_dispositivo_hash ~ '^[a-f0-9]{64}$'),
+    CONSTRAINT ck_sesiones_estado CHECK (estado IN ('EN_PROGRESO', 'COMPLETADO', 'ABANDONADO')),
+    CONSTRAINT ck_sesiones_cierre CHECK ((estado = 'EN_PROGRESO') = (finalizado_en IS NULL)),
+    CONSTRAINT ck_sesiones_fechas CHECK (finalizado_en IS NULL OR finalizado_en >= iniciado_en),
+    CONSTRAINT ck_sesiones_puntaje CHECK (puntaje_simulador IS NULL OR puntaje_simulador BETWEEN 0 AND 100)
+);
+
+-- Una fila por (sesión, ejercicio): las métricas dependen de la clave completa (2FN/3FN)
+CREATE TABLE IF NOT EXISTS public.intentos_y_bloqueos_ejercicio (
+    id                          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sesion_anonima_id           UUID        NOT NULL,
+    ejercicio_id                UUID        NOT NULL,
+    logro_resolver              BOOLEAN     NOT NULL DEFAULT FALSE,
+    numero_intentos             SMALLINT    NOT NULL DEFAULT 0,
+    pistas_socraticas_usadas    SMALLINT    NOT NULL DEFAULT 0,
+    paso_bloqueo_detectado      VARCHAR(30),
+    opcion_seleccionada         SMALLINT,   -- índice 0..5 (sin texto libre: no puede haber PII)
+    marcada_con_bandera         BOOLEAN     NOT NULL DEFAULT FALSE,
+    tiempo_resolucion_segundos  INTEGER,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT fk_intentos_sesion FOREIGN KEY (sesion_anonima_id)
+        REFERENCES public.sesiones_estudiantes_anonimas (id) ON DELETE CASCADE,
+    CONSTRAINT fk_intentos_ejercicio FOREIGN KEY (ejercicio_id)
+        REFERENCES public.ejercicios_pisa (id) ON DELETE RESTRICT,
+    CONSTRAINT uq_intentos_sesion_ejercicio UNIQUE (sesion_anonima_id, ejercicio_id),
+    CONSTRAINT ck_intentos_numero  CHECK (numero_intentos >= 0),
+    CONSTRAINT ck_intentos_pistas  CHECK (pistas_socraticas_usadas >= 0),
+    CONSTRAINT ck_intentos_opcion  CHECK (opcion_seleccionada IS NULL OR opcion_seleccionada BETWEEN 0 AND 5),
+    CONSTRAINT ck_intentos_tiempo  CHECK (tiempo_resolucion_segundos IS NULL OR tiempo_resolucion_segundos >= 0),
+    -- Vocabulario cerrado para poder hacer GROUP BY confiable en el dashboard
+    CONSTRAINT ck_intentos_paso CHECK (paso_bloqueo_detectado IS NULL OR paso_bloqueo_detectado IN (
+        'COMPRENSION_LECTORA', 'IDENTIFICACION_VARIABLES', 'PLANTEAMIENTO_ECUACION',
+        'CALCULO', 'INTERPRETACION_RESULTADO'
+    ))
+);
+
+CREATE TABLE IF NOT EXISTS public.mensajes_tutor_socratico (
+    id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    intento_id         BIGINT      NOT NULL,
+    remitente          VARCHAR(10) NOT NULL,
+    tipo_interaccion   VARCHAR(25) NOT NULL DEFAULT 'TEXTO_LIBRE',
+    contenido_mensaje  TEXT        NOT NULL,
+    tokens_consumidos  INTEGER,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT fk_mensajes_intento FOREIGN KEY (intento_id)
+        REFERENCES public.intentos_y_bloqueos_ejercicio (id) ON DELETE CASCADE,
+    CONSTRAINT ck_mensajes_remitente CHECK (remitente IN ('ESTUDIANTE', 'TUTOR_IA')),
+    CONSTRAINT ck_mensajes_tipo CHECK (tipo_interaccion IN (
+        'TEXTO_LIBRE', 'CHIP_RAPIDO', 'REVISION_POST_SIMULADOR', 'INTENTO_COPIA_BLOQUEADO'
+    )),
+    CONSTRAINT ck_mensajes_largo  CHECK (char_length(contenido_mensaje) BETWEEN 1 AND 4000),
+    CONSTRAINT ck_mensajes_tokens CHECK (tokens_consumidos IS NULL OR (tokens_consumidos >= 0 AND remitente = 'TUTOR_IA')),
+    CONSTRAINT ck_mensajes_copia  CHECK (tipo_interaccion <> 'INTENTO_COPIA_BLOQUEADO' OR remitente = 'ESTUDIANTE')
+);
+
+-- ==============================================================================
+-- PARTE A · 6. ÍNDICES
+-- PostgreSQL NO crea índices automáticos en las FK (solo en PK y UNIQUE).
+-- No hace falta índice extra en pin_acceso, email ni sesiones.aula_id: ya los cubre un UNIQUE.
+-- ==============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_usuarios_institucion    ON public.usuarios_institucionales (institucion_id);
+CREATE INDEX IF NOT EXISTS idx_ejercicios_docente      ON public.ejercicios_pisa (docente_creador_id);
+CREATE INDEX IF NOT EXISTS idx_ejercicios_padre        ON public.ejercicios_pisa (ejercicio_padre_id) WHERE ejercicio_padre_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ejercicios_catalogo     ON public.ejercicios_pisa (curso_bgu, asignatura_id, nivel_dificultad);
+CREATE INDEX IF NOT EXISTS idx_ejercicios_publicos     ON public.ejercicios_pisa (created_at DESC) WHERE es_publico;
+CREATE INDEX IF NOT EXISTS idx_planificaciones_docente ON public.planificaciones_erca (docente_id);
+CREATE INDEX IF NOT EXISTS idx_plan_ej_ejercicio       ON public.planificacion_ejercicios (ejercicio_id);
+CREATE INDEX IF NOT EXISTS idx_aulas_docente           ON public.aulas_virtuales (docente_id);
+CREATE INDEX IF NOT EXISTS idx_aulas_planificacion     ON public.aulas_virtuales (planificacion_id) WHERE planificacion_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_aulas_vigentes          ON public.aulas_virtuales (expires_at) WHERE activa;
+CREATE INDEX IF NOT EXISTS idx_aula_ej_ejercicio       ON public.aula_ejercicios (ejercicio_id);
+CREATE INDEX IF NOT EXISTS idx_sesiones_institucion    ON public.sesiones_estudiantes_anonimas (institucion_id, token_dispositivo_hash) WHERE institucion_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sesiones_en_progreso    ON public.sesiones_estudiantes_anonimas (ultima_actividad_en) WHERE estado = 'EN_PROGRESO';
+CREATE INDEX IF NOT EXISTS idx_sesiones_iniciado       ON public.sesiones_estudiantes_anonimas (iniciado_en);
+CREATE INDEX IF NOT EXISTS idx_intentos_ejercicio_paso ON public.intentos_y_bloqueos_ejercicio (ejercicio_id, paso_bloqueo_detectado);
+CREATE INDEX IF NOT EXISTS idx_mensajes_intento        ON public.mensajes_tutor_socratico (intento_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_mensajes_copia          ON public.mensajes_tutor_socratico (created_at) WHERE tipo_interaccion = 'INTENTO_COPIA_BLOQUEADO';
+
+-- ==============================================================================
+-- PARTE A · 7. TRIGGERS DE INTEGRIDAD DE NEGOCIO
+-- ==============================================================================
+
 DO $$
+DECLARE
+    t text;
 BEGIN
-    -- Publicación en tiempo real para sesiones de PIN (detección de inicio de clases)
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' AND tablename = 'pin_sessions'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.pin_sessions;
+    FOREACH t IN ARRAY ARRAY[
+        'instituciones', 'usuarios_institucionales', 'ejercicios_pisa',
+        'planificaciones_erca', 'aulas_virtuales', 'intentos_y_bloqueos_ejercicio'
+    ] LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS trg_%1$s_updated_at ON public.%1$I', t);
+        EXECUTE format(
+            'CREATE TRIGGER trg_%1$s_updated_at BEFORE UPDATE ON public.%1$I '
+            'FOR EACH ROW EXECUTE FUNCTION public.fn_set_updated_at()', t);
+    END LOOP;
+END $$;
+
+-- 7.1 Límite de docentes activos según el plan contratado
+CREATE OR REPLACE FUNCTION public.fn_validar_limite_docentes()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_limite   smallint;
+    v_actuales integer;
+BEGIN
+    IF NEW.rol <> 'DOCENTE' OR NOT NEW.activo THEN
+        RETURN NEW;
     END IF;
 
-    -- Publicación en tiempo real para interacciones (para que el docente vea dudas en vivo)
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' AND tablename = 'student_interactions'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.student_interactions;
+    SELECT i.limite_docentes INTO v_limite
+      FROM public.instituciones i
+     WHERE i.id = NEW.institucion_id
+       FOR UPDATE;
+
+    SELECT count(*) INTO v_actuales
+      FROM public.usuarios_institucionales u
+     WHERE u.institucion_id = NEW.institucion_id
+       AND u.rol = 'DOCENTE' AND u.activo AND u.id <> NEW.id;
+
+    IF v_actuales >= v_limite THEN
+        RAISE EXCEPTION 'La institución alcanzó su límite de % docentes activos', v_limite
+            USING ERRCODE = 'P0001';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_usuarios_limite_docentes ON public.usuarios_institucionales;
+CREATE TRIGGER trg_usuarios_limite_docentes
+    BEFORE INSERT OR UPDATE OF rol, activo, institucion_id ON public.usuarios_institucionales
+    FOR EACH ROW EXECUTE FUNCTION public.fn_validar_limite_docentes();
+
+-- 7.2 Un PIN no puede ser a la vez PIN de aula y PIN de grado (unicidad entre dos tablas)
+CREATE OR REPLACE FUNCTION public.fn_validar_pin_global()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF TG_TABLE_NAME = 'aulas_virtuales' THEN
+        IF EXISTS (SELECT 1 FROM public.instituciones i WHERE i.pin_grado_autonomo = NEW.pin_acceso) THEN
+            RAISE EXCEPTION 'El PIN % ya está en uso como PIN de grado', NEW.pin_acceso USING ERRCODE = '23505';
+        END IF;
+    ELSIF NEW.pin_grado_autonomo IS NOT NULL
+      AND EXISTS (SELECT 1 FROM public.aulas_virtuales a WHERE a.pin_acceso = NEW.pin_grado_autonomo) THEN
+        RAISE EXCEPTION 'El PIN % ya está en uso por un aula', NEW.pin_grado_autonomo USING ERRCODE = '23505';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_aulas_pin_global ON public.aulas_virtuales;
+CREATE TRIGGER trg_aulas_pin_global
+    BEFORE INSERT OR UPDATE OF pin_acceso ON public.aulas_virtuales
+    FOR EACH ROW EXECUTE FUNCTION public.fn_validar_pin_global();
+
+DROP TRIGGER IF EXISTS trg_instituciones_pin_global ON public.instituciones;
+CREATE TRIGGER trg_instituciones_pin_global
+    BEFORE INSERT OR UPDATE OF pin_grado_autonomo ON public.instituciones
+    FOR EACH ROW EXECUTE FUNCTION public.fn_validar_pin_global();
+
+-- 7.3 Un ejercicio publicado en un aula no se edita: se crea una nueva iteración.
+--     Esto reemplaza el snapshot JSONB "exercise_data" de v1 sin duplicar datos.
+CREATE OR REPLACE FUNCTION public.fn_proteger_ejercicio_publicado()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.aula_ejercicios ae WHERE ae.ejercicio_id = OLD.id) THEN
+        RAISE EXCEPTION 'El ejercicio ya está publicado en un aula. Crea una nueva iteración con ejercicio_padre_id.'
+            USING ERRCODE = 'P0001';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ejercicios_inmutables ON public.ejercicios_pisa;
+CREATE TRIGGER trg_ejercicios_inmutables
+    BEFORE UPDATE OF enunciado_contexto, pregunta_razonamiento, opciones_respuesta,
+                     respuesta_correcta, pistas_socraticas_base, nivel_dificultad
+    ON public.ejercicios_pisa
+    FOR EACH ROW
+    WHEN (OLD.* IS DISTINCT FROM NEW.*)
+    EXECUTE FUNCTION public.fn_proteger_ejercicio_publicado();
+
+-- 7.4 El ejercicio del intento debe pertenecer al aula (o institución) de la sesión
+CREATE OR REPLACE FUNCTION public.fn_validar_intento_en_ambito()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_aula uuid;
+    v_inst uuid;
+BEGIN
+    SELECT s.aula_id, s.institucion_id INTO v_aula, v_inst
+      FROM public.sesiones_estudiantes_anonimas s
+     WHERE s.id = NEW.sesion_anonima_id;
+
+    IF v_aula IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM public.aula_ejercicios ae
+                        WHERE ae.aula_id = v_aula AND ae.ejercicio_id = NEW.ejercicio_id) THEN
+            RAISE EXCEPTION 'El ejercicio no pertenece al aula de esta sesión' USING ERRCODE = '23514';
+        END IF;
+    ELSIF v_inst IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1
+                         FROM public.ejercicios_pisa e
+                         LEFT JOIN public.usuarios_institucionales u ON u.id = e.docente_creador_id
+                        WHERE e.id = NEW.ejercicio_id
+                          AND (e.es_publico OR u.institucion_id = v_inst)) THEN
+            RAISE EXCEPTION 'El ejercicio no está disponible para práctica libre' USING ERRCODE = '23514';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_intentos_ambito ON public.intentos_y_bloqueos_ejercicio;
+CREATE TRIGGER trg_intentos_ambito
+    BEFORE INSERT OR UPDATE OF sesion_anonima_id, ejercicio_id ON public.intentos_y_bloqueos_ejercicio
+    FOR EACH ROW EXECUTE FUNCTION public.fn_validar_intento_en_ambito();
+
+-- ==============================================================================
+-- PARTE A · 8. VISTAS DE MÉTRICAS (con SUM(CASE) para que también funcionen en MySQL)
+-- security_invoker: la vista respeta el RLS de quien consulta (PG15+)
+-- ==============================================================================
+
+-- Métrica 1: tiempo ahorrado por docente
+CREATE OR REPLACE VIEW public.vw_tiempo_ahorrado_docente
+WITH (security_invoker = true) AS
+SELECT
+    u.id              AS docente_id,
+    u.institucion_id,
+    u.nombre_completo,
+    COUNT(e.id)       AS ejercicios_generados,
+    ROUND(AVG(e.tiempo_creacion_segundos)::numeric, 1) AS promedio_segundos_creacion,
+    ROUND(COALESCE(SUM(GREATEST(public.fn_baseline_segundos_manual()
+          - COALESCE(e.tiempo_creacion_segundos, public.fn_baseline_segundos_manual()), 0)), 0) / 3600.0, 2)
+                      AS horas_ahorradas_estimadas
+FROM public.usuarios_institucionales u
+LEFT JOIN public.ejercicios_pisa e
+       ON e.docente_creador_id = u.id AND e.generado_por_ia
+WHERE u.rol = 'DOCENTE'
+GROUP BY u.id, u.institucion_id, u.nombre_completo;
+
+-- Métrica 2: % de ejercicios resueltos con ayuda socrática, por aula
+CREATE OR REPLACE VIEW public.vw_completitud_socratica_aula
+WITH (security_invoker = true) AS
+SELECT
+    a.id         AS aula_id,
+    a.pin_acceso,
+    a.docente_id,
+    a.modo_aula,
+    COUNT(DISTINCT s.id) AS estudiantes_anonimos,
+    COUNT(i.id)          AS intentos_totales,
+    COALESCE(SUM(CASE WHEN i.logro_resolver THEN 1 ELSE 0 END), 0) AS resueltos,
+    COALESCE(SUM(CASE WHEN i.logro_resolver AND i.pistas_socraticas_usadas > 0 THEN 1 ELSE 0 END), 0)
+                         AS resueltos_con_ayuda,
+    ROUND(100.0 * SUM(CASE WHEN i.logro_resolver AND i.pistas_socraticas_usadas > 0 THEN 1 ELSE 0 END)
+          / NULLIF(COUNT(i.id), 0), 1) AS pct_resueltos_con_ayuda,
+    ROUND(AVG(i.pistas_socraticas_usadas)::numeric, 2) AS promedio_pistas
+FROM public.aulas_virtuales a
+LEFT JOIN public.sesiones_estudiantes_anonimas s ON s.aula_id = a.id
+LEFT JOIN public.intentos_y_bloqueos_ejercicio i ON i.sesion_anonima_id = s.id
+GROUP BY a.id, a.pin_acceso, a.docente_id, a.modo_aula;
+
+-- Métrica 3: paso exacto con mayor % de bloqueo, por aula y ejercicio
+CREATE OR REPLACE VIEW public.vw_pasos_bloqueo_aula
+WITH (security_invoker = true) AS
+WITH base AS (
+    SELECT s.aula_id, i.ejercicio_id, i.paso_bloqueo_detectado, i.pistas_socraticas_usadas
+      FROM public.intentos_y_bloqueos_ejercicio i
+      JOIN public.sesiones_estudiantes_anonimas s ON s.id = i.sesion_anonima_id
+     WHERE s.aula_id IS NOT NULL
+),
+totales AS (
+    SELECT aula_id, ejercicio_id, COUNT(*) AS intentos_totales
+      FROM base
+     GROUP BY aula_id, ejercicio_id
+)
+SELECT
+    b.aula_id,
+    b.ejercicio_id,
+    e.tema_curricular,
+    b.paso_bloqueo_detectado,
+    COUNT(*)                          AS estudiantes_bloqueados,
+    SUM(b.pistas_socraticas_usadas)   AS pistas_solicitadas,
+    t.intentos_totales,
+    ROUND(100.0 * COUNT(*) / t.intentos_totales, 1) AS pct_bloqueo
+FROM base b
+JOIN totales t ON t.aula_id = b.aula_id AND t.ejercicio_id = b.ejercicio_id
+JOIN public.ejercicios_pisa e ON e.id = b.ejercicio_id
+WHERE b.paso_bloqueo_detectado IS NOT NULL
+GROUP BY b.aula_id, b.ejercicio_id, e.tema_curricular, b.paso_bloqueo_detectado, t.intentos_totales;
+
+-- ==============================================================================
+-- PARTE A · 9. RPCs DEL ESTUDIANTE ANÓNIMO (únicas puertas de entrada del alumno)
+-- El estudiante nunca toca las tablas: solo llama a estas funciones.
+-- El token es un SHA-256 (hex) de un valor aleatorio guardado en el navegador.
+-- ==============================================================================
+
+-- Lo que puede ver el estudiante (sin respuesta, sin solución y sin pistas)
+CREATE OR REPLACE FUNCTION public.fn_ejercicio_json_estudiante(e public.ejercicios_pisa)
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+SET search_path = ''
+AS $$
+    SELECT jsonb_build_object(
+        'id',           e.id,
+        'curso_bgu',    e.curso_bgu,
+        'tema',         e.tema_curricular,
+        'contexto',     e.contexto_pisa,
+        'dificultad',   e.nivel_dificultad,
+        'enunciado',    e.enunciado_contexto,
+        'pregunta',     e.pregunta_razonamiento,
+        'opciones',     e.opciones_respuesta,
+        'total_pistas', jsonb_array_length(e.pistas_socraticas_base)
+    );
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_sesion_autorizada(
+    p_sesion_id uuid, p_token_hash text, p_requiere_activa boolean DEFAULT true)
+RETURNS public.sesiones_estudiantes_anonimas
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_sesion public.sesiones_estudiantes_anonimas;
+BEGIN
+    SELECT s.* INTO v_sesion
+      FROM public.sesiones_estudiantes_anonimas s
+     WHERE s.id = p_sesion_id
+       AND s.token_dispositivo_hash = lower(btrim(coalesce(p_token_hash, '')));
+
+    IF NOT FOUND OR (p_requiere_activa AND v_sesion.estado <> 'EN_PROGRESO') THEN
+        RAISE EXCEPTION 'Sesión anónima no válida o finalizada' USING ERRCODE = '28000';
+    END IF;
+
+    UPDATE public.sesiones_estudiantes_anonimas
+       SET ultima_actividad_en = now()
+     WHERE id = v_sesion.id AND estado = 'EN_PROGRESO';
+
+    RETURN v_sesion;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_contenido_sesion(p_sesion_id uuid, p_token_hash text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_sesion public.sesiones_estudiantes_anonimas;
+    v_res    jsonb;
+BEGIN
+    v_sesion := public.fn_sesion_autorizada(p_sesion_id, p_token_hash, false);
+
+    IF v_sesion.aula_id IS NOT NULL THEN
+        SELECT jsonb_build_object(
+                   'titulo',                a.titulo_sesion,
+                   'modo',                  a.modo_aula,
+                   'tiempo_limite_minutos', a.tiempo_limite_minutos,
+                   'institucion',           i.nombre,
+                   'docente',               u.nombre_completo,
+                   'ejercicios', COALESCE((
+                        SELECT jsonb_agg(public.fn_ejercicio_json_estudiante(e)
+                                         || jsonb_build_object('orden', ae.orden) ORDER BY ae.orden)
+                          FROM public.aula_ejercicios ae
+                          JOIN public.ejercicios_pisa e ON e.id = ae.ejercicio_id
+                         WHERE ae.aula_id = a.id), '[]'::jsonb))
+          INTO v_res
+          FROM public.aulas_virtuales a
+          JOIN public.usuarios_institucionales u ON u.id = a.docente_id
+          JOIN public.instituciones i ON i.id = u.institucion_id
+         WHERE a.id = v_sesion.aula_id;
+    ELSE
+        SELECT jsonb_build_object(
+                   'titulo',                'Práctica libre',
+                   'modo',                  'PRACTICA_LIBRE',
+                   'tiempo_limite_minutos', NULL,
+                   'institucion',           i.nombre,
+                   'docente',               NULL,
+                   'ejercicios', COALESCE((
+                        SELECT jsonb_agg(t.obj ORDER BY t.created_at DESC)
+                          FROM (SELECT public.fn_ejercicio_json_estudiante(e) AS obj, e.created_at
+                                  FROM public.ejercicios_pisa e
+                                  LEFT JOIN public.usuarios_institucionales u ON u.id = e.docente_creador_id
+                                 WHERE e.es_publico OR u.institucion_id = i.id
+                                 ORDER BY e.created_at DESC
+                                 LIMIT 30) t), '[]'::jsonb))
+          INTO v_res
+          FROM public.instituciones i
+         WHERE i.id = v_sesion.institucion_id;
+    END IF;
+
+    RETURN v_res;
+END;
+$$;
+
+-- Entrada única del estudiante: PIN + token -> sesión anónima (o retoma la que ya tenía,
+-- por ejemplo si el navegador se cerró o el sistema mató la pestaña).
+CREATE OR REPLACE FUNCTION public.fn_iniciar_sesion_anonima(p_pin text, p_token_hash text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_pin       text := upper(btrim(coalesce(p_pin, '')));
+    v_token     text := lower(btrim(coalesce(p_token_hash, '')));
+    v_aula      public.aulas_virtuales;
+    v_inst      uuid;
+    v_sesion    public.sesiones_estudiantes_anonimas;
+    v_total     integer;
+    v_reanudada boolean := false;
+BEGIN
+    IF v_pin !~ '^[A-Z0-9]{6}$' THEN
+        RETURN NULL;   -- respuesta neutra: no revela si el PIN existe
+    END IF;
+    IF v_token !~ '^[a-f0-9]{64}$' THEN
+        RAISE EXCEPTION 'Token de dispositivo inválido (se espera SHA-256 en hex)' USING ERRCODE = '22023';
+    END IF;
+
+    SELECT a.* INTO v_aula
+      FROM public.aulas_virtuales a
+     WHERE a.pin_acceso = v_pin AND a.activa AND a.expires_at > now();
+
+    IF FOUND THEN
+        SELECT s.* INTO v_sesion
+          FROM public.sesiones_estudiantes_anonimas s
+         WHERE s.aula_id = v_aula.id AND s.token_dispositivo_hash = v_token;
+
+        IF FOUND THEN
+            v_reanudada := true;
+        ELSE
+            -- Evita que dos alumnos reciban el mismo "Estudiante #N" al entrar a la vez
+            PERFORM pg_advisory_xact_lock(hashtextextended(v_aula.id::text, 0));
+            SELECT count(*) INTO v_total
+              FROM public.sesiones_estudiantes_anonimas s
+             WHERE s.aula_id = v_aula.id;
+
+            IF v_total >= v_aula.max_estudiantes THEN
+                RAISE EXCEPTION 'El aula alcanzó su capacidad máxima de % estudiantes', v_aula.max_estudiantes
+                    USING ERRCODE = 'P0001';
+            END IF;
+
+            INSERT INTO public.sesiones_estudiantes_anonimas (aula_id, alias_temporal, token_dispositivo_hash)
+            VALUES (v_aula.id, 'Estudiante #' || (v_total + 1), v_token)
+            RETURNING * INTO v_sesion;
+        END IF;
+    ELSE
+        SELECT i.id INTO v_inst
+          FROM public.instituciones i
+         WHERE i.pin_grado_autonomo = v_pin
+           AND i.activa AND i.plan_suscripcion <> 'SUSPENDIDA';
+
+        IF NOT FOUND THEN
+            RETURN NULL;
+        END IF;
+
+        SELECT s.* INTO v_sesion
+          FROM public.sesiones_estudiantes_anonimas s
+         WHERE s.institucion_id = v_inst
+           AND s.token_dispositivo_hash = v_token
+           AND s.estado = 'EN_PROGRESO'
+         ORDER BY s.iniciado_en DESC
+         LIMIT 1;
+
+        IF FOUND THEN
+            v_reanudada := true;
+        ELSE
+            PERFORM pg_advisory_xact_lock(hashtextextended(v_inst::text, 0));
+            SELECT count(*) INTO v_total
+              FROM public.sesiones_estudiantes_anonimas s
+             WHERE s.institucion_id = v_inst;
+
+            INSERT INTO public.sesiones_estudiantes_anonimas (institucion_id, alias_temporal, token_dispositivo_hash)
+            VALUES (v_inst, 'Estudiante #' || ((v_total % 999999) + 1), v_token)
+            RETURNING * INTO v_sesion;
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'sesion_id', v_sesion.id,
+        'alias',     v_sesion.alias_temporal,
+        'estado',    v_sesion.estado,
+        'reanudada', v_reanudada,
+        'contenido', public.fn_contenido_sesion(v_sesion.id, v_token)
+    );
+END;
+$$;
+
+-- Candado socrático en la base de datos: entrega UNA pista a la vez, en orden,
+-- y la cuenta. Nunca devuelve la respuesta ni la solución.
+CREATE OR REPLACE FUNCTION public.fn_solicitar_pista(p_sesion_id uuid, p_token_hash text, p_ejercicio_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_sesion public.sesiones_estudiantes_anonimas;
+    v_pistas jsonb;
+    v_total  integer;
+    v_usadas smallint;
+BEGIN
+    v_sesion := public.fn_sesion_autorizada(p_sesion_id, p_token_hash, true);
+
+    SELECT e.pistas_socraticas_base INTO v_pistas
+      FROM public.ejercicios_pisa e
+     WHERE e.id = p_ejercicio_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Ejercicio no encontrado' USING ERRCODE = 'P0002';
+    END IF;
+    v_total := jsonb_array_length(v_pistas);
+
+    INSERT INTO public.intentos_y_bloqueos_ejercicio (sesion_anonima_id, ejercicio_id)
+    VALUES (v_sesion.id, p_ejercicio_id)
+    ON CONFLICT (sesion_anonima_id, ejercicio_id) DO NOTHING;
+
+    SELECT i.pistas_socraticas_usadas INTO v_usadas
+      FROM public.intentos_y_bloqueos_ejercicio i
+     WHERE i.sesion_anonima_id = v_sesion.id AND i.ejercicio_id = p_ejercicio_id
+       FOR UPDATE;
+
+    IF v_usadas >= v_total THEN
+        RETURN jsonb_build_object('pista', NULL, 'numero', v_usadas, 'restantes', 0);
+    END IF;
+
+    UPDATE public.intentos_y_bloqueos_ejercicio
+       SET pistas_socraticas_usadas = v_usadas + 1
+     WHERE sesion_anonima_id = v_sesion.id AND ejercicio_id = p_ejercicio_id;
+
+    RETURN jsonb_build_object(
+        'pista',     v_pistas ->> v_usadas::integer,
+        'numero',    v_usadas + 1,
+        'restantes', v_total - v_usadas - 1
+    );
+END;
+$$;
+
+-- Registra un intento. En opción múltiple la nota la pone el servidor, no el navegador.
+CREATE OR REPLACE FUNCTION public.fn_registrar_intento(
+    p_sesion_id                  uuid,
+    p_token_hash                 text,
+    p_ejercicio_id               uuid,
+    p_logro_resolver             boolean  DEFAULT false,
+    p_paso_bloqueo               text     DEFAULT NULL,
+    p_opcion_seleccionada        smallint DEFAULT NULL,
+    p_marcada_con_bandera        boolean  DEFAULT false,
+    p_tiempo_resolucion_segundos integer  DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_sesion    public.sesiones_estudiantes_anonimas;
+    v_respuesta text;
+    v_opciones  jsonb;
+    v_logro     boolean := coalesce(p_logro_resolver, false);
+    v_intento   public.intentos_y_bloqueos_ejercicio;
+BEGIN
+    v_sesion := public.fn_sesion_autorizada(p_sesion_id, p_token_hash, true);
+
+    SELECT e.respuesta_correcta, e.opciones_respuesta INTO v_respuesta, v_opciones
+      FROM public.ejercicios_pisa e
+     WHERE e.id = p_ejercicio_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Ejercicio no encontrado' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF v_opciones IS NOT NULL THEN
+        v_logro := p_opcion_seleccionada IS NOT NULL
+               AND chr(65 + p_opcion_seleccionada) = upper(btrim(v_respuesta));
+    END IF;
+
+    INSERT INTO public.intentos_y_bloqueos_ejercicio AS i (
+        sesion_anonima_id, ejercicio_id, logro_resolver, numero_intentos,
+        paso_bloqueo_detectado, opcion_seleccionada, marcada_con_bandera, tiempo_resolucion_segundos)
+    VALUES (
+        v_sesion.id, p_ejercicio_id, v_logro, 1,
+        upper(p_paso_bloqueo), p_opcion_seleccionada, coalesce(p_marcada_con_bandera, false),
+        p_tiempo_resolucion_segundos)
+    ON CONFLICT (sesion_anonima_id, ejercicio_id) DO UPDATE SET
+        numero_intentos            = i.numero_intentos + 1,
+        -- Simulador: cuenta la última opción marcada. Reto abierto: si ya lo resolvió, queda resuelto.
+        logro_resolver             = CASE WHEN v_opciones IS NOT NULL THEN EXCLUDED.logro_resolver
+                                          ELSE i.logro_resolver OR EXCLUDED.logro_resolver END,
+        paso_bloqueo_detectado     = COALESCE(EXCLUDED.paso_bloqueo_detectado, i.paso_bloqueo_detectado),
+        opcion_seleccionada        = COALESCE(EXCLUDED.opcion_seleccionada, i.opcion_seleccionada),
+        marcada_con_bandera        = EXCLUDED.marcada_con_bandera,
+        tiempo_resolucion_segundos = COALESCE(EXCLUDED.tiempo_resolucion_segundos, i.tiempo_resolucion_segundos)
+    RETURNING * INTO v_intento;
+
+    RETURN jsonb_build_object(
+        'intento_id',      v_intento.id,
+        'logro_resolver',  v_intento.logro_resolver,
+        'numero_intentos', v_intento.numero_intentos
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_registrar_mensaje(
+    p_sesion_id         uuid,
+    p_token_hash        text,
+    p_ejercicio_id      uuid,
+    p_remitente         text,
+    p_tipo_interaccion  text,
+    p_contenido         text,
+    p_tokens_consumidos integer DEFAULT NULL)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_tipo       text := upper(coalesce(p_tipo_interaccion, 'TEXTO_LIBRE'));
+    v_sesion     public.sesiones_estudiantes_anonimas;
+    v_intento_id bigint;
+    v_mensaje_id bigint;
+BEGIN
+    -- La revisión socrática del simulador se permite también con la sesión ya cerrada
+    v_sesion := public.fn_sesion_autorizada(p_sesion_id, p_token_hash, v_tipo <> 'REVISION_POST_SIMULADOR');
+
+    INSERT INTO public.intentos_y_bloqueos_ejercicio (sesion_anonima_id, ejercicio_id)
+    VALUES (v_sesion.id, p_ejercicio_id)
+    ON CONFLICT (sesion_anonima_id, ejercicio_id) DO NOTHING;
+
+    SELECT i.id INTO v_intento_id
+      FROM public.intentos_y_bloqueos_ejercicio i
+     WHERE i.sesion_anonima_id = v_sesion.id AND i.ejercicio_id = p_ejercicio_id;
+
+    INSERT INTO public.mensajes_tutor_socratico (intento_id, remitente, tipo_interaccion, contenido_mensaje, tokens_consumidos)
+    VALUES (v_intento_id, upper(p_remitente), v_tipo, btrim(p_contenido), p_tokens_consumidos)
+    RETURNING id INTO v_mensaje_id;
+
+    RETURN v_mensaje_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_finalizar_sesion(p_sesion_id uuid, p_token_hash text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_sesion    public.sesiones_estudiantes_anonimas;
+    v_modo      text;
+    v_total     integer;
+    v_resueltos integer;
+    v_puntaje   numeric(5,2);
+BEGIN
+    v_sesion := public.fn_sesion_autorizada(p_sesion_id, p_token_hash, true);
+
+    IF v_sesion.aula_id IS NOT NULL THEN
+        SELECT a.modo_aula INTO v_modo FROM public.aulas_virtuales a WHERE a.id = v_sesion.aula_id;
+    END IF;
+
+    IF v_modo = 'SIMULADOR_ADMISION' THEN
+        SELECT count(*) INTO v_total FROM public.aula_ejercicios ae WHERE ae.aula_id = v_sesion.aula_id;
+        SELECT count(*) INTO v_resueltos
+          FROM public.intentos_y_bloqueos_ejercicio i
+         WHERE i.sesion_anonima_id = v_sesion.id AND i.logro_resolver;
+        v_puntaje := round(100.0 * v_resueltos / NULLIF(v_total, 0), 2);
+    END IF;
+
+    UPDATE public.sesiones_estudiantes_anonimas
+       SET estado = 'COMPLETADO', finalizado_en = now(), puntaje_simulador = v_puntaje
+     WHERE id = v_sesion.id
+    RETURNING * INTO v_sesion;
+
+    RETURN jsonb_build_object(
+        'estado',                v_sesion.estado,
+        'puntaje_simulador',     v_sesion.puntaje_simulador,
+        'tiempo_total_segundos', v_sesion.tiempo_total_segundos
+    );
+END;
+$$;
+
+-- Mantenimiento (solo service_role / cron). Minimización de datos (LOPDP).
+CREATE OR REPLACE FUNCTION public.fn_cerrar_sesiones_inactivas(p_minutos integer DEFAULT 120)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_filas integer;
+BEGIN
+    UPDATE public.sesiones_estudiantes_anonimas
+       SET estado = 'ABANDONADO', finalizado_en = ultima_actividad_en
+     WHERE estado = 'EN_PROGRESO'
+       AND ultima_actividad_en < now() - make_interval(mins => p_minutos);
+    GET DIAGNOSTICS v_filas = ROW_COUNT;
+    RETURN v_filas;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_purgar_datos_anonimos(p_dias integer DEFAULT 365)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_filas integer;
+BEGIN
+    DELETE FROM public.sesiones_estudiantes_anonimas
+     WHERE iniciado_en < now() - make_interval(days => p_dias);
+    GET DIAGNOSTICS v_filas = ROW_COUNT;
+    RETURN v_filas;
+END;
+$$;
+
+-- Con pg_cron habilitado en Supabase:
+-- SELECT cron.schedule('ecdulearn-limpieza', '0 3 * * *',
+--   $$SELECT public.fn_cerrar_sesiones_inactivas(); SELECT public.fn_purgar_datos_anonimos(365);$$);
+
+-- ==============================================================================
+-- PARTE A · 9.1 DATOS SEMILLA (idempotentes)
+-- ==============================================================================
+
+INSERT INTO public.asignaturas (nombre)
+VALUES ('Matemáticas'), ('Física'), ('Química'), ('Biología')
+ON CONFLICT (nombre) DO NOTHING;
+
+INSERT INTO public.instituciones (id, nombre, codigo_amie, tipo_institucion, plan_suscripcion, pin_grado_autonomo, limite_docentes)
+VALUES ('11111111-1111-4111-8111-111111111111', 'Unidad Educativa Demo ECduLearn', '17H00000',
+        'PARTICULAR', 'PILOTO', 'GRADO1', 15)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.usuarios_institucionales (id, institucion_id, nombre_completo, email_institucional, rol, asignatura_principal_id)
+VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111',
+        'Docente Demo PUCE', 'docente@puce.edu.ec', 'DOCENTE',
+        (SELECT id FROM public.asignaturas WHERE nombre = 'Matemáticas'))
+ON CONFLICT (email_institucional) DO NOTHING;
+
+INSERT INTO public.ejercicios_pisa (
+    id, docente_creador_id, etiqueta_version, curso_bgu, asignatura_id, tema_curricular, contexto_pisa,
+    nivel_dificultad, nivel_pisa, enunciado_contexto, pregunta_razonamiento, respuesta_correcta,
+    solucion_paso_a_paso_docente, pistas_socraticas_base, es_publico, generado_por_ia, tiempo_creacion_segundos)
+VALUES (
+    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'Original', '2do BGU',
+    (SELECT id FROM public.asignaturas WHERE nombre = 'Matemáticas'),
+    'Razones trigonométricas en triángulos rectángulos',
+    'Ingeniería civil',
+    'Intermedia', 4,
+    'Para reforzar una pasarela peatonal junto al Puente del Chiche, un equipo de ingeniería propone cerchas triangulares isósceles de acero. Cada cercha tiene una base de 12 m y sus lados iguales forman un ángulo de 35° con la base. Por diseño, la altura del vértice superior no puede superar los 5 m.',
+    '¿Cuál es la altura del vértice superior de la cercha y cumple con el límite de 5 m? Justifica el razonamiento trigonométrico que usaste.',
+    'h = 6 · tan(35°) ≈ 4,20 m. Sí cumple, porque 4,20 m < 5 m.',
+    'Paso 1 (Comprensión): la altura de un triángulo isósceles cae en el punto medio de la base. Paso 2 (Variables): se forma un triángulo rectángulo con cateto adyacente de 6 m y ángulo de 35°; la incógnita es el cateto opuesto h. Paso 3 (Modelo): tan(35°) = h / 6. Paso 4 (Cálculo): h = 6 · 0,7002 ≈ 4,20 m. Paso 5 (Interpretación): 4,20 m < 5 m, cumple con un margen de 0,80 m.',
+    '["¿Qué figura aparece si trazas la altura desde el vértice superior hasta la base?",
+      "En ese triángulo rectángulo, ¿qué lado conoces y qué lado buscas respecto al ángulo de 35°?",
+      "¿Qué razón trigonométrica relaciona el cateto opuesto con el cateto adyacente?"]'::jsonb,
+    TRUE, TRUE, 9)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.planificaciones_erca (
+    id, docente_id, titulo_guia, curso_bgu, asignatura_id, destreza_dcd, duracion_minutos,
+    fase_experiencia, fase_reflexion, fase_conceptualizacion, fase_aplicacion_texto)
+VALUES (
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'Razones trigonométricas en estructuras de Quito', '2do BGU',
+    (SELECT id FROM public.asignaturas WHERE nombre = 'Matemáticas'),
+    'Resolver triángulos rectángulos con razones trigonométricas en problemas de contexto real.',
+    45,
+    'Observar fotografías de cerchas y puentes de Quito e identificar triángulos.',
+    '¿Por qué los ingenieros prefieren triángulos y no cuadrados en las estructuras?',
+    'Definición de seno, coseno y tangente en el triángulo rectángulo.',
+    'Resolver el reto del Puente del Chiche (ejercicio PISA vinculado).')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.planificacion_ejercicios (planificacion_id, ejercicio_id, orden)
+VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 1)
+ON CONFLICT (planificacion_id, ejercicio_id) DO NOTHING;
+
+INSERT INTO public.aulas_virtuales (id, pin_acceso, docente_id, planificacion_id, titulo_sesion, modo_aula, max_estudiantes, expires_at)
+VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'PISA26',
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        'Reto semanal · Puente del Chiche', 'RETO_CLASE', 45, now() + INTERVAL '30 days')
+ON CONFLICT (pin_acceso) DO UPDATE
+    SET activa = TRUE, expires_at = EXCLUDED.expires_at;
+
+INSERT INTO public.aula_ejercicios (aula_id, ejercicio_id, orden)
+VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 1)
+ON CONFLICT (aula_id, ejercicio_id) DO NOTHING;
+
+-- ==============================================================================
+-- PARTE B · 10. IDENTIDAD DEL DOCENTE (SOLO SUPABASE)
+-- ==============================================================================
+
+CREATE OR REPLACE FUNCTION public.fn_mi_usuario_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT u.id
+      FROM public.usuarios_institucionales u
+      JOIN public.instituciones i ON i.id = u.institucion_id
+     WHERE u.auth_user_id = auth.uid()
+       AND u.activo
+       AND i.activa
+       AND i.plan_suscripcion <> 'SUSPENDIDA';
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_mi_institucion_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT u.institucion_id FROM public.usuarios_institucionales u WHERE u.id = public.fn_mi_usuario_id();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_mi_rol()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT u.rol FROM public.usuarios_institucionales u WHERE u.id = public.fn_mi_usuario_id();
+$$;
+
+-- Cuentas pre-creadas por el colegio (lista blanca B2B): se vinculan solo cuando el
+-- correo ya está CONFIRMADO, para que nadie se apropie de un correo ajeno al registrarse.
+CREATE OR REPLACE FUNCTION public.fn_vincular_usuario_auth()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    UPDATE public.usuarios_institucionales
+       SET auth_user_id = NEW.id
+     WHERE email_institucional = lower(NEW.email)
+       AND auth_user_id IS NULL;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_vincular_usuario_auth ON auth.users;
+CREATE TRIGGER trg_vincular_usuario_auth
+    AFTER INSERT OR UPDATE OF email_confirmed_at ON auth.users
+    FOR EACH ROW
+    WHEN (NEW.email_confirmed_at IS NOT NULL)
+    EXECUTE FUNCTION public.fn_vincular_usuario_auth();
+
+-- Vincula cuentas que ya existían antes de crear el trigger
+UPDATE public.usuarios_institucionales u
+   SET auth_user_id = au.id
+  FROM auth.users au
+ WHERE lower(au.email) = u.email_institucional
+   AND au.email_confirmed_at IS NOT NULL
+   AND u.auth_user_id IS NULL;
+
+-- Panel del rector: solo números agregados de su institución, nunca datos por alumno
+CREATE OR REPLACE FUNCTION public.fn_dashboard_institucion()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_inst uuid := public.fn_mi_institucion_id();
+    v_rol  text := public.fn_mi_rol();
+    v_res  jsonb;
+BEGIN
+    IF v_inst IS NULL OR v_rol NOT IN ('COORDINADOR_RECTOR', 'ADMIN') THEN
+        RAISE EXCEPTION 'No autorizado' USING ERRCODE = '42501';
+    END IF;
+
+    v_res := (
+        WITH docentes AS (
+            SELECT u.id FROM public.usuarios_institucionales u WHERE u.institucion_id = v_inst
+        ),
+        sesiones AS (
+            SELECT s.id
+              FROM public.sesiones_estudiantes_anonimas s
+              LEFT JOIN public.aulas_virtuales a ON a.id = s.aula_id
+             WHERE a.docente_id IN (SELECT id FROM docentes) OR s.institucion_id = v_inst
+        ),
+        intentos AS (
+            SELECT i.*
+              FROM public.intentos_y_bloqueos_ejercicio i
+             WHERE i.sesion_anonima_id IN (SELECT id FROM sesiones)
+        )
+        SELECT jsonb_build_object(
+            'docentes_activos', (SELECT count(*) FROM public.usuarios_institucionales u
+                                  WHERE u.institucion_id = v_inst AND u.activo AND u.rol = 'DOCENTE'),
+            'ejercicios_generados', (SELECT count(*) FROM public.ejercicios_pisa e
+                                      WHERE e.docente_creador_id IN (SELECT id FROM docentes)),
+            'horas_ahorradas_estimadas', (
+                SELECT ROUND(COALESCE(SUM(GREATEST(public.fn_baseline_segundos_manual()
+                       - COALESCE(e.tiempo_creacion_segundos, public.fn_baseline_segundos_manual()), 0)), 0) / 3600.0, 2)
+                  FROM public.ejercicios_pisa e
+                 WHERE e.docente_creador_id IN (SELECT id FROM docentes) AND e.generado_por_ia),
+            'aulas_activas', (SELECT count(*) FROM public.aulas_virtuales a
+                               WHERE a.docente_id IN (SELECT id FROM docentes) AND a.activa AND a.expires_at > now()),
+            'sesiones_anonimas', (SELECT count(*) FROM sesiones),
+            'pct_resueltos_con_ayuda', (
+                SELECT ROUND(100.0 * SUM(CASE WHEN logro_resolver AND pistas_socraticas_usadas > 0 THEN 1 ELSE 0 END)
+                       / NULLIF(count(*), 0), 1)
+                  FROM intentos),
+            'paso_bloqueo_mas_frecuente', (
+                SELECT paso_bloqueo_detectado FROM intentos
+                 WHERE paso_bloqueo_detectado IS NOT NULL
+                 GROUP BY paso_bloqueo_detectado
+                 ORDER BY count(*) DESC
+                 LIMIT 1)
+        )
+    );
+
+    RETURN v_res;
+END;
+$$;
+
+-- ==============================================================================
+-- PARTE B · 11. ROW LEVEL SECURITY (SOLO SUPABASE)
+-- Nada de "USING (true)". El rol anon no tiene ninguna política sobre tablas v2.
+-- ==============================================================================
+
+ALTER TABLE public.asignaturas                   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.instituciones                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.usuarios_institucionales      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ejercicios_pisa               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.planificaciones_erca          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.planificacion_ejercicios      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.aulas_virtuales               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.aula_ejercicios               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sesiones_estudiantes_anonimas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.intentos_y_bloqueos_ejercicio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mensajes_tutor_socratico      ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pol_asignaturas_lectura ON public.asignaturas;
+CREATE POLICY pol_asignaturas_lectura ON public.asignaturas
+    FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS pol_instituciones_propia ON public.instituciones;
+CREATE POLICY pol_instituciones_propia ON public.instituciones
+    FOR SELECT TO authenticated
+    USING (id = (SELECT public.fn_mi_institucion_id()));
+
+DROP POLICY IF EXISTS pol_usuarios_misma_institucion ON public.usuarios_institucionales;
+CREATE POLICY pol_usuarios_misma_institucion ON public.usuarios_institucionales
+    FOR SELECT TO authenticated
+    USING (institucion_id = (SELECT public.fn_mi_institucion_id()));
+
+DROP POLICY IF EXISTS pol_usuarios_editar_perfil ON public.usuarios_institucionales;
+CREATE POLICY pol_usuarios_editar_perfil ON public.usuarios_institucionales
+    FOR UPDATE TO authenticated
+    USING (id = (SELECT public.fn_mi_usuario_id()))
+    WITH CHECK (id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_ejercicios_lectura ON public.ejercicios_pisa;
+CREATE POLICY pol_ejercicios_lectura ON public.ejercicios_pisa
+    FOR SELECT TO authenticated
+    USING (
+        es_publico
+        OR docente_creador_id = (SELECT public.fn_mi_usuario_id())
+        OR EXISTS (SELECT 1 FROM public.usuarios_institucionales u
+                    WHERE u.id = ejercicios_pisa.docente_creador_id
+                      AND u.institucion_id = (SELECT public.fn_mi_institucion_id()))
+    );
+
+DROP POLICY IF EXISTS pol_ejercicios_insertar ON public.ejercicios_pisa;
+CREATE POLICY pol_ejercicios_insertar ON public.ejercicios_pisa
+    FOR INSERT TO authenticated
+    WITH CHECK (docente_creador_id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_ejercicios_editar ON public.ejercicios_pisa;
+CREATE POLICY pol_ejercicios_editar ON public.ejercicios_pisa
+    FOR UPDATE TO authenticated
+    USING (docente_creador_id = (SELECT public.fn_mi_usuario_id()))
+    WITH CHECK (docente_creador_id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_ejercicios_eliminar ON public.ejercicios_pisa;
+CREATE POLICY pol_ejercicios_eliminar ON public.ejercicios_pisa
+    FOR DELETE TO authenticated
+    USING (docente_creador_id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_planificaciones_propias ON public.planificaciones_erca;
+CREATE POLICY pol_planificaciones_propias ON public.planificaciones_erca
+    FOR ALL TO authenticated
+    USING (docente_id = (SELECT public.fn_mi_usuario_id()))
+    WITH CHECK (docente_id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_plan_ejercicios_propios ON public.planificacion_ejercicios;
+CREATE POLICY pol_plan_ejercicios_propios ON public.planificacion_ejercicios
+    FOR ALL TO authenticated
+    USING (EXISTS (SELECT 1 FROM public.planificaciones_erca p
+                    WHERE p.id = planificacion_ejercicios.planificacion_id
+                      AND p.docente_id = (SELECT public.fn_mi_usuario_id())))
+    WITH CHECK (EXISTS (SELECT 1 FROM public.planificaciones_erca p
+                         WHERE p.id = planificacion_ejercicios.planificacion_id
+                           AND p.docente_id = (SELECT public.fn_mi_usuario_id())));
+
+DROP POLICY IF EXISTS pol_aulas_propias ON public.aulas_virtuales;
+CREATE POLICY pol_aulas_propias ON public.aulas_virtuales
+    FOR ALL TO authenticated
+    USING (docente_id = (SELECT public.fn_mi_usuario_id()))
+    WITH CHECK (docente_id = (SELECT public.fn_mi_usuario_id()));
+
+DROP POLICY IF EXISTS pol_aula_ejercicios_propios ON public.aula_ejercicios;
+CREATE POLICY pol_aula_ejercicios_propios ON public.aula_ejercicios
+    FOR ALL TO authenticated
+    USING (EXISTS (SELECT 1 FROM public.aulas_virtuales a
+                    WHERE a.id = aula_ejercicios.aula_id
+                      AND a.docente_id = (SELECT public.fn_mi_usuario_id())))
+    WITH CHECK (EXISTS (SELECT 1 FROM public.aulas_virtuales a
+                         WHERE a.id = aula_ejercicios.aula_id
+                           AND a.docente_id = (SELECT public.fn_mi_usuario_id())));
+
+-- Telemetría: el docente SOLO lee (las escrituras pasan por las RPC)
+DROP POLICY IF EXISTS pol_sesiones_docente ON public.sesiones_estudiantes_anonimas;
+CREATE POLICY pol_sesiones_docente ON public.sesiones_estudiantes_anonimas
+    FOR SELECT TO authenticated
+    USING (EXISTS (SELECT 1 FROM public.aulas_virtuales a
+                    WHERE a.id = sesiones_estudiantes_anonimas.aula_id
+                      AND a.docente_id = (SELECT public.fn_mi_usuario_id())));
+
+DROP POLICY IF EXISTS pol_intentos_docente ON public.intentos_y_bloqueos_ejercicio;
+CREATE POLICY pol_intentos_docente ON public.intentos_y_bloqueos_ejercicio
+    FOR SELECT TO authenticated
+    USING (EXISTS (SELECT 1
+                     FROM public.sesiones_estudiantes_anonimas s
+                     JOIN public.aulas_virtuales a ON a.id = s.aula_id
+                    WHERE s.id = intentos_y_bloqueos_ejercicio.sesion_anonima_id
+                      AND a.docente_id = (SELECT public.fn_mi_usuario_id())));
+
+DROP POLICY IF EXISTS pol_mensajes_docente ON public.mensajes_tutor_socratico;
+CREATE POLICY pol_mensajes_docente ON public.mensajes_tutor_socratico
+    FOR SELECT TO authenticated
+    USING (EXISTS (SELECT 1
+                     FROM public.intentos_y_bloqueos_ejercicio i
+                     JOIN public.sesiones_estudiantes_anonimas s ON s.id = i.sesion_anonima_id
+                     JOIN public.aulas_virtuales a ON a.id = s.aula_id
+                    WHERE i.id = mensajes_tutor_socratico.intento_id
+                      AND a.docente_id = (SELECT public.fn_mi_usuario_id())));
+
+-- ==============================================================================
+-- PARTE B · 12. PRIVILEGIOS (mínimo privilegio)
+-- Supabase da todo a anon/authenticated por defecto; aquí se recorta.
+-- Solo afecta objetos v2; las tablas v1 no se tocan.
+-- ==============================================================================
+
+REVOKE ALL ON
+    public.instituciones, public.usuarios_institucionales, public.ejercicios_pisa,
+    public.planificaciones_erca, public.planificacion_ejercicios, public.aulas_virtuales,
+    public.aula_ejercicios, public.sesiones_estudiantes_anonimas,
+    public.intentos_y_bloqueos_ejercicio, public.mensajes_tutor_socratico,
+    public.vw_tiempo_ahorrado_docente, public.vw_completitud_socratica_aula, public.vw_pasos_bloqueo_aula
+FROM anon;
+
+REVOKE INSERT, UPDATE, DELETE ON public.asignaturas FROM anon, authenticated;
+GRANT SELECT ON public.asignaturas TO anon, authenticated;
+
+REVOKE INSERT, UPDATE, DELETE ON public.instituciones FROM authenticated;
+REVOKE INSERT, DELETE ON public.usuarios_institucionales FROM authenticated;
+REVOKE UPDATE ON public.usuarios_institucionales FROM authenticated;
+GRANT UPDATE (nombre_completo, asignatura_principal_id) ON public.usuarios_institucionales TO authenticated;
+
+REVOKE INSERT, UPDATE, DELETE ON
+    public.sesiones_estudiantes_anonimas, public.intentos_y_bloqueos_ejercicio, public.mensajes_tutor_socratico
+FROM authenticated;
+
+GRANT SELECT ON public.vw_tiempo_ahorrado_docente, public.vw_completitud_socratica_aula,
+                public.vw_pasos_bloqueo_aula TO authenticated;
+
+-- Funciones: Postgres da EXECUTE a PUBLIC por defecto -> se revoca y se otorga lo justo
+REVOKE EXECUTE ON FUNCTION
+    public.fn_set_updated_at(),
+    public.fn_baseline_segundos_manual(),
+    public.fn_validar_limite_docentes(),
+    public.fn_validar_pin_global(),
+    public.fn_proteger_ejercicio_publicado(),
+    public.fn_validar_intento_en_ambito(),
+    public.fn_ejercicio_json_estudiante(public.ejercicios_pisa),
+    public.fn_sesion_autorizada(uuid, text, boolean),
+    public.fn_contenido_sesion(uuid, text),
+    public.fn_iniciar_sesion_anonima(text, text),
+    public.fn_solicitar_pista(uuid, text, uuid),
+    public.fn_registrar_intento(uuid, text, uuid, boolean, text, smallint, boolean, integer),
+    public.fn_registrar_mensaje(uuid, text, uuid, text, text, text, integer),
+    public.fn_finalizar_sesion(uuid, text),
+    public.fn_cerrar_sesiones_inactivas(integer),
+    public.fn_purgar_datos_anonimos(integer),
+    public.fn_mi_usuario_id(),
+    public.fn_mi_institucion_id(),
+    public.fn_mi_rol(),
+    public.fn_vincular_usuario_auth(),
+    public.fn_dashboard_institucion()
+FROM PUBLIC, anon, authenticated;
+
+-- Estudiante anónimo
+GRANT EXECUTE ON FUNCTION
+    public.fn_iniciar_sesion_anonima(text, text),
+    public.fn_contenido_sesion(uuid, text),
+    public.fn_solicitar_pista(uuid, text, uuid),
+    public.fn_registrar_intento(uuid, text, uuid, boolean, text, smallint, boolean, integer),
+    public.fn_registrar_mensaje(uuid, text, uuid, text, text, text, integer),
+    public.fn_finalizar_sesion(uuid, text)
+TO anon, authenticated;
+
+-- Docente / rector (las políticas RLS y las vistas las necesitan)
+GRANT EXECUTE ON FUNCTION
+    public.fn_mi_usuario_id(),
+    public.fn_mi_institucion_id(),
+    public.fn_mi_rol(),
+    public.fn_baseline_segundos_manual(),
+    public.fn_dashboard_institucion()
+TO authenticated;
+
+-- ==============================================================================
+-- PARTE B · 13. REALTIME: dashboard en vivo del docente (respeta RLS)
+-- ==============================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+       AND NOT EXISTS (SELECT 1 FROM pg_publication_tables
+                        WHERE pubname = 'supabase_realtime'
+                          AND schemaname = 'public'
+                          AND tablename = 'intentos_y_bloqueos_ejercicio') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.intentos_y_bloqueos_ejercicio;
     END IF;
 END $$;
 
--- ==============================================================================
--- 14. DATOS SEMILLA (SEED DATA) OFICIALES Y DEMOSTRATIVOS
--- ==============================================================================
-
--- 14.1 Instituciones Educativas
-INSERT INTO public.instituciones_educativas (id, nombre, codigo_amie, ciudad, provincia, tipo)
-VALUES 
-    ('11111111-1111-1111-1111-111111111111', 'Unidad Educativa Municipal Eugenio Espejo', '17H00010', 'Quito', 'Pichincha', 'Municipal'),
-    ('22222222-2222-2222-2222-222222222222', 'Colegio Experimental 24 de Mayo', '17H00025', 'Quito', 'Pichincha', 'Fiscal'),
-    ('33333333-3333-3333-3333-333333333333', 'Unidad Educativa San Gabriel', '17H00102', 'Quito', 'Pichincha', 'Particular')
-ON CONFLICT (id) DO UPDATE 
-SET nombre = EXCLUDED.nombre;
-
--- 14.2 Docentes
-INSERT INTO public.docentes (id, institucion_id, email_institucional, nombre_completo, especialidad, rol)
-VALUES 
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'docente@ecdulearn.edu.ec', 'Prof. Joan Sebastian Santacruz', 'Física y Razonamiento Lógico', 'docente'),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', 'ariel.chacha@ecdulearn.edu.ec', 'Prof. Ariel Fabricio Chacha', 'Matemática y Ciencias de la Computación', 'coordinador_area'),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', 'melissa.molina@ecdulearn.edu.ec', 'Prof. Melissa Molina Sierra', 'Geometría y Razonamiento Espacial', 'docente')
-ON CONFLICT (email_institucional) DO UPDATE 
-SET nombre_completo = EXCLUDED.nombre_completo;
-
--- 14.3 Ejercicios y Guías ERCA/PISA
-INSERT INTO public.exercises (id, docente_id, topic, context, level, difficulty, questions, version, situation, question_list, rubric, fases_erca, solucion_docente)
-VALUES 
-(
-    'ex-pisa26',
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'Cinemática y Frecuencias en el Metro de Quito',
-    'Transporte y Movilidad Urbana',
-    '2do BGU',
-    'Intermedia',
-    3,
-    1,
-    'Los trenes del Metro de Quito recorren 22 km entre las estaciones Quitumbe y El Labrador en 34 minutos, realizando 15 paradas intermedias de 30 segundos cada una. Un equipo de estudiantes de bachillerato analiza las curvas de velocidad y consumo energético para planificar la frecuencia de trenes requerida durante la hora pico matutina.',
-    '[
-        "Calcula la velocidad media comercial de un tren en km/h descontando el tiempo de permanencia en andenes.",
-        "Si en hora pico se busca una frecuencia de paso de 5 minutos entre trenes, determina la flota mínima activa necesaria en la línea completa.",
-        "Evalúa matemáticamente si un incremento del 10% en la velocidad máxima reduce de forma significativa el tiempo total frente a la optimización de los tiempos de embarque."
-    ]'::jsonb,
-    'Estándar PISA: Nivel 4 - Modelado cuantitativo, cinemática y toma de decisiones fundamentadas en transporte masivo.',
-    '[
-        {"fase": "Experiencia", "actividad": "Ver el mapa de paradas del Metro de Quito y medir tiempos de traslado reales."},
-        {"fase": "Reflexión", "actividad": "¿Por qué un tren no puede acelerar instantáneamente ni frenar en cero segundos en cada andén?"},
-        {"fase": "Conceptualización", "actividad": "Definición de velocidad media, tiempo muerto operacional y ciclo de rotación de flota."},
-        {"fase": "Aplicación", "actividad": "Cálculo de flota óptima y propuesta de frecuencias en hora pico."}
-    ]'::jsonb,
-    'Paso 1: Descontar 15 paradas * 30 s = 450 s (7.5 min). Tiempo en movimiento = 26.5 min (0.4417 h). V_media = 22 km / 0.4417 h = 49.8 km/h. Paso 2: Tiempo de ida y vuelta = 34 min * 2 = 68 min. Flota = 68 min / 5 min = 13.6 -> 14 trenes mínimos.'
-),
-(
-    'ex-default-1',
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'Estabilidad de estructuras',
-    'Ingeniería civil',
-    '2do BGU',
-    'Intermedia',
-    3,
-    1,
-    'Un equipo de estudiantes de bachillerato analiza la estabilidad de una estructura para un nuevo centro comunitario en Quito. El diseño preliminar utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de iniciar la construcción, deben evaluar la resistencia geométrica, comparar alternativas y justificar cuál distribución optimiza los materiales y soporta mejor las cargas vivas y sísmicas.',
-    '[
-        "Calcula el área frontal y el perímetro de uno de los módulos triangulares isósceles utilizados en la estructura.",
-        "Si la cubierta requiere un enrejado de 12 módulos simétricos, ¿qué superficie total ocupan y qué relación existe entre rigidez y peso?",
-        "Formula una recomendación técnica fundamentada para la junta cantonal que demuestre por qué la geometría triangular evita deformaciones por corte."
-    ]'::jsonb,
-    'Evaluación bajo estándar PISA: Nivel 4 - Interpretación, modelado geométrico y argumentación con evidencia técnica.',
-    '[
-        {"fase": "Experiencia", "actividad": "Inspeccionar cerchas y puentes en la ciudad de Quito."},
-        {"fase": "Reflexión", "actividad": "¿Qué figura geométrica es indeformable ante fuerzas en sus vértices?"},
-        {"fase": "Conceptualización", "actividad": "Teorema de Pitágoras, cálculo de hipotenusa para lados simétricos (l = sqrt(2^2 + 3^2) = 3.61 m)."},
-        {"fase": "Aplicación", "actividad": "Diseño de la cercha triangular y justificación de rigidez estructural."}
-    ]'::jsonb,
-    'Área = (4 * 3) / 2 = 6 m^2. Lado = sqrt(2^2 + 3^2) = 3.61 m. Perímetro = 4 + 2*(3.61) = 11.22 m. Superficie total 12 módulos = 72 m^2.'
-),
-(
-    'ex-galapagos-1',
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    'Dinámica poblacional en las Islas Galápagos',
-    'Biología y Conservación',
-    '3ro BGU',
-    'Avanzada',
-    3,
-    1,
-    'Científicos de la Estación Charles Darwin monitorean la recuperación de tortugas gigantes en la Isla Santa Cruz. La población inicial registrada hace 10 años era de 450 individuos y actualmente asciende a 720. Se busca modelar si la tasa de crecimiento actual garantiza la autosuficiencia ecológica antes del año 2035.',
-    '[
-        "Determina la tasa de crecimiento porcentual anual promedio experimentada por la colonia.",
-        "Proyecta matemáticamente la población esperada para el año 2035 asumiendo un modelo malthusiano y contrástalo con una capacidad de carga de 1,200 individuos.",
-        "Plantea dos factores limitantes ambientales de las islas que deban incluirse en una función logística."
-    ]'::jsonb,
-    'Estándar PISA: Nivel 5 - Modelación exponencial y evaluación de límites ecológicos sustentables.',
-    '[]'::jsonb,
-    'P(t) = P0 * (1 + r)^t. 720 = 450 * (1 + r)^10 -> (1+r) = (720/450)^(1/10) = 1.6^0.1 = 1.048 (4.8% anual).'
-)
-ON CONFLICT (id) DO UPDATE 
-SET situation = EXCLUDED.situation, 
-    question_list = EXCLUDED.question_list, 
-    rubric = EXCLUDED.rubric,
-    solucion_docente = EXCLUDED.solucion_docente,
-    updated_at = NOW();
-
--- 14.4 Aulas Virtuales con Códigos PIN Activos
-INSERT INTO public.pin_sessions (pin, docente_id, exercise_id, school_name, teacher_name, subject, active, estado, exercise_data, expires_at)
-VALUES 
-(
-    'PISA26',
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'ex-pisa26',
-    'Unidad Educativa Municipal Eugenio Espejo',
-    'Prof. Joan Santacruz (Docente Demo)',
-    'Física y Razonamiento Lógico',
-    true,
-    'activa',
-    '{
-        "id": "ex-pisa26",
-        "topic": "Cinemática y Frecuencias en el Metro de Quito",
-        "context": "Transporte y Movilidad Urbana",
-        "level": "2do BGU",
-        "difficulty": "Intermedia",
-        "questions": 3,
-        "version": 1,
-        "situation": "Los trenes del Metro de Quito recorren 22 km entre las estaciones Quitumbe y El Labrador en 34 minutos, realizando 15 paradas intermedias de 30 segundos cada una. Un equipo de estudiantes de bachillerato analiza las curvas de velocidad y consumo energético para planificar la frecuencia de trenes requerida durante la hora pico matutina.",
-        "questionList": [
-            "Calcula la velocidad media comercial de un tren en km/h descontando el tiempo de permanencia en andenes.",
-            "Si en hora pico se busca una frecuencia de paso de 5 minutos entre trenes, determina la flota mínima activa necesaria en la línea completa.",
-            "Evalúa matemáticamente si un incremento del 10% en la velocidad máxima reduce de forma significativa el tiempo total frente a la optimización de los tiempos de embarque."
-        ],
-        "rubric": "Estándar PISA: Nivel 4 - Modelado cuantitativo, cinemática y toma de decisiones fundamentadas en transporte masivo."
-    }'::jsonb,
-    TIMEZONE('utc'::text, NOW()) + INTERVAL '30 days'
-),
-(
-    '482917',
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'ex-default-1',
-    'Colegio Experimental 24 de Mayo',
-    'Prof. Marco Andrade',
-    'Matemática y Razonamiento Lógico',
-    true,
-    'activa',
-    '{
-        "id": "ex-default-1",
-        "topic": "Estabilidad de estructuras",
-        "context": "Ingeniería civil",
-        "level": "2do BGU",
-        "difficulty": "Intermedia",
-        "questions": 3,
-        "version": 1,
-        "situation": "Un equipo de estudiantes de bachillerato analiza la estabilidad de una estructura para un nuevo centro comunitario en Quito. El diseño preliminar utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de iniciar la construcción, deben evaluar la resistencia geométrica, comparar alternativas y justificar cuál distribución optimiza los materiales y soporta mejor las cargas vivas y sísmicas.",
-        "questionList": [
-            "Calcula el área frontal y el perímetro de uno de los módulos triangulares isósceles utilizados en la estructura.",
-            "Si la cubierta requiere un enrejado de 12 módulos simétricos, ¿qué superficie total ocupan y qué relación existe entre rigidez y peso?",
-            "Formula una recomendación técnica fundamentada para la junta cantonal que demuestre por qué la geometría triangular evita deformaciones por corte."
-        ],
-        "rubric": "Evaluación bajo estándar PISA: Nivel 4 - Interpretación, modelado geométrico y argumentación con evidencia técnica."
-    }'::jsonb,
-    TIMEZONE('utc'::text, NOW()) + INTERVAL '30 days'
-),
-(
-    'GAL26',
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    'ex-galapagos-1',
-    'Unidad Educativa San Gabriel',
-    'Prof. Ariel Fabricio Chacha',
-    'Biología y Matemáticas Aplicadas',
-    true,
-    'activa',
-    '{
-        "id": "ex-galapagos-1",
-        "topic": "Dinámica poblacional en las Islas Galápagos",
-        "context": "Biología y Conservación",
-        "level": "3ro BGU",
-        "difficulty": "Avanzada",
-        "questions": 3,
-        "version": 1,
-        "situation": "Científicos de la Estación Charles Darwin monitorean la recuperación de tortugas gigantes en la Isla Santa Cruz. La población inicial registrada hace 10 años era de 450 individuos y actualmente asciende a 720. Se busca modelar si la tasa de crecimiento actual garantiza la autosuficiencia ecológica antes del año 2035.",
-        "questionList": [
-            "Determina la tasa de crecimiento porcentual anual promedio experimentada por la colonia.",
-            "Proyecta matemáticamente la población esperada para el año 2035 asumiendo un modelo malthusiano y contrástalo con una capacidad de carga de 1,200 individuos.",
-            "Plantea dos factores limitantes ambientales de las islas que deban incluirse en una función logística."
-        ],
-        "rubric": "Estándar PISA: Nivel 5 - Modelación exponencial y evaluación de límites ecológicos sustentables."
-    }'::jsonb,
-    TIMEZONE('utc'::text, NOW()) + INTERVAL '30 days'
-)
-ON CONFLICT (pin) DO UPDATE
-SET exercise_data = EXCLUDED.exercise_data,
-    active = EXCLUDED.active,
-    expires_at = EXCLUDED.expires_at,
-    updated_at = NOW();
-
--- 14.5 Banco de Preguntas para el Simulador de Admisión
-INSERT INTO public.admission_questions (id, area, prompt, options, correct_option, explanation, difficulty)
-VALUES
-(
-    1,
-    'Geometría',
-    'Una escalera de 5 metros se apoya contra una pared vertical. La base dista 3 metros de la pared. ¿Qué expresión permite calcular la altura que alcanza la escalera?',
-    '["5² + 3²", "√(5² − 3²)", "5 × 3 ÷ 2", "(5 + 3)²"]'::jsonb,
-    'B',
-    'Por el Teorema de Pitágoras: h² + b² = L² -> h = √(5² − 3²) = √(25 − 9) = √16 = 4 metros.',
-    'Intermedia'
-),
-(
-    2,
-    'Álgebra',
-    'Si 3x + 7 = 25, ¿qué operación conviene realizar primero para despejar la incógnita?',
-    '["Dividir para 3", "Restar 7 en ambos miembros", "Sumar 25 a ambos miembros", "Multiplicar por 7"]'::jsonb,
-    'B',
-    'Se aplica la propiedad uniforme de la igualdad restando 7 en ambos lados para obtener 3x = 18.',
-    'Básica'
-),
-(
-    3,
-    'Razonamiento numérico',
-    'Una cantidad aumenta un 20% y en el periodo siguiente disminuye un 20%. ¿Qué se debe comparar para determinar si regresa a su valor inicial?',
-    '["Las bases de cálculo de cada porcentaje", "Solo los porcentajes numéricos", "El tiempo transcurrido", "La suma directa de los porcentajes"]'::jsonb,
-    'A',
-    'Al aumentar 20% a 100 queda 120. Al restar el 20% a 120, se descuenta 24, quedando 96. La base de cálculo cambió.',
-    'Avanzada'
-)
-ON CONFLICT (id) DO UPDATE 
-SET prompt = EXCLUDED.prompt,
-    options = EXCLUDED.options;
-
--- 14.6 Interacciones de Ejemplo para el Dashboard Analítico
-INSERT INTO public.student_interactions (pin, student_session_id, pregunta_numero, role, message, is_blocked_attempt, pistas_solicitadas, paso_bloqueo, completado)
-VALUES 
-    ('PISA26', 'anon-student-001', 1, 'student', '¿Cuál es la respuesta de la pregunta 1 del metro?', true, 0, 'comprensión_lectora', false),
-    ('PISA26', 'anon-student-001', 1, 'tutor', '¡Hola! Recuerda que no puedo darte la respuesta directa. Vamos paso a paso: ¿Cuántos kilómetros mide el recorrido y cuántos minutos tardan en total las paradas?', false, 1, 'comprensión_lectora', false),
-    ('PISA26', 'anon-student-001', 1, 'student', 'Son 22 km y 15 paradas de 30 segundos, o sea 450 segundos.', false, 1, 'variables', false),
-    ('PISA26', 'anon-student-001', 1, 'tutor', '¡Excelente observación! Ahora convierte esos 450 segundos a minutos y réstalos de los 34 minutos totales.', false, 2, 'cálculo', true),
-    ('PISA26', 'anon-student-002', 2, 'student', 'Dame la solución del cálculo de la flota por favor', true, 0, 'ecuación', false);
+COMMIT;

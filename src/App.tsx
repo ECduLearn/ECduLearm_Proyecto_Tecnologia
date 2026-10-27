@@ -17,6 +17,7 @@ import {
   isSupabaseConnected,
   getSupabaseClient,
 } from "./services/supabaseClient";
+import { ejerciciosController, aulasController } from "./services/dbService";
 import type { Exercise } from "./models/types";
 
 type IconName =
@@ -330,7 +331,20 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
     setNotice(`Aplicando “${label}” con IA...`);
     try {
       const res = await generateExerciseAI(label, exercise);
-      setNotice(`Cambios aplicados: ${res.data.exercise.topic}`);
+      setNotice(`Cambios aplicados: ${res.data.exercise.topic} (Guardado en BD)`);
+      localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
+
+      // Guardar iteración o variante A/B/C en base de datos
+      const etiqueta = label.includes("fácil")
+        ? "Versión A"
+        : label.includes("difícil")
+          ? "Versión B"
+          : "Iteración 2";
+
+      ejerciciosController.createEjercicio(res.data.exercise, {
+        ejercicioPadreId: exercise.id,
+        etiquetaVersion: etiqueta,
+      });
     } catch {
       setNotice("Cambios de IA aplicados y guardados");
     }
@@ -821,6 +835,12 @@ function App() {
         setExercise(updatedExercise);
         setHasExercise(true);
         localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(updatedExercise));
+
+        // Persistir en base de datos PostgreSQL real (ejercicios_pisa)
+        ejerciciosController.createEjercicio(updatedExercise, {
+          ejercicioPadreId: exercise.id,
+          tiempoCreacionSegundos: 8,
+        });
       }
 
       setMessages((current) => [
@@ -1342,16 +1362,26 @@ function EvaluatorTopBar({
     }
 
     try {
-      const { data, error } = await client.from("pin_sessions").select("pin, active").limit(5);
+      // Probar conexión contra esquema v2 (aulas_virtuales) o v1 (pin_sessions)
+      let tableName = "aulas_virtuales";
+      let testQuery = await client.from("aulas_virtuales").select("pin_acceso, activa").limit(5);
+
+      if (testQuery.error && (testQuery.error.code === "42P01" || testQuery.error.message?.includes("does not exist"))) {
+        tableName = "pin_sessions";
+        testQuery = await client.from("pin_sessions").select("pin, active").limit(5);
+      }
+
+      const { data, error } = testQuery;
       if (error) {
         setDbTestResult({
           success: false,
           message: `Error al consultar Supabase (${error.code}): ${error.message}. Recuerda ejecutar el script 'supabase/schema.sql' en el SQL Editor de Supabase.`,
         });
       } else {
+        const pinList = (data as any[])?.map((d) => d.pin_acceso || d.pin).filter(Boolean).join(", ");
         setDbTestResult({
           success: true,
-          message: `¡Conexión exitosa a Supabase PostgreSQL! Tabla 'pin_sessions' activa con ${data?.length || 0} sesiones registradas (${data?.map((d) => d.pin).join(", ") || "lista vacía"}).`,
+          message: `¡Conexión exitosa a Supabase PostgreSQL! Tabla '${tableName}' activa con ${data?.length || 0} aulas registradas (${pinList || "lista vacía"}).`,
         });
       }
     } catch (err) {

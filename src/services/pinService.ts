@@ -14,7 +14,7 @@ export function cleanPin(formattedPin: string): string {
 
 export function isValidPin(pin: string): boolean {
   const cleaned = cleanPin(pin);
-  return /^\d{6}$/.test(cleaned);
+  return /^[A-Z0-9]{6}$/i.test(cleaned);
 }
 
 export async function copyPinToClipboard(pin: string): Promise<boolean> {

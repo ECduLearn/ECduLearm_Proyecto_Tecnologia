@@ -312,10 +312,22 @@ export default function AutonomousZone({
           (answer.includes("velocidad") || answer.includes("distancia") || answer.includes("km"))
         : answer.includes("minuto") && (answer.includes("segundo") || answer.includes("60") || answer.includes("hora"));
 
+    const activePin = typeof window !== "undefined" ? localStorage.getItem("ecdulearm_active_pin") || "PISA26" : "PISA26";
+
     if (isUseful) {
       setStepStatus("success");
+      apiAdapter.registrarInteraccionSocratica(activePin, {
+        tipo: "completado",
+        paso: schoolStep,
+        detalle: `Paso ${schoolStep} completado con éxito`,
+      });
     } else {
       setStepStatus("review");
+      apiAdapter.registrarInteraccionSocratica(activePin, {
+        tipo: "bloqueo",
+        paso: schoolStep,
+        detalle: `Bloqueo en paso ${schoolStep}: ${stepInput.slice(0, 80)}`,
+      });
       try {
         const hintRes = await socraticTutorAI(
           `El estudiante respondió en el paso ${schoolStep}: "${stepInput}". Dale una pista reflexiva corta sin darle el cálculo final.`,
