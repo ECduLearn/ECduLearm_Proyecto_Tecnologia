@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useState } from "react";
 import { socraticTutorAI } from "./services/aiService";
+import { apiAdapter } from "./services/apiAdapter";
 
 type ZoneIconName =
   | "algebra"
@@ -148,10 +149,10 @@ const practiceCategories = [
 ];
 
 const quickPrompts = [
-  "No entiendo el enunciado",
+  "No entiendo el enunciado, ¿cómo empiezo?",
+  "¿Qué datos son importantes aquí?",
   "Dame una pista del primer paso",
   "Revisa mi procedimiento",
-  "¿Uso regla de tres?",
 ];
 
 function StudentHeader({
@@ -219,13 +220,26 @@ export default function AutonomousZone({
 
   const socraticReply = (prompt: string) => {
     const normalized = prompt.toLowerCase();
+    if (
+      normalized.includes("dame la respuesta") ||
+      normalized.includes("resuelve") ||
+      normalized.includes("resolvelo") ||
+      normalized.includes("resuélvelo") ||
+      normalized.includes("dime la solucion") ||
+      normalized.includes("dime la solución")
+    ) {
+      return "🛡️ Como Tutor Socrático, mi misión es que tú desarrolles la destreza cognitiva, por lo que nunca te daré el número final servido. Si calculamos primero el punto de partida, ¿qué magnitud u operación crees que debemos aplicar?";
+    }
     if (normalized.includes("regla de tres")) {
-      return "Antes de elegir una técnica, observa cómo cambia cada figura. ¿La relación es proporcional o sigue otro patrón?";
+      return "Antes de elegir una técnica, observa cómo cambia cada magnitud. ¿La relación es directamente proporcional o inversamente proporcional?";
     }
-    if (normalized.includes("enunciado")) {
-      return "Reescribe la pregunta con tus palabras: ¿qué elementos se repiten y qué elemento debes predecir?";
+    if (normalized.includes("enunciado") || normalized.includes("empiezo")) {
+      return "Reescribe el problema con tus palabras: ¿qué datos exactos te da el texto y qué incógnita te pide calcular?";
     }
-    return "Mira la diferencia entre una figura y la siguiente. ¿Qué cambia siempre y qué permanece igual?";
+    if (normalized.includes("procedimiento") || normalized.includes("revisa")) {
+      return "¡Excelente iniciativa! Escribe el paso exacto que calculaste (con sus unidades) y te diré si el razonamiento es sólido o si debemos ajustar una relación.";
+    }
+    return "Mira la diferencia entre el estado inicial y el final: ¿qué dato se mantiene constante en todo el proceso?";
   };
 
   const submitChat = async (event: FormEvent) => {
@@ -238,6 +252,13 @@ export default function AutonomousZone({
       { id: studentId, role: "student", text: prompt },
     ]);
     setChatInput("");
+
+    // Registrar interacción formativa en el adaptador de métricas
+    const activePin = localStorage.getItem("ecdulearm_active_pin") || "PISA26";
+    apiAdapter.registrarInteraccionSocratica(activePin, {
+      tipo: "pista",
+      detalle: prompt,
+    });
 
     try {
       const history = messages.map((m) => ({ role: m.role, text: m.text }));
@@ -260,6 +281,13 @@ export default function AutonomousZone({
       ...current,
       { id: studentId, role: "student", text: prompt },
     ]);
+
+    // Registrar interacción socrática por chip
+    const activePin = localStorage.getItem("ecdulearm_active_pin") || "PISA26";
+    apiAdapter.registrarInteraccionSocratica(activePin, {
+      tipo: "pista",
+      detalle: prompt,
+    });
 
     try {
       const history = messages.map((m) => ({ role: m.role, text: m.text }));

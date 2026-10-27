@@ -596,3 +596,40 @@ Sé conciso, empático y formula una pregunta reflexiva que despierte el '¡Ajá
     };
   }
 }
+
+/**
+ * Función oficial de generación o adaptación PISA (Workflow 2)
+ */
+export async function generarOAdaptarEjercicioPISA(params: {
+  nivel: string;
+  tema: string;
+  contexto: string;
+  ejercicioBase?: string;
+  accionRapida?: string;
+}): Promise<AIResult<{ exercise: Exercise; reply: string }>> {
+  const prompt = `Nivel: ${params.nivel}. Tema: ${params.tema}. Contexto de aplicación: ${params.contexto}. ${
+    params.ejercicioBase ? `Ejercicio base mecánico a transformar: ${params.ejercicioBase}.` : ""
+  } ${params.accionRapida ? `Acción solicitada: ${params.accionRapida}.` : ""}`;
+
+  return await generateExerciseAI(prompt);
+}
+
+/**
+ * Función oficial del Tutor Socrático con candado anti-copia (Workflow 2)
+ */
+export async function consultarTutorSocratico(params: {
+  enunciadoProblema: string;
+  historialChat?: { role: string; text: string }[];
+  mensajeEstudiante: string;
+}): Promise<AIResult<string>> {
+  return await socraticTutorAI(
+    params.enunciadoProblema,
+    params.mensajeEstudiante,
+    params.historialChat?.map((h) => ({
+      id: Date.now(),
+      role: h.role === "assistant" || h.role === "tutor" ? "tutor" : "student",
+      text: h.text,
+    })) || []
+  );
+}
+

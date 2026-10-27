@@ -185,7 +185,13 @@ const recentItems = [
   { title: "Interés compuesto", meta: "Finanzas · 12 jun", context: "Economía" },
 ];
 
-const quickActions = ["Más fácil", "Contexto de arquitectura", "Economía", "Agrega una pregunta"];
+const quickActions = [
+  "✨ Orientación PISA",
+  "🔄 Convertir mecánico a razonamiento",
+  "⚖️ Ajustar dificultad",
+  "📑 Crear Versión B/C",
+  "🔍 Generar solución paso a paso",
+];
 
 function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   return (
