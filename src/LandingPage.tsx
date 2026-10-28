@@ -93,6 +93,15 @@ function Marca() {
 }
 
 export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingPageProps) {
+  const entrarComoAdmin = async () => {
+    if (!onNavigate) return onEnterApp()
+    const { authController } = await import("@/services/dbService")
+    if (authController.getCurrentUser()?.role !== "admin") {
+      await authController.loginDocente("admin@ecdulearn.edu.ec", "admin123")
+    }
+    onNavigate("admin")
+  }
+
   const [pin, setPin] = useState("")
   const [pinError, setPinError] = useState("")
   const [buscandoClase, setBuscandoClase] = useState(false)
@@ -218,7 +227,7 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
                   <dd>
                     <button
                       type="button"
-                      onClick={() => (onNavigate ? onNavigate("admin") : onEnterApp())}
+                      onClick={entrarComoAdmin}
                       className="font-mono text-hint-700 underline decoration-hint-300 underline-offset-2 hover:text-hint-900"
                     >
                       admin@ecdulearn.edu.ec

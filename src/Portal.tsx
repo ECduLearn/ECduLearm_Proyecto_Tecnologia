@@ -766,7 +766,7 @@ export function TeacherDashboard({
             <PortalIcon name="chart" className="size-5" />
             Reporte institucional
           </button>
-          {onOpenAdmin && (
+          {onOpenAdmin && currentUser?.role === "admin" && (
             <button
               type="button"
               onClick={onOpenAdmin}
@@ -819,7 +819,7 @@ export function TeacherDashboard({
                 </p>
                 <p className="truncate text-xs text-sand-500">
                   {teacherName} ·{" "}
-                  {currentUser?.role === "coordinador" ? "Coordinación" : "Docente"}
+                  {currentUser?.role === "admin" ? "Administración" : currentUser?.role === "coordinador" ? "Coordinación" : "Docente"}
                   {isDemoSession && (
                     <span className="ml-1.5 rounded-full bg-hint-50 px-2 py-0.5 font-bold text-hint-700 ring-1 ring-hint-200">
                       Modo demo
