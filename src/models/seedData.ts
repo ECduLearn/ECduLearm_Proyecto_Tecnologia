@@ -21,7 +21,8 @@ export interface FullPisaExercise extends Exercise {
     level2: string; // Pista de relación matemática / modelo
     level3: string; // Pista de despeje o verificación
   };
-  ercaStructure: {
+  // Solo lo traen los datos semilla; los ejercicios generados por IA o leídos de la BD no lo incluyen
+  ercaStructure?: {
     experience: ErcaPhase;
     reflection: ErcaPhase;
     conceptualization: ErcaPhase;

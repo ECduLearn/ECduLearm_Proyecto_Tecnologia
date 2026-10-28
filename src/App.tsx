@@ -420,7 +420,9 @@ function EditorView({
           ? "Versión B"
           : "Iteración 2"
 
-      ejerciciosController.createEjercicio(res.data.exercise, {
+      ejerciciosController.createEjercicio({
+        ...res.data.exercise,
+
         ejercicioPadreId: exercise.id,
 
         etiquetaVersion: etiqueta,
@@ -991,7 +993,9 @@ function App() {
 
         // Persistir en base de datos PostgreSQL real (ejercicios_pisa)
 
-        ejerciciosController.createEjercicio(updatedExercise, {
+        ejerciciosController.createEjercicio({
+          ...updatedExercise,
+
           ejercicioPadreId: exercise.id,
 
           tiempoCreacionSegundos: 8,
@@ -1616,16 +1620,17 @@ function EvaluatorTopBar({
         .select("pin_acceso, activa")
         .limit(5)
 
+      // PostgREST responde PGRST205 cuando la tabla no existe (esquema v1)
       if (
         testQuery.error &&
-        (testQuery.error.code === "42P01" ||
-          testQuery.error.message?.includes("does not exist"))
+        (testQuery.error.code === "PGRST205" ||
+          testQuery.error.code === "42P01")
       ) {
         tableName = "pin_sessions"
 
         testQuery = await client
           .from("pin_sessions")
-          .select("pin, active")
+          .select("pin_acceso:pin, activa:active")
           .limit(5)
       }
 
@@ -1638,8 +1643,8 @@ function EvaluatorTopBar({
           message: `Error al consultar Supabase (${error.code}): ${error.message}. Recuerda ejecutar el script 'supabase/schema.sql' en el SQL Editor de Supabase.`,
         })
       } else {
-        const pinList = (data as any[])
-          ?.map((d) => d.pin_acceso || d.pin)
+        const pinList = data
+          ?.map((d) => d.pin_acceso)
           .filter(Boolean)
           .join(", ")
 
