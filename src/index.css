@@ -75,12 +75,15 @@
   #exercise-document,
   #exercise-document *,
   #guide-document,
-  #guide-document * {
+  #guide-document *,
+  #reporte-institucional,
+  #reporte-institucional * {
     visibility: visible;
   }
 
   #exercise-document,
-  #guide-document {
+  #guide-document,
+  #reporte-institucional {
     position: absolute;
     inset: 0;
     border: 0;

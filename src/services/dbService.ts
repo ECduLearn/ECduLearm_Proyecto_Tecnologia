@@ -1210,6 +1210,89 @@ const ETIQUETAS_PASO: Record<string, string> = {
   INTERPRETACION_RESULTADO: "Interpretar el resultado",
 };
 
+export interface ReporteInstitucional {
+  docentesActivos: number;
+  ejerciciosGenerados: number;
+  horasAhorradas: number;
+  aulasActivas: number;
+  sesionesAnonimas: number;
+  pctResueltosConAyuda: number;
+  pasoBloqueoFrecuente: string;
+  docentes: { nombre: string; ejercicios: number; horas: number }[];
+}
+
+export type ResultadoReporte =
+  | { estado: "ok" | "demo"; reporte: ReporteInstitucional }
+  | { estado: "sin_permiso" | "error" };
+
+const REPORTE_DE_EJEMPLO: ReporteInstitucional = {
+  docentesActivos: 6,
+  ejerciciosGenerados: 48,
+  horasAhorradas: 34.5,
+  aulasActivas: 9,
+  sesionesAnonimas: 214,
+  pctResueltosConAyuda: 58,
+  pasoBloqueoFrecuente: "Plantear la ecuación",
+  docentes: [
+    { nombre: "Docente de Matemáticas A", ejercicios: 14, horas: 10.2 },
+    { nombre: "Docente de Matemáticas B", ejercicios: 11, horas: 8.1 },
+    { nombre: "Docente de Física", ejercicios: 9, horas: 6.6 },
+  ],
+};
+
+export const reporteController = {
+  /**
+   * Reporte agregado del colegio (fn_dashboard_institucion): solo coordinación o administración.
+   * Nunca expone datos por estudiante.
+   */
+  async getReporteInstitucional(): Promise<ResultadoReporte> {
+    const client = getSupabaseClient();
+    const user = authController.getCurrentUser();
+    if (!client || !user || user.isDemo || !isValidUuid(user.id)) {
+      return { estado: "demo", reporte: REPORTE_DE_EJEMPLO };
+    }
+
+    try {
+      const [resumen, porDocente] = await Promise.all([
+        client.rpc("fn_dashboard_institucion"),
+        client
+          .from("vw_tiempo_ahorrado_docente")
+          .select("nombre_completo, ejercicios_generados, horas_ahorradas_estimadas")
+          .order("ejercicios_generados", { ascending: false }),
+      ]);
+
+      if (resumen.error?.code === "42501") return { estado: "sin_permiso" };
+      if (resumen.error || !resumen.data) {
+        console.warn(`[reporte] fn_dashboard_institucion falló (${resumen.error?.code}): ${resumen.error?.message}`);
+        return { estado: "error" };
+      }
+
+      const d = resumen.data as Record<string, unknown>;
+      const paso = d.paso_bloqueo_mas_frecuente ? String(d.paso_bloqueo_mas_frecuente) : "";
+      return {
+        estado: "ok",
+        reporte: {
+          docentesActivos: Number(d.docentes_activos ?? 0),
+          ejerciciosGenerados: Number(d.ejercicios_generados ?? 0),
+          horasAhorradas: Number(d.horas_ahorradas_estimadas ?? 0),
+          aulasActivas: Number(d.aulas_activas ?? 0),
+          sesionesAnonimas: Number(d.sesiones_anonimas ?? 0),
+          pctResueltosConAyuda: Number(d.pct_resueltos_con_ayuda ?? 0),
+          pasoBloqueoFrecuente: paso ? ETIQUETAS_PASO[paso] ?? paso : "",
+          docentes: (porDocente.data ?? []).map((fila) => ({
+            nombre: String(fila.nombre_completo),
+            ejercicios: Number(fila.ejercicios_generados ?? 0),
+            horas: Number(fila.horas_ahorradas_estimadas ?? 0),
+          })),
+        },
+      };
+    } catch (err) {
+      console.warn("[reporte] Error al cargar el reporte:", (err as Error).message);
+      return { estado: "error" };
+    }
+  },
+};
+
 // Muestra para la cuenta demo o sin conexión: la UI la marca como «Datos de ejemplo»
 const METRICAS_DE_EJEMPLO: DbMetricasDocente = {
   ejerciciosGenerados: 12,

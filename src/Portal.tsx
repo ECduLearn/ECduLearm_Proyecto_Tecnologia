@@ -637,6 +637,8 @@ export function TeacherDashboard({
   onOpenPlanner,
 
   onOpenAdmin,
+
+  onOpenReporte,
 }: {
   onExit: () => void
 
@@ -645,6 +647,8 @@ export function TeacherDashboard({
   onOpenPlanner: () => void
 
   onOpenAdmin?: () => void
+
+  onOpenReporte?: () => void
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -756,10 +760,11 @@ export function TeacherDashboard({
           </button>
           <button
             type="button"
+            onClick={onOpenReporte}
             className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="chart" className="size-5" />
-            Analítica grupal
+            Reporte institucional
           </button>
           {onOpenAdmin && (
             <button

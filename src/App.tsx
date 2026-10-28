@@ -9,6 +9,7 @@ const TeacherDashboard = lazy(() => cargarPortal().then((m) => ({ default: m.Tea
 const AutonomousZone = lazy(cargarZonaEstudiante);
 const PlanningWorkspace = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.PlanningWorkspace })));
 const AdmissionSimulator = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.AdmissionSimulator })));
+const ReporteInstitucional = lazy(() => import("./views/ReporteInstitucional"));
 const RestablecerClave = lazy(() => import("./views/RestablecerClave"));
 const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
 import PublicarAulaDialog from "./components/PublicarAulaDialog";
@@ -1190,7 +1191,18 @@ function App() {
           onCreateContent={() => setView("chat")}
           onOpenPlanner={() => setView("planner")}
           onOpenAdmin={() => setView("admin")}
+          onOpenReporte={() => setView("reporte")}
         />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
+    )
+  }
+
+  if (view === "reporte") {
+    return (
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <ReporteInstitucional onVolver={() => setView("dashboard")} />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
     )
