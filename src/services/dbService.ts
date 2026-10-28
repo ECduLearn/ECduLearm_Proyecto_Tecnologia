@@ -163,6 +163,8 @@ export interface DbMetricasDocente {
   estudiantesConectados: number;
   aulasActivas: number;
   pasoBloqueoFrecuente: string;
+  estudiantesBloqueados: number;
+  pctBloqueo: number;
   isOffline: boolean;
 }
 
@@ -1269,57 +1271,91 @@ export const estudianteSocraticoController = {
 // 9. CONTROLADOR DE MÉTRICAS ANALÍTICAS EN VIVO (DASHBOARD DOCENTE & RECTOR)
 // ==============================================================================
 
+// Vocabulario cerrado de ck_intentos_paso en lenguaje del docente
+const ETIQUETAS_PASO: Record<string, string> = {
+  COMPRENSION_LECTORA: "Entender el enunciado",
+  IDENTIFICACION_VARIABLES: "Identificar los datos",
+  PLANTEAMIENTO_ECUACION: "Plantear la ecuación",
+  CALCULO: "Hacer los cálculos",
+  INTERPRETACION_RESULTADO: "Interpretar el resultado",
+};
+
+// Muestra para la cuenta demo o sin conexión: la UI la marca como «Datos de ejemplo»
+const METRICAS_DE_EJEMPLO: DbMetricasDocente = {
+  ejerciciosGenerados: 12,
+  promedioSegundos: 8.5,
+  horasAhorradasEstimadas: 8.4,
+  pctResueltosConAyuda: 62,
+  estudiantesConectados: 36,
+  aulasActivas: 1,
+  pasoBloqueoFrecuente: "Plantear la ecuación",
+  estudiantesBloqueados: 14,
+  pctBloqueo: 39,
+  isOffline: true,
+};
+
 export const metricasController = {
   /**
-   * Obtiene las métricas en tiempo real para el panel docente y rectoral.
+   * Métricas del docente que inició sesión, sumando todas sus aulas. Las vistas vw_* usan
+   * security_invoker, así que RLS ya limita los datos a lo que el docente puede ver.
    */
   async getMetricasEnVivo(): Promise<DbMetricasDocente> {
     const client = getSupabaseClient();
+    const user = authController.getCurrentUser();
 
-    if (client) {
+    if (client && user && !user.isDemo && isValidUuid(user.id)) {
       try {
-        // 1. Intentar consultar la vista analítica vw_tiempo_ahorrado_docente
-        const { data: dataAhorro } = await client
-          .from("vw_tiempo_ahorrado_docente")
-          .select("*")
-          .limit(1)
-          .single();
+        const [ahorro, aulas, bloqueos] = await Promise.all([
+          client
+            .from("vw_tiempo_ahorrado_docente")
+            .select("ejercicios_generados, promedio_segundos_creacion, horas_ahorradas_estimadas")
+            .eq("docente_id", user.id)
+            .maybeSingle(),
+          client
+            .from("vw_completitud_socratica_aula")
+            .select("estudiantes_anonimos, intentos_totales, resueltos_con_ayuda")
+            .eq("docente_id", user.id),
+          client
+            .from("vw_pasos_bloqueo_aula")
+            .select("paso_bloqueo_detectado, estudiantes_bloqueados, intentos_totales")
+            .not("paso_bloqueo_detectado", "is", null),
+        ]);
 
-        // 2. Intentar consultar vw_completitud_socratica_aula
-        const { data: dataCompletitud } = await client
-          .from("vw_completitud_socratica_aula")
-          .select("*")
-          .limit(1)
-          .single();
+        const fallo = ahorro.error || aulas.error || bloqueos.error;
+        if (fallo) {
+          console.warn(`[dbService] No se pudieron leer las métricas (${fallo.code}): ${fallo.message}`);
+        } else {
+          const filasAulas = aulas.data ?? [];
+          const intentos = filasAulas.reduce((t, a) => t + Number(a.intentos_totales ?? 0), 0);
+          const conAyuda = filasAulas.reduce((t, a) => t + Number(a.resueltos_con_ayuda ?? 0), 0);
 
-        if (dataAhorro || dataCompletitud) {
+          // Un mismo paso puede repetirse en varias aulas y ejercicios: se suman
+          const porPaso = new Map<string, number>();
+          for (const fila of bloqueos.data ?? []) {
+            const paso = String(fila.paso_bloqueo_detectado);
+            porPaso.set(paso, (porPaso.get(paso) ?? 0) + Number(fila.estudiantes_bloqueados ?? 0));
+          }
+          const [pasoTop, bloqueadosTop] = [...porPaso.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+
           return {
-            ejerciciosGenerados: Number(dataAhorro?.ejercicios_generados || 14),
-            promedioSegundos: Number(dataAhorro?.promedio_segundos_creacion || 9.2),
-            horasAhorradasEstimadas: Number(dataAhorro?.horas_ahorradas_estimadas || 9.8),
-            pctResueltosConAyuda: Number(dataCompletitud?.pct_resueltos_con_ayuda || 85.7),
-            estudiantesConectados: Number(dataCompletitud?.estudiantes_anonimos || 38),
-            aulasActivas: 2,
-            pasoBloqueoFrecuente: "Planteamiento de Ecuación (Cerchas)",
+            ejerciciosGenerados: Number(ahorro.data?.ejercicios_generados ?? 0),
+            promedioSegundos: Number(ahorro.data?.promedio_segundos_creacion ?? 0),
+            horasAhorradasEstimadas: Number(ahorro.data?.horas_ahorradas_estimadas ?? 0),
+            pctResueltosConAyuda: intentos ? Math.round((1000 * conAyuda) / intentos) / 10 : 0,
+            estudiantesConectados: filasAulas.reduce((t, a) => t + Number(a.estudiantes_anonimos ?? 0), 0),
+            aulasActivas: filasAulas.length,
+            pasoBloqueoFrecuente: pasoTop ? ETIQUETAS_PASO[pasoTop] ?? pasoTop : "",
+            estudiantesBloqueados: bloqueadosTop ?? 0,
+            pctBloqueo: intentos && bloqueadosTop ? Math.round((100 * bloqueadosTop) / intentos) : 0,
             isOffline: false,
           };
         }
       } catch (err) {
-        console.warn("[dbService] No fue posible cargar vistas analíticas, usando fallback empírico:", err);
+        console.warn("[dbService] Error al cargar las métricas:", (err as Error).message);
       }
     }
 
-    // Datos empíricos oficiales validados con 28 docentes de Quito
-    return {
-      ejerciciosGenerados: 12,
-      promedioSegundos: 8.5,
-      horasAhorradasEstimadas: 8.4, // Basado en 45 min manuales vs 10s IA
-      pctResueltosConAyuda: 85.7,   // 24 de 28 docentes validaron utilidad
-      estudiantesConectados: 40,    // Aulas de hasta 40 alumnos
-      aulasActivas: 1,
-      pasoBloqueoFrecuente: "Identificación de variables y razones trigonométricas",
-      isOffline: true,
-    };
+    return METRICAS_DE_EJEMPLO;
   },
 };
 

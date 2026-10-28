@@ -1244,8 +1244,13 @@ export function TeacherDashboard({
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-sand-950">
                 {saludoDelDia()}, {teacherName.split(" ")[0]}
               </h1>
-              <p className="mt-2 text-sm text-sand-600">
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-sand-600">
                 Así va tu clase hoy.
+                {metricas?.isOffline && (
+                  <span className="rounded-full bg-hint-50 px-2.5 py-0.5 text-xs font-semibold text-hint-800 ring-1 ring-hint-200">
+                    Datos de ejemplo
+                  </span>
+                )}
               </p>
             </div>
             <button
@@ -1307,7 +1312,7 @@ export function TeacherDashboard({
                   {
                     label: "Estudiantes Conectados",
 
-                    value: `${metricas?.estudiantesConectados ?? 38}`,
+                    value: `${metricas?.estudiantesConectados ?? "—"}`,
 
                     detail: "alumnos activos anónimos",
 
@@ -1317,7 +1322,7 @@ export function TeacherDashboard({
                   {
                     label: "Tiempo Docente Ahorrado",
 
-                    value: `${metricas?.horasAhorradasEstimadas ?? 8.4} h`,
+                    value: metricas ? `${metricas.horasAhorradasEstimadas} h` : "—",
 
                     detail: "vs. 45 min manuales por guía",
 
@@ -1327,7 +1332,7 @@ export function TeacherDashboard({
                   {
                     label: "Resolución con Tutor IA",
 
-                    value: `${metricas?.pctResueltosConAyuda ?? 85.7}%`,
+                    value: metricas ? `${metricas.pctResueltosConAyuda} %` : "—",
 
                     detail: "completados sin regalar respuesta",
 
@@ -1337,7 +1342,7 @@ export function TeacherDashboard({
                   {
                     label: "Ejercicios y Guías PISA",
 
-                    value: `${metricas?.ejerciciosGenerados ?? 14}`,
+                    value: `${metricas?.ejerciciosGenerados ?? "—"}`,
 
                     detail: "creados y guardados",
 
@@ -1465,12 +1470,12 @@ export function TeacherDashboard({
                   Paso con mayor bloqueo cognitivo
                 </h2>
                 <p className="mt-2 text-xl font-bold text-hint-950">
-                  {metricas?.pasoBloqueoFrecuente ||
-                    "Modelado trigonométrico de cerchas"}
+                  {metricas?.pasoBloqueoFrecuente || "Todavía no hay datos"}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-sand-700">
-                  El 46% del aula solicitó pistas socráticas al identificar las
-                  razones trigonométricas en triángulos rectángulos.
+                  {metricas?.pasoBloqueoFrecuente
+                    ? `${metricas.estudiantesBloqueados} ${metricas.estudiantesBloqueados === 1 ? "estudiante se trabó" : "estudiantes se trabaron"} en este paso (${metricas.pctBloqueo} % de los intentos).`
+                    : "Cuando tus estudiantes marquen en qué parte se trabaron, aquí verás el paso que más cuesta."}
                 </p>
                 <button
                   type="button"
