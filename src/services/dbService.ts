@@ -5,7 +5,7 @@
  */
 
 import { isAuthRetryableFetchError, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseClient, isSupabaseConnected } from "./supabaseClient";
+import { getSupabaseClient, getSupabaseConfig, isSupabaseConnected } from "./supabaseClient";
 import {
   SEED_EJERCICIOS_PISA,
   SEED_AULA_ACTIVA,
@@ -308,7 +308,12 @@ export const authController = {
 
         if (error && !isAuthRetryableFetchError(error)) {
           // Las cuentas demo siguen funcionando aunque no existan en Supabase Auth.
-          if (isDemoCredentials) return demoLogin(cleanEmail);
+          if (isDemoCredentials) {
+            console.info(
+              `[auth] Modo demo: ${new URL(getSupabaseConfig().url).host} rechazó las credenciales demo (${error.code ?? error.status}).`
+            );
+            return demoLogin(cleanEmail);
+          }
           if (error.code === "email_not_confirmed") {
             return { success: false, user: null, message: "Confirma tu correo institucional con el enlace que te enviamos y vuelve a intentarlo." };
           }
