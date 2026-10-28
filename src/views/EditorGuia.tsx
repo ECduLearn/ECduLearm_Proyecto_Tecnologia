@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Icon from "@/components/Icon"
 import { generateExerciseAI } from "@/services/aiService"
 import { ejerciciosController } from "@/services/dbService"
@@ -118,10 +118,12 @@ function EditorView({
   exercise,
   onBack,
   onExerciseChange,
+  onEditarCampo,
 }: {
   exercise: Exercise
   onBack: () => void
   onExerciseChange: (exercise: Exercise) => void
+  onEditarCampo: (cambio: Partial<Exercise>) => void
 }) {
   const [title, setTitle] = useState(`Guía PISA: ${exercise.topic}`)
 
@@ -373,8 +375,12 @@ function EditorView({
                 contentEditable
                 suppressContentEditableWarning
                 className="mt-2 rounded-lg text-3xl font-bold leading-tight tracking-tight text-ink-950 outline-none hover:bg-ink-50/60 focus:bg-ink-50 focus:ring-4 focus:ring-ink-100 sm:text-4xl"
-                onInput={() => setNotice("Guardando cambios...")}
-                onBlur={() => setNotice("Todos los cambios guardados")}
+                onInput={() => setNotice("Editando…")}
+                onBlur={(event) => {
+                  const texto = event.currentTarget.textContent?.trim() ?? ""
+                  if (texto && texto !== exercise.topic) onEditarCampo({ topic: texto })
+                  setNotice("Cambios guardados en el ejercicio")
+                }}
               >
                 {exercise.topic}
               </h1>
@@ -384,20 +390,23 @@ function EditorView({
               </p>
             </div>
 
-            <div
-              className="mt-9 space-y-9 text-[0.95rem] leading-7 text-sand-700"
-              contentEditable
-              suppressContentEditableWarning
-              onInput={() => setNotice("Guardando cambios...")}
-              onBlur={() => setNotice("Todos los cambios guardados")}
-            >
+            <div className="mt-9 space-y-9 text-[0.95rem] leading-7 text-sand-700">
               <section>
                 <p className="text-xs font-bold uppercase tracking-widest text-ink-700">
                   Situación
                 </p>
-                <p className="mt-3 whitespace-pre-line">
-                  {exercise.situation ||
-                    "Escribe aquí la situación del problema o pídele al asistente que la genere."}
+                <p
+                  contentEditable
+                  suppressContentEditableWarning
+                  className="mt-3 whitespace-pre-line rounded-lg outline-none hover:bg-ink-50/60 focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
+                  onInput={() => setNotice("Editando…")}
+                  onBlur={(event) => {
+                    const texto = event.currentTarget.innerText.trim()
+                    if (texto && texto !== exercise.situation && texto !== SITUACION_VACIA) onEditarCampo({ situation: texto })
+                    setNotice("Cambios guardados en el ejercicio")
+                  }}
+                >
+                  {exercise.situation || SITUACION_VACIA}
                 </p>
               </section>
 
@@ -409,7 +418,24 @@ function EditorView({
                   {(exercise.questionList ?? []).map((pregunta, index) => (
                     <li key={`${index}-${pregunta.slice(0, 12)}`}>
                       <strong className="text-sand-950">{index + 1}.</strong>{" "}
-                      {pregunta.replace(/^\s*\d+[.)]\s*/, "")}
+                      <span
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="rounded-md outline-none hover:bg-ink-50/60 focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
+                        onInput={() => setNotice("Editando…")}
+                        onBlur={(event) => {
+                          const texto = event.currentTarget.textContent?.trim() ?? ""
+                          const actual = pregunta.replace(/^\s*\d+[.)]\s*/, "")
+                          if (texto && texto !== actual) {
+                            const lista = [...(exercise.questionList ?? [])]
+                            lista[index] = texto
+                            onEditarCampo({ questionList: lista })
+                          }
+                          setNotice("Cambios guardados en el ejercicio")
+                        }}
+                      >
+                        {pregunta.replace(/^\s*\d+[.)]\s*/, "")}
+                      </span>
                       <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
                     </li>
                   ))}
@@ -493,8 +519,29 @@ function EditorView({
   )
 }
 
+const SITUACION_VACIA = "Escribe aquí la situación del problema o pídele al asistente que la genere."
+
 export default function EditorGuia({ onBack }: { onBack: () => void }) {
   const { ejercicio } = useSesionDocente(estadoInicialDocente)
+  // Ediciones manuales pendientes de guardar en la base; padreId es el ejercicio que se editó
+  const pendiente = useRef<{ padreId?: string } | null>(null)
+  const ultimo = useRef(ejercicio)
+  ultimo.current = ejercicio
+
+  const guardarPendiente = async () => {
+    if (!pendiente.current) return
+    const { padreId } = pendiente.current
+    pendiente.current = null
+    const guardado = await ejerciciosController.guardarComoActivo(ultimo.current, {
+      ejercicioPadreId: padreId,
+      etiquetaVersion: "Iteración 2",
+    })
+    actualizarSesionDocente(() => ({ ejercicio: guardado }))
+  }
+
+  // Al salir del editor (o cerrar la vista) se envía lo editado como una iteración nueva
+  useEffect(() => () => void guardarPendiente(), [])
+
   return (
     <EditorView
       exercise={ejercicio}
@@ -502,6 +549,15 @@ export default function EditorGuia({ onBack }: { onBack: () => void }) {
       onExerciseChange={(nuevo) =>
         actualizarSesionDocente((actual) => ({ versiones: [...actual.versiones, actual.ejercicio], ejercicio: nuevo }))
       }
+      onEditarCampo={(cambio) => {
+        if (!pendiente.current) pendiente.current = { padreId: ejercicio.id }
+        // Sin id: lo editado ya no es el registro original; al publicar se guarda como ejercicio nuevo
+        actualizarSesionDocente((actual) => {
+          const editado = { ...actual.ejercicio, ...cambio, id: undefined }
+          ejerciciosController.guardarActivoLocal(editado)
+          return { ejercicio: editado }
+        })
+      }}
     />
   )
 }

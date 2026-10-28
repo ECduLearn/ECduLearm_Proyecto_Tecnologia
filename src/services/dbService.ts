@@ -5,10 +5,9 @@
  */
 
 import { isAuthRetryableFetchError, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseClient, getSupabaseConfig, isSupabaseConnected } from "./supabaseClient";
+import { getSupabaseClient, getSupabaseConfig } from "./supabaseClient";
 import {
   SEED_EJERCICIOS_PISA,
-  SEED_AULA_ACTIVA,
   FullPisaExercise,
   RETO_LOCAL_DEMO,
 } from "../models/seedData";
@@ -408,6 +407,14 @@ export function isValidUuid(val?: string | null): boolean {
 // 5. CONTROLADOR CRUD DE EJERCICIOS PISA (ejercicios_pisa)
 // ==============================================================================
 
+// Las escrituras de contenido docente solo van a la base con una sesión real: la cuenta demo
+// trabaja en este navegador y no depende de que RLS rechace la escritura
+function clienteDocente(): SupabaseClient | null {
+  const client = getSupabaseClient();
+  const user = authController.getCurrentUser();
+  return client && user && !user.isDemo && isValidUuid(user.id) ? client : null;
+}
+
 const ACTIVE_EXERCISE_KEY = "ecdulearm_active_exercise";
 
 /**
@@ -443,6 +450,15 @@ export const ejerciciosController = {
       // Sin almacenamiento el ejercicio activo vive solo en memoria.
     }
     return activo;
+  },
+
+  /** Guarda el ejercicio activo solo en este navegador (ediciones manuales aún sin enviar a la base). */
+  guardarActivoLocal(ejercicio: Exercise): void {
+    try {
+      localStorage.setItem(ACTIVE_EXERCISE_KEY, JSON.stringify(ejercicio));
+    } catch {
+      // Sin almacenamiento la edición vive solo en memoria.
+    }
   },
 
   getEjercicioActivo(): Exercise | null {
@@ -525,7 +541,7 @@ export const ejerciciosController = {
     };
 
     // Intentar persistir en Supabase en la tabla 'ejercicios_pisa'
-    const client = getSupabaseClient();
+    const client = clienteDocente();
     let savedInDb = false;
 
     if (client) {
@@ -637,7 +653,7 @@ export const ejerciciosController = {
     };
 
     let savedInDb = false;
-    const client = getSupabaseClient();
+    const client = clienteDocente();
     if (client && isValidUuid(id)) {
       try {
         const { error } = await client
@@ -676,7 +692,7 @@ export const ejerciciosController = {
    * Elimina o archiva un ejercicio creado.
    */
   async deleteEjercicio(id: string): Promise<boolean> {
-    const client = getSupabaseClient();
+    const client = clienteDocente();
     if (client && isValidUuid(id)) {
       try {
         await client.from("ejercicios_pisa").delete().eq("id", id);
@@ -760,7 +776,37 @@ export const ejerciciosController = {
 // 6. CONTROLADOR DE PLANIFICACIONES ERCA (planificaciones_erca)
 // ==============================================================================
 
+export interface BorradorPlanificacion {
+  planId?: string;
+  duracion: string;
+  objetivo: string;
+  curso: "1ro BGU" | "2do BGU" | "3ro BGU";
+  destreza: string;
+  fases: { key: string; label: string; time: string; title: string; body: string }[];
+  ejercicio: Exercise | null;
+}
+
+const BORRADOR_PLAN_KEY = "ecdulearn_borrador_planificacion";
+
 export const planificacionesController = {
+  /** Borrador del planificador: sobrevive a salir de la vista y a recargar la página. */
+  getBorrador(): BorradorPlanificacion | null {
+    try {
+      const raw = localStorage.getItem(BORRADOR_PLAN_KEY);
+      return raw ? (JSON.parse(raw) as BorradorPlanificacion) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  guardarBorrador(borrador: BorradorPlanificacion): void {
+    try {
+      localStorage.setItem(BORRADOR_PLAN_KEY, JSON.stringify(borrador));
+    } catch {
+      // Sin almacenamiento el borrador vive solo mientras la vista está abierta.
+    }
+  },
+
   /**
    * Guarda una guía de clase bajo las 4 fases ERCA en la base de datos.
    * Vincula automáticamente el ejercicio PISA en la fase de Aplicación si se especifica.
@@ -781,7 +827,7 @@ export const planificacionesController = {
     const user = authController.getCurrentUser();
     const docenteId = isValidUuid(user?.id) ? (user!.id) : DEMO_DOCENTE_USER.id;
 
-    const client = getSupabaseClient();
+    const client = clienteDocente();
     let savedInDb = false;
 
     if (client) {

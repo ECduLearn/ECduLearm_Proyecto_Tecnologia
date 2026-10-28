@@ -1,4 +1,4 @@
-import { DragEvent, ReactNode, useState } from "react";
+import { DragEvent, ReactNode, useEffect, useState } from "react";
 import { generateExerciseAI, planErcaAI } from "./services/aiService";
 import type { Exercise } from "./models/types";
 import { ejerciciosController, planificacionesController } from "./services/dbService";
@@ -135,18 +135,64 @@ const planningPhases = [
   },
 ];
 
+const DESTREZA_INICIAL = "M.5.2.3. Resolver y plantear problemas que involucren áreas de figuras geométricas y relaciones de proporcionalidad, justificando procedimientos en contextos reales.";
+
 export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const [fileName, setFileName] = useState("");
   const [uploadState, setUploadState] = useState<"idle" | "loading" | "ready">("idle");
-  const [duration, setDuration] = useState("45 min");
-  const [objective, setObjective] = useState("Analizar cómo las formas triangulares distribuyen cargas en estructuras.");
+  const [borrador] = useState(() => planificacionesController.getBorrador());
+  const [duration, setDuration] = useState(borrador?.duracion ?? "45 min");
+  const [objective, setObjective] = useState(
+    borrador?.objetivo ?? "Analizar cómo las formas triangulares distribuyen cargas en estructuras."
+  );
+  const [destreza, setDestreza] = useState(borrador?.destreza ?? DESTREZA_INICIAL);
+  const [planId, setPlanId] = useState<string | undefined>(borrador?.planId);
+  const [guardando, setGuardando] = useState(false);
   const [notice, setNotice] = useState("Plan guardado automáticamente");
   const [isDragging, setIsDragging] = useState(false);
   const [pisaModalOpen, setPisaModalOpen] = useState(false);
   const [pisaContext, setPisaContext] = useState("");
-  const [ejercicioInsertado, setEjercicioInsertado] = useState<Exercise | null>(null);
-  const [curso, setCurso] = useState<"1ro BGU" | "2do BGU" | "3ro BGU">("2do BGU");
-  const [fases, setFases] = useState(planningPhases);
+  const [ejercicioInsertado, setEjercicioInsertado] = useState<Exercise | null>(borrador?.ejercicio ?? null);
+  const [curso, setCurso] = useState<"1ro BGU" | "2do BGU" | "3ro BGU">(borrador?.curso ?? "2do BGU");
+  const [fases, setFases] = useState(borrador?.fases ?? planningPhases);
+
+  // Cada cambio queda en el borrador de este navegador
+  useEffect(() => {
+    planificacionesController.guardarBorrador({
+      planId,
+      duracion: duration,
+      objetivo: objective,
+      curso,
+      destreza,
+      fases,
+      ejercicio: ejercicioInsertado,
+    });
+  }, [planId, duration, objective, curso, destreza, fases, ejercicioInsertado]);
+
+  const editarFase = (clave: string, cambio: { title?: string; body?: string }) => {
+    setFases((actuales) => actuales.map((fase) => (fase.key === clave ? { ...fase, ...cambio } : fase)));
+    setNotice("Cambio guardado en el borrador");
+  };
+
+  const guardarPlan = async (ejercicio: Exercise | null = ejercicioInsertado) => {
+    setGuardando(true);
+    const textoFase = (clave: string) => fases.find((f) => f.key === clave)?.body ?? "";
+    const res = await planificacionesController.savePlanificacion({
+      id: planId,
+      titulo: `Planificación ERCA: ${ejercicio?.topic ?? objective.slice(0, 80)}`,
+      curso,
+      destreza,
+      duracionMinutos: parseInt(duration) || 45,
+      experiencia: textoFase("experience"),
+      reflexion: textoFase("reflection"),
+      conceptualizacion: textoFase("conceptualization"),
+      aplicacion: ejercicio ? `Resolución del reto PISA: ${ejercicio.situation || ejercicio.topic}` : textoFase("application"),
+      ejercicioPisaId: ejercicio?.id,
+    });
+    if (!res.isOffline) setPlanId(res.id);
+    setGuardando(false);
+    setNotice(res.isOffline ? "Planificación guardada en este navegador" : "Planificación guardada");
+  };
   const [estructurando, setEstructurando] = useState(false);
   const [isGeneratingPisa, setIsGeneratingPisa] = useState(false);
 
@@ -202,18 +248,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
           : `Agregamos «${activo.topic}» a la fase de Aplicación.`
       );
 
-      const textoFase = (clave: string) => fases.find((f) => f.key === clave)?.body ?? "";
-      await planificacionesController.savePlanificacion({
-        titulo: `Planificación ERCA: ${activo.topic}`,
-        curso,
-        destreza: "M.5.2.3 Resolver problemas en contextos reales justificando procedimientos con modelos matemáticos.",
-        duracionMinutos: parseInt(duration) || 45,
-        experiencia: textoFase("experience"),
-        reflexion: textoFase("reflection"),
-        conceptualizacion: textoFase("conceptualization"),
-        aplicacion: `Resolución del reto PISA: ${activo.situation || activo.topic}`,
-        ejercicioPisaId: activo.id,
-      });
+      await guardarPlan(activo);
     } catch {
       setNotice("No pudimos generar el ejercicio. Inténtalo otra vez.");
     } finally {
@@ -240,9 +275,14 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               {notice}
             </p>
           </div>
-          <span className="hidden rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold text-ink-900 sm:block">
-            Plan de clase · Borrador
-          </span>
+          <button
+            type="button"
+            onClick={() => guardarPlan()}
+            disabled={guardando}
+            className="min-h-11 rounded-xl bg-ink-950 px-4 text-sm font-semibold text-sand-50 hover:bg-ink-800 disabled:opacity-70"
+          >
+            {guardando ? "Guardando…" : "Guardar planificación"}
+          </button>
         </div>
       </header>
 
@@ -394,10 +434,16 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                   <p
                     contentEditable
                     suppressContentEditableWarning
+                    onBlur={(event) => {
+                      const texto = event.currentTarget.innerText.trim();
+                      if (texto && texto !== destreza) {
+                        setDestreza(texto);
+                        setNotice("Cambio guardado en el borrador");
+                      }
+                    }}
                     className="mt-2 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
                   >
-                    M.5.2.3. Resolver y plantear problemas que involucren áreas de figuras geométricas y relaciones de
-                    proporcionalidad, justificando procedimientos en contextos reales.
+                    {destreza}
                   </p>
                 </div>
               </div>
@@ -407,6 +453,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 <p
                   contentEditable
                   suppressContentEditableWarning
+                  onBlur={(event) => {
+                    const texto = event.currentTarget.innerText.trim();
+                    if (texto && texto !== objective) setObjective(texto);
+                  }}
                   className="mt-2 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-ink-50 focus:ring-4 focus:ring-ink-100"
                 >
                   {objective}
@@ -457,6 +507,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                         <h3
                           contentEditable
                           suppressContentEditableWarning
+                          onBlur={(event) => {
+                            const texto = event.currentTarget.innerText.trim();
+                            if (texto && texto !== phase.title) editarFase(phase.key, { title: texto });
+                          }}
                           className="mt-2 rounded-md text-lg font-bold text-ink-950 outline-none focus:bg-white focus:ring-4 focus:ring-ink-100"
                         >
                           {phase.title}
@@ -466,6 +520,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                           <p
                             contentEditable
                             suppressContentEditableWarning
+                            onBlur={(event) => {
+                              const texto = event.currentTarget.innerText.trim();
+                              if (texto && texto !== phase.body) editarFase(phase.key, { body: texto });
+                            }}
                             className="mt-3 rounded-md text-sm leading-7 text-sand-700 outline-none focus:bg-white focus:ring-4 focus:ring-ink-100"
                           >
                             {phase.body}
@@ -478,6 +536,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                             <p
                               contentEditable
                               suppressContentEditableWarning
+                              onBlur={(event) => {
+                                const texto = event.currentTarget.innerText.trim();
+                                if (texto && texto !== phase.body) editarFase(phase.key, { body: texto });
+                              }}
                               className="mt-2 text-sm leading-7 text-sand-600 outline-none"
                             >
                               {phase.body}
