@@ -1,95 +1,85 @@
-# ECduLearm (Web App EdTech)
+# ECduLearn — Plataforma EdTech SaaS B2B (1ro a 3ro BGU · Ecuador)
 
-Plataforma SaaS B2B con arquitectura web moderna (HTTPS y PWA) diseñada para instituciones educativas en Ecuador, orientada a transformar el aprendizaje pasivo en una experiencia de razonamiento lógico y pensamiento crítico tipo PISA.
-
----
-
-## 📌 El Problema
-
-Los docentes de matemáticas de bachillerato en Ecuador pierden **hasta 10 horas semanales fuera de su jornada laboral** adaptando ejercicios a metodologías de razonamiento lógico contextualizadas tipo PISA. Simultáneamente:
-* En aulas masivas de **30 a 40 alumnos**, resulta inviable brindar retroalimentación socrática e individualizada a cada estudiante.
-* **Más del 50% de los estudiantes recurre a IAs generativas genéricas** para copiar respuestas finales de deberes sin desarrollar procesos cognitivos ni entender el procedimiento.
-* Las plataformas tradicionales recolectan datos personales sensibles de menores de edad, generando fricción de registro y riesgos de privacidad.
-
-ECduLearm soluciona esta brecha mediante un **Generador y Adaptador Pedagógico ERCA para Docentes** y un **Tutor Socrático Anti-Copia para Estudiantes** con acceso anónimo por código PIN.
+Plataforma educativa web (HTTPS y PWA) diseñada para colegios del Ecuador (1ro a 3ro de Bachillerato General Unificado — BGU). Ayuda a los docentes a crear y adaptar ejercicios matemáticos de razonamiento lógico tipo **PISA** en segundos dentro de la estructura ministerial **ERCA** (Experiencia, Reflexión, Conceptualización y Aplicación), y ofrece a los estudiantes un **Tutor Socrático de IA** con candado anti-copia que guía paso a paso con preguntas y pistas graduales sin entregar jamás la respuesta final.
 
 ---
 
-## 👥 Equipo y Roles Scrum
+## 📌 El Problema Validado en Campo
 
-* **Joan Sebastian Santacruz Villamarin** — *Product Owner & Full-Stack Architect*
-* **Ariel Fabricio Chacha Pilco** — *Scrum Master & Backend / Security Lead*
-* **Michael (Melissa Dayana) Molina Sierra** — *Lead UX/UI Designer & QA Specialist*
-
----
-
-## 🏛️ Tecnología y Arquitectura (MVC)
-
-El sistema opera bajo un patrón **Modelo-Vista-Controlador (MVC)** desacoplado en el cliente web:
-
-* **Modelo (`/src/models`):** 
-  * Tipos de dominio ([`types.ts`](src/models/types.ts)): `Exercise`, `PinSession`, `ChatMessage`, `ErcaPhase`.
-  * Estado reactivo y persistencia local ([`store.tsx`](src/models/store.tsx)): sincronización bidireccional con `localStorage` para sesiones de aula y versionado de ejercicios.
-* **Controlador / Servicios (`/src/services`):**
-  * Servicio de Inteligencia Artificial ([`aiService.ts`](src/services/aiService.ts)): arquitectura **Multi-Modelo con Balanceo de Cuota** conectada a la API de Google Gemini (`VITE_GEMINI_API_KEY`), priorizando modelos Flash-Lite (`gemini-3.5-flash-lite`, `gemini-flash-lite-latest`) para máximo ahorro de tokens y alta disponibilidad, con limitador de salida (`maxOutputTokens: 1200`) para evitar bloqueos por cuota (Rate Limit 429), y un **Modo Fallback Offline Inquebrantable** de respaldo automático ante pérdida de conexión o ausencia de API key.
-  * Servicio de PIN y Seguridad ([`pinService.ts`](src/services/pinService.ts)): generación y validación de códigos de sesión de 6 caracteres sin solicitud de datos personales de menores.
-* **Vista (`/src`):**
-  * Componentes visuales responsivos construidos con **React 19 + Tailwind CSS**, diseñados bajo las pautas de accesibilidad **WCAG 2.2 Nivel AA** (objetivos táctiles ≥ 44px, contraste cromático y visibilidad del estado del sistema según Jakob Nielsen).
+* **Brecha de razonamiento (PISA):** El **80 %** de los estudiantes ecuatorianos se ubica bajo el Nivel 2 en Matemáticas en PISA y solo el **17,4 %** alcanza el desempeño básico.
+* **Sobrecarga operativa docente:** Los profesores invierten hasta **10 horas semanales** fuera de horario buscando y adaptando material a mano para aulas de **35 a 40 estudiantes**.
+* **Validación con docentes reales:** En nuestro estudio de campo con **28 de 30 docentes encuestados (93 % de cobertura)**, el **78,6 % (22/28)** adapta ejercicios con frecuencia y el **85,7 % (24/28)** calificó como útil o muy útil nuestra orientación tipo PISA.
+* **Privacidad de menores (*Zero-PII*):** Los estudiantes ingresan únicamente con un código PIN de aula de 6 caracteres (ej. `PISA26`), sin crear cuenta ni entregar nombre, correo o teléfono.
 
 ---
 
-## 🚀 Instrucciones de Instalación y Despliegue Web (HTTPS)
+## 👥 Equipo y Propiedad del Código
+
+| Integrante | Rol | Responsabilidad Principal |
+| :--- | :--- | :--- |
+| **Ariel Fabricio Chacha Pilco** | Scrum Master, Tech Lead, Frontend e IA | `src/`, `public/`, `api/ai.ts`, `index.html`, configuración de Vite y Vercel |
+| **Melissa Dayana Molina Sierra** | Product Owner, UX/UI | Sistema de diseño ([`docs/design.md`](docs/design.md)) y validación de usabilidad |
+| **Joan Sebastian Santacruz Villamarin** | Backend y Base de Datos | [`supabase/schema.sql`](supabase/schema.sql) (PostgreSQL 3FN, RLS y funciones RPC) |
+
+---
+
+## 🏛️ Arquitectura Técnica (MVC + Serverless BFF + Supabase v2.0.0)
+
+* **Capa de Modelos (`src/models/`):**
+  * Tipos de dominio ([`types.ts`](src/models/types.ts)), datos semilla ([`seedData.ts`](src/models/seedData.ts)) y estado compartido de sesión docente ([`sesionDocente.ts`](src/models/sesionDocente.ts)).
+* **Capa de Servicios y Controladores (`src/services/`):**
+  * [`dbService.ts`](src/services/dbService.ts): Controladores conectados a Supabase PostgreSQL (`authController`, `ejerciciosController`, `planificacionesController`, `aulasController`, `estudianteSocraticoController`, `metricasController`, `reporteController`, `adminController`) con respaldo local determinista.
+  * [`aiService.ts`](src/services/aiService.ts): Cliente hacia la función serverless `/api/ai` con *timeout* y *fallback* local determinista.
+  * [`pinService.ts`](src/services/pinService.ts): Generación criptográfica (`crypto.getRandomValues`) y validación de códigos PIN de 6 caracteres.
+* **Capa Serverless de IA (`api/ai.ts`):**
+  * Único punto que se comunica con Google Gemini (`GEMINI_API_KEY` en el servidor), aloja los *system prompts* (incluido el candado pedagógico anti-copia), valida entradas, controla CORS y limita peticiones por IP.
+* **Capa de Vistas (`src/views/` y `src/`):**
+  * Carga diferida (`React.lazy` + `<Suspense>`) en [`App.tsx`](src/App.tsx) para [`AsistenteDocente.tsx`](src/views/AsistenteDocente.tsx), [`EditorGuia.tsx`](src/views/EditorGuia.tsx), [`RetoColegio.tsx`](src/views/RetoColegio.tsx), [`SimuladorAdmision.tsx`](src/views/SimuladorAdmision.tsx), [`ReporteInstitucional.tsx`](src/views/ReporteInstitucional.tsx), [`RestablecerClave.tsx`](src/views/RestablecerClave.tsx), [`Portal.tsx`](src/Portal.tsx), [`AdvancedModules.tsx`](src/AdvancedModules.tsx) y [`AdminDashboard.tsx`](src/AdminDashboard.tsx).
+
+---
+
+## 📚 Documentación Técnica Centralizada (`docs/`)
+
+Toda la documentación de ingeniería, arquitectura, contratos y auditoría se encuentra centralizada en la carpeta [`docs/`](docs):
+
+* [`docs/AUDITORIA.md`](docs/AUDITORIA.md) — Informe de Auditoría Técnica Integral No Destructiva (cumplimiento del 100 % de las 10 Historias de Usuario — 36/36 pts).
+* [`docs/HOJA_DE_RUTA_INCREMENTAL.md`](docs/HOJA_DE_RUTA_INCREMENTAL.md) — Hoja de ruta de subsanación y evolución por fases verificadas.
+* [`docs/BITACORA_DESARROLLO_Y_METRICAS.md`](docs/BITACORA_DESARROLLO_Y_METRICAS.md) — Bitácora de commits, métricas SRE (SLI/SLO/SLA) y declaración de uso de IA.
+* [`docs/CONTRATO_OPENAPI_Y_RPC_V2.md`](docs/CONTRATO_OPENAPI_Y_RPC_V2.md) — Contrato formal OpenAPI 3.1.0 de `/api/ai` y especificación de las funciones RPC de PostgreSQL.
+* [`docs/AUDITORIA_ESQUEMA_3FN_Y_RLS.md`](docs/AUDITORIA_ESQUEMA_3FN_Y_RLS.md) — Auditoría del esquema relacional en Tercera Forma Normal (3FN) y políticas RLS.
+* [`docs/Documento_Tecnico_v0.1.md`](docs/Documento_Tecnico_v0.1.md) — Documento técnico base del proyecto.
+
+---
+
+## 🚀 Instalación y Comandos (`pnpm`)
 
 ### Prerrequisitos
-* Node.js v18+ o v20+
-* npm o pnpm
+* Node.js 20+ y **pnpm** (fijado en `pnpm-lock.yaml`).
 
-### 1. Clonación e Instalación
 ```bash
-git clone https://github.com/tu-organizacion/ECduLearn_Software.git
-cd ECduLearn_Software
-npm install
-```
-
-### 2. Configuración de Variables de Entorno
-Copia la plantilla `.env.example` a un archivo `.env`:
-```bash
-cp .env.example .env
-```
-Edita `.env` y agrega tu clave de Gemini API (opcional, el sistema cuenta con balanceo multimodelo y fallback offline integrado):
-```env
-VITE_GEMINI_API_KEY=tu_api_key_aqui
+pnpm install             # instalar dependencias respetando pnpm-lock.yaml
+pnpm dev                 # servidor de desarrollo local (incluye /api/ai)
+pnpm typecheck           # verificación estática de tipos (tsc --noEmit)
+pnpm build               # compilación de producción (tsc --noEmit + vite build)
 ```
 
-### 3. Ejecución en Desarrollo Local
-```bash
-npm run dev
-```
-La aplicación estará disponible en `http://localhost:5173` (o el puerto asignado por Vite).
-
-### 4. Compilación para Producción (Vercel / Hostinger)
-```bash
-npm run build
-```
-Genera la carpeta optimizada `/dist` lista para ser servida bajo HTTPS en **Vercel**, Netlify o cualquier servidor web estático (Apache/Nginx en Hostinger). Para probar la versión de producción localmente:
-```bash
-npm run preview
-```
+### Variables de Entorno (`.env`)
+Copia `.env.example` en `.env`:
+* `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`: URL y clave pública `anon` del proyecto Supabase.
+* `GEMINI_API_KEY`: Clave privada de Google Gemini (leída únicamente en el servidor por `api/ai.ts`, **sin** prefijo `VITE_`).
 
 ---
 
-## 🔑 Credenciales de Prueba para el Evaluador / Jurado
+## 🔑 Accesos del Modo Demo Evaluador
 
-Para facilitar la revisión completa e interactiva de la plataforma:
-
-| Perfil | Mecanismo de Acceso | Credenciales / Código |
-|---|---|---|
-| **Docente Demo** | Modal de Login Institucional | Correo: `docente@ecdulearn.edu.ec`<br>Contraseña: `admin123`<br>*(O clic directo en el botón `🔑 Autocompletar como Evaluador`)* |
-| **Estudiante Demo** | Portal de Acceso por PIN | **`PISA26`** *(fricción cero, sin registro de datos personales)* |
-| **Barra Superior de Evaluador** | Barra superior discreta + Botón flotante | Alterna en 1 clic entre **`Vista Docente`** y **`Vista Estudiante (PIN: PISA26)`** sin recargar la página |
+| Perfil | Mecanismo de Acceso | Credenciales de Prueba |
+| :--- | :--- | :--- |
+| **Docente Demo** | Login Institucional en `/acceso` | `docente@puce.edu.ec` / `demo123` |
+| **Estudiante (Cero PII)** | Ingreso por PIN en `/` o `/acceso` | PIN: **`PISA26`** |
+| **Administración Demo** | Login Institucional (Rol `admin`) | `admin@ecdulearn.edu.ec` / `admin123` |
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Consulta el archivo [`LICENSE`](LICENSE) para más detalles.
+Distribuido bajo la Licencia MIT. Consulta el archivo [`LICENSE`](LICENSE) para más detalles.

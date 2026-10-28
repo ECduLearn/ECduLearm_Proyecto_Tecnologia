@@ -38,6 +38,7 @@ $RECYCLE.BIN/
 /.opencode-skills/
 
 # Archivos de desarrollo local y agentes de IA
+.claude/
 AGENTS.md
 CLAUDE.md
 .agents/

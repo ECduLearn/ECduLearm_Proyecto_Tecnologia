@@ -1,97 +1,72 @@
 -- ==============================================================================
--- ECduLearn · Complemento SQL para Dashboard de Administración y Control de Usuarios
--- Archivo: supabase/admin_dashboard.sql (v2.1.0)
--- 
--- Permite a los administradores de ECduLearn crear, revocar y otorgar permisos
--- a usuarios institucionales (docentes y coordinadores) y ejecutar el login RPC.
+-- ECduLearn · Políticas RLS del Panel de Administración
+-- Archivo: supabase/admin_dashboard.sql (v2.2.0)
+--
+-- Un usuario autenticado con Supabase Auth y rol 'ADMIN' en usuarios_institucionales
+-- (public.fn_mi_rol() = 'ADMIN') puede gestionar usuarios e instituciones.
+-- El inicio de sesión lo hace Supabase Auth (signInWithPassword): no hay RPC de login.
 -- ==============================================================================
 
 BEGIN;
 
--- 1. Función RPC para autenticación de Docentes y Administradores (usada en authController.loginDocente)
-CREATE OR REPLACE FUNCTION public.fn_login_docente(p_email text)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-    v_user record;
-    v_inst record;
-BEGIN
-    -- Normalizar correo a minúsculas
-    p_email := lower(trim(p_email));
+-- 1. Legado inseguro: devolvía el perfil con solo el correo, sin contraseña, y era
+--    ejecutable por anon.
+DROP FUNCTION IF EXISTS public.fn_login_docente(text);
 
-    SELECT u.id, u.nombre_completo, u.email_institucional, u.rol, u.institucion_id, u.activo
-      INTO v_user
-      FROM public.usuarios_institucionales u
-     WHERE lower(u.email_institucional) = p_email;
-
-    IF NOT FOUND THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'message', 'El correo institucional no está registrado en ninguna institución.'
-        );
-    END IF;
-
-    IF NOT v_user.activo THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'message', 'Esta cuenta institucional se encuentra suspendida o con permisos revocados.'
-        );
-    END IF;
-
-    -- Obtener institución
-    SELECT i.nombre, i.activa, i.plan_suscripcion
-      INTO v_inst
-      FROM public.instituciones i
-     WHERE i.id = v_user.institucion_id;
-
-    IF v_inst.plan_suscripcion = 'SUSPENDIDA' THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'message', 'La suscripción institucional del plantel educativo está suspendida.'
-        );
-    END IF;
-
-    -- Actualizar marca de último acceso
-    UPDATE public.usuarios_institucionales
-       SET ultimo_acceso_en = now()
-     WHERE id = v_user.id;
-
-    RETURN jsonb_build_object(
-        'success', true,
-        'id', v_user.id,
-        'name', v_user.nombre_completo,
-        'email', v_user.email_institucional,
-        'role', v_user.rol,
-        'institution', COALESCE(v_inst.nombre, 'ECduLearn Partner'),
-        'message', 'Bienvenido a ECduLearn, ' || v_user.nombre_completo
-    );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.fn_login_docente(text) TO anon, authenticated;
-
--- 2. Asegurar que los administradores puedan listar y gestionar usuarios en Supabase
--- Si se usa RLS con autenticación Supabase Auth:
+-- 2. Gestión de usuarios e instituciones para el rol ADMIN
 DROP POLICY IF EXISTS pol_admin_gestionar_usuarios ON public.usuarios_institucionales;
 CREATE POLICY pol_admin_gestionar_usuarios ON public.usuarios_institucionales
     FOR ALL TO authenticated
     USING (public.fn_mi_rol() = 'ADMIN')
     WITH CHECK (public.fn_mi_rol() = 'ADMIN');
 
--- Otorgar permisos a authenticated para usuarios_institucionales
+DROP POLICY IF EXISTS pol_admin_gestionar_instituciones ON public.instituciones;
+CREATE POLICY pol_admin_gestionar_instituciones ON public.instituciones
+    FOR ALL TO authenticated
+    USING (public.fn_mi_rol() = 'ADMIN')
+    WITH CHECK (public.fn_mi_rol() = 'ADMIN');
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.usuarios_institucionales TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.instituciones TO authenticated;
 
--- 3. Cuentas administradoras semilla en la base de datos
-INSERT INTO public.usuarios_institucionales (id, institucion_id, nombre_completo, email_institucional, rol, activo)
-VALUES 
-    ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '11111111-1111-4111-8111-111111111111', 'Joan Sebastian Santacruz', 'joan.santacruz@ecdulearn.edu.ec', 'ADMIN', true),
-    ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '11111111-1111-4111-8111-111111111111', 'Ariel Fabricio Chacha', 'ariel.chacha@ecdulearn.edu.ec', 'ADMIN', true),
-    ('99999999-9999-4999-8999-999999999999', '11111111-1111-4111-8111-111111111111', 'Super Administrador ECduLearn', 'admin@ecdulearn.edu.ec', 'ADMIN', true)
-ON CONFLICT (email_institucional) DO UPDATE
-    SET rol = 'ADMIN', activo = true;
-
 COMMIT;
+
+-- ==============================================================================
+-- 3. Promover un correo real a ADMIN (manual, desde el SQL Editor de Supabase)
+--
+-- Este script no crea administradores. Para dar el rol a una persona real:
+--
+--   a) La persona crea su cuenta en Supabase Auth (Authentication > Users) con su
+--      correo institucional real y lo confirma.
+--
+--   b) Comprueba que existe y está confirmada:
+--
+--      SELECT id, email, email_confirmed_at
+--        FROM auth.users
+--       WHERE lower(email) = lower('correo.real@colegio.edu.ec');
+--
+--   c1) Si ya tiene fila en usuarios_institucionales, promuévela y vincúlala:
+--
+--      UPDATE public.usuarios_institucionales u
+--         SET rol = 'ADMIN',
+--             activo = true,
+--             auth_user_id = a.id
+--        FROM auth.users a
+--       WHERE lower(a.email) = lower('correo.real@colegio.edu.ec')
+--         AND a.email_confirmed_at IS NOT NULL
+--         AND lower(u.email_institucional) = lower(a.email);
+--
+--   c2) Si no tiene fila, créala en su institución (reemplaza el UUID y el nombre):
+--
+--      INSERT INTO public.usuarios_institucionales
+--             (institucion_id, nombre_completo, email_institucional, rol, activo, auth_user_id)
+--      SELECT '<uuid-de-la-institucion>', 'Nombre Apellido', lower(a.email), 'ADMIN', true, a.id
+--        FROM auth.users a
+--       WHERE lower(a.email) = lower('correo.real@colegio.edu.ec')
+--         AND a.email_confirmed_at IS NOT NULL;
+--
+--   d) Verifica: la persona inicia sesión y SELECT public.fn_mi_rol(); devuelve 'ADMIN'.
+--
+-- Nunca promuevas cuentas demo ni correos ficticios (p. ej. admin@ecdulearn.edu.ec):
+-- sus credenciales son públicas en la app.
+-- ==============================================================================
