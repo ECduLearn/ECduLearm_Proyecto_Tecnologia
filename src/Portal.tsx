@@ -12,6 +12,8 @@ import {
 
 import type { TeacherUser } from "./models/types"
 
+import PublicarAulaDialog from "./components/PublicarAulaDialog"
+
 type PortalIconName = "arrow" | "book" | "chart" | "check" | "chevron" | "clock" | "copy" | "grid" | "help" | "link" | "lock" | "logout" | "menu" | "plus" | "send" | "shield" | "sparkles" | "users" | "x"
 
 const portalIconPaths: Record<PortalIconName, ReactNode> = {
@@ -1043,8 +1045,6 @@ export function TeacherDashboard({
 
   const [pinOpen, setPinOpen] = useState(false)
 
-  const [copied, setCopied] = useState(false)
-
   // Estados UX: loading | active | empty | error
 
   const [uxState, setUxState] =
@@ -1084,21 +1084,6 @@ export function TeacherDashboard({
     loadDashboardData()
   }, [])
 
-  const copyPin = async () => {
-    try {
-      await navigator.clipboard?.writeText("PISA26")
-
-      localStorage.setItem("ecdulearm_active_pin", "PISA26")
-
-      setCopied(true)
-
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      setCopied(true)
-
-      setTimeout(() => setCopied(false), 2500)
-    }
-  }
 
   const teacherName = currentUser?.name || "Docente Demo PUCE"
 
@@ -1513,59 +1498,7 @@ export function TeacherDashboard({
       </div>
 
       {pinOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/45 p-4 backdrop-blur-sm">
-          <button
-            type="button"
-            className="absolute inset-0"
-            onClick={() => setPinOpen(false)}
-            aria-label="Cerrar PIN"
-          />
-          <section
-            className="relative w-full max-w-lg border border-sand-200 bg-sand-50 p-6 text-center shadow-2xl sm:p-8"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="pin-title"
-          >
-            <button
-              type="button"
-              onClick={() => setPinOpen(false)}
-              className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-sand-500 hover:bg-sand-100"
-              aria-label="Cerrar"
-            >
-              <PortalIcon name="x" />
-            </button>
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-100 text-ink-900">
-              <PortalIcon name="link" className="size-6" />
-            </span>
-            <p className="mt-5 text-xs font-bold uppercase tracking-widest text-ink-700">
-              Sesión lista
-            </p>
-            <h2
-              id="pin-title"
-              className="mt-2 text-2xl font-semibold text-sand-950"
-            >
-              Comparte este PIN con tu clase
-            </h2>
-            <div className="mt-6 border border-sand-300 bg-white p-5">
-              <p className="text-4xl font-semibold tracking-[0.2em] text-ink-900">
-                PISA26
-              </p>
-              <p className="mt-3 text-sm text-sand-600">ecdu.io/s/PISA26</p>
-            </div>
-            <button
-              type="button"
-              onClick={copyPin}
-              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
-            >
-              <PortalIcon name={copied ? "check" : "copy"} className="size-5" />
-              {copied ? "PIN y enlace copiados" : "Copiar PIN y enlace"}
-            </button>
-            <p className="mt-4 flex items-center justify-center gap-2 text-xs text-sand-500">
-              <PortalIcon name="shield" className="size-4 text-ink-700" />
-              Los estudiantes ingresan sin cuenta ni datos personales
-            </p>
-          </section>
-        </div>
+        <PublicarAulaDialog onClose={() => setPinOpen(false)} onIrAlAsistente={onCreateContent} />
       )}
     </div>
   )

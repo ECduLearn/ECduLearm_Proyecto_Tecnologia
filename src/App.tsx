@@ -4,6 +4,7 @@ import AutonomousZone from "./AutonomousZone";
 import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
 import { LandingPage } from "./LandingPage";
 import { AdminDashboard } from "./AdminDashboard";
+import PublicarAulaDialog from "./components/PublicarAulaDialog";
 import { AppView, useAppRouter } from "./router";
 export type { AppView } from "./router";
 import { generateExerciseAI, getAIStatus, testAIConnection } from "./services/aiService";
@@ -404,30 +405,20 @@ function EditorView({
     try {
       const res = await generateExerciseAI(label, exercise)
 
-      setNotice(
-        `Listo: ${res.data.exercise.topic}. Ya está guardado.`,
-      )
-
-      localStorage.setItem(
-        "ecdulearm_active_exercise",
-        JSON.stringify(res.data.exercise),
-      )
-
-      // Guardar iteración o variante A/B/C en base de datos
-
       const etiqueta = label.includes("fácil")
         ? "Versión A"
         : label.includes("difícil")
           ? "Versión B"
           : "Iteración 2"
 
-      ejerciciosController.createEjercicio({
-        ...res.data.exercise,
-
+      // Guarda la variante, espera su UUID real y la deja como ejercicio activo
+      await ejerciciosController.guardarComoActivo(res.data.exercise, {
         ejercicioPadreId: exercise.id,
 
         etiquetaVersion: etiqueta,
       })
+
+      setNotice(`Listo: ${res.data.exercise.topic}. Ya está guardado.`)
     } catch {
       setNotice("No pudimos aplicar el cambio. Inténtalo otra vez.")
     }
@@ -896,9 +887,44 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
               )}
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-500">
-          <span>ECduLearn · Guía docente generada con Google Gemini</span>
-          <span>Solucionario disponible al exportar</span>
+        {/* Solo para el docente: no se imprime en la hoja del estudiante */}
+        <details className="group mt-8 rounded-2xl border border-ink-200 bg-ink-50/60 print:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-semibold text-ink-900 [&::-webkit-details-marker]:hidden">
+            <svg className="size-4 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+            Solución paso a paso (solo para ti)
+          </summary>
+          <div className="space-y-5 px-5 pb-5 text-sm leading-relaxed text-sand-800">
+            {exercise.solucionDocente ? (
+              <p className="whitespace-pre-line">{exercise.solucionDocente}</p>
+            ) : (
+              <p className="text-sand-600">
+                Esta versión no trae solución. Pídele al asistente «agrega la solución paso a paso».
+              </p>
+            )}
+            {exercise.respuestaCorrecta && (
+              <p>
+                <span className="font-semibold text-ink-900">Respuesta: </span>
+                {exercise.respuestaCorrecta}
+              </p>
+            )}
+            {exercise.pistasSocraticas && exercise.pistasSocraticas.length > 0 && (
+              <div>
+                <p className="font-semibold text-ink-900">Pistas que verá el estudiante, una a una</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sand-700">
+                  {exercise.pistasSocraticas.map((pista) => (
+                    <li key={pista}>{pista}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        </details>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-500">
+          <span>ECduLearn · Guía docente</span>
+          <span>{exercise.level}</span>
         </div>
       </div>
     </article>
@@ -906,6 +932,8 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
 }
 
 function App() {
+  const [publicarOpen, setPublicarOpen] = useState(false)
+
   const { view, setView } = useAppRouter()
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -987,20 +1015,18 @@ function App() {
 
         setHasExercise(true)
 
-        localStorage.setItem(
-          "ecdulearm_active_exercise",
-          JSON.stringify(updatedExercise),
-        )
-
-        // Persistir en base de datos PostgreSQL real (ejercicios_pisa)
-
-        ejerciciosController.createEjercicio({
-          ...updatedExercise,
-
+        // Guarda en ejercicios_pisa y reemplaza el id local por el UUID real
+        const guardado = await ejerciciosController.guardarComoActivo(updatedExercise, {
           ejercicioPadreId: exercise.id,
 
           tiempoCreacionSegundos: 8,
         })
+
+        if (guardado.id !== updatedExercise.id) {
+          updatedExercise = guardado
+
+          setExercise(guardado)
+        }
       }
 
       setMessages((current) => [
@@ -1368,6 +1394,19 @@ function App() {
                   <Icon name="file" className="size-4" />
                   <span className="hidden sm:inline">Editar guía</span>
                 </button>
+              )}
+              {hasExercise && (
+                <button
+                  type="button"
+                  onClick={() => setPublicarOpen(true)}
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-ink-300 bg-ink-50 px-3 text-sm font-semibold text-ink-900 transition hover:bg-ink-100 focus:outline-none focus:ring-4 focus:ring-ink-100 sm:px-4"
+                >
+                  <Icon name="send" className="size-4" />
+                  <span>Publicar</span>
+                </button>
+              )}
+              {publicarOpen && (
+                <PublicarAulaDialog onClose={() => setPublicarOpen(false)} onIrAlAsistente={() => setPublicarOpen(false)} />
               )}
             </div>
           </div>

@@ -213,7 +213,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
         {sesion.isOffline && (
           <p className="mb-4 flex items-start gap-2 border border-hint-200 bg-hint-50 p-3 text-xs leading-relaxed text-hint-900" role="status">
             <ZoneIcon name="shield" className="mt-0.5 size-4 shrink-0" />
-            Estás en modo práctica: este reto es de ejemplo y tu avance no se envía a tu docente.
+            Estás en modo práctica: tu avance se queda en este dispositivo y no llega a tu docente.
           </p>
         )}
 
@@ -245,7 +245,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
               <p className="text-xs font-bold uppercase tracking-widest text-sand-500">{reto.contexto}</p>
             )}
             <p className="mt-3 text-base leading-8 text-sand-700">{reto.enunciado}</p>
-            <p className="mt-4 text-base font-semibold leading-7 text-sand-950">{reto.pregunta}</p>
+            <p className="mt-4 whitespace-pre-line text-base font-semibold leading-7 text-sand-950">{reto.pregunta}</p>
           </div>
         </section>
 

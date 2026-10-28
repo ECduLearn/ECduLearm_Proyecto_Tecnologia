@@ -386,7 +386,36 @@ export function isValidUuid(val?: string | null): boolean {
 // 5. CONTROLADOR CRUD DE EJERCICIOS PISA (ejercicios_pisa)
 // ==============================================================================
 
+const ACTIVE_EXERCISE_KEY = "ecdulearm_active_exercise";
+
 export const ejerciciosController = {
+  /**
+   * Guarda el ejercicio y lo deja como activo del docente, con el UUID real si la base lo aceptó,
+   * para que las versiones y la publicación en un aula apunten al registro correcto.
+   */
+  async guardarComoActivo(
+    ejercicio: Exercise,
+    opciones: { ejercicioPadreId?: string; etiquetaVersion?: string; tiempoCreacionSegundos?: number } = {}
+  ): Promise<Exercise> {
+    const guardado = await this.createEjercicio({ ...ejercicio, ...opciones });
+    const activo: Exercise = { ...ejercicio, id: guardado.isOffline ? ejercicio.id : guardado.data.id };
+    try {
+      localStorage.setItem(ACTIVE_EXERCISE_KEY, JSON.stringify(activo));
+    } catch {
+      // Sin almacenamiento el ejercicio activo vive solo en memoria.
+    }
+    return activo;
+  },
+
+  getEjercicioActivo(): Exercise | null {
+    try {
+      const raw = localStorage.getItem(ACTIVE_EXERCISE_KEY);
+      return raw ? (JSON.parse(raw) as Exercise) : null;
+    } catch {
+      return null;
+    }
+  },
+
   /**
    * Guarda un nuevo ejercicio contextualizado generado con IA o manual.
    */
@@ -1048,6 +1077,38 @@ function guardarSesion(sesion: SesionEstudiante): void {
   }
 }
 
+function aulaLocal(pin: string): SesionEstudiante | null {
+  try {
+    const aulas = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS) || "{}");
+    const aula = aulas[pin];
+    const ej: Exercise | undefined = aula?.ejercicio;
+    if (!ej) return null;
+    const pistas = ej.pistasSocraticas ?? [];
+    return {
+      sesionId: `ses-anon-${Date.now()}`,
+      pin,
+      alias: `Estudiante #${Math.floor(10 + Math.random() * 89)}`,
+      titulo: aula.titulo || ej.topic,
+      ejercicios: [
+        {
+          id: ej.id || `local-${pin}`,
+          tema: ej.topic,
+          contexto: ej.context,
+          curso: ej.level,
+          dificultad: String(ej.difficulty),
+          enunciado: ej.situation || "",
+          pregunta: (ej.questionList ?? []).join("\n"),
+          totalPistas: pistas.length,
+          pistasLocales: pistas,
+        },
+      ],
+      isOffline: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function sesionLocal(pin: string): SesionEstudiante {
   return {
     sesionId: `ses-anon-${Date.now()}`,
@@ -1111,16 +1172,19 @@ export const estudianteSocraticoController = {
           guardarSesion(sesion);
           return { estado: "activa", sesion };
         } else if (cleanPin !== "PISA26") {
-          // La función respondió sin sesión: el PIN no existe o el aula ya expiró
-          return { estado: "no_encontrada" };
+          // La función respondió sin sesión: el PIN no existe en la base (puede ser un aula de la cuenta demo)
+          const local = aulaLocal(cleanPin);
+          if (!local) return { estado: "no_encontrada" };
+          guardarSesion(local);
+          return { estado: "practica", sesion: local };
         }
       } catch {
         // Fallo de red: se continúa en modo práctica.
       }
     }
 
-    // Sin conexión (o PISA26 sin datos semilla): modo práctica con el reto local
-    const sesion = sesionLocal(cleanPin);
+    // Sin conexión (o PISA26 sin datos semilla): aula de este navegador o reto de ejemplo
+    const sesion = aulaLocal(cleanPin) ?? sesionLocal(cleanPin);
     guardarSesion(sesion);
     return { estado: "practica", sesion };
   },

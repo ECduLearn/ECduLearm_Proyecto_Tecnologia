@@ -1,5 +1,14 @@
 import { Exercise, PinSession } from "../models/types";
 
+// Sin 0/O ni 1/I: se confunden al proyectar el PIN en la pizarra
+const ALFABETO_PIN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generarPinAula(): string {
+  const valores = new Uint32Array(6);
+  crypto.getRandomValues(valores);
+  return Array.from(valores, (v) => ALFABETO_PIN[v % ALFABETO_PIN.length]).join("");
+}
+
 export function formatPin(rawPin: string): string {
   const chars = rawPin.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   if (chars.length > 3) {
