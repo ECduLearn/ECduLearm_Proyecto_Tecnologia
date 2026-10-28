@@ -93,3 +93,47 @@ export interface TeacherUser {
 
   isDemo?: boolean
 }
+
+// Vocabulario cerrado de schema.sql (ck_intentos_paso): fases donde se traba el estudiante
+export type PasoBloqueo =
+  | "COMPRENSION_LECTORA"
+  | "IDENTIFICACION_VARIABLES"
+  | "PLANTEAMIENTO_ECUACION"
+  | "CALCULO"
+  | "INTERPRETACION_RESULTADO"
+
+// Ejercicio tal como lo ve el estudiante (fn_ejercicio_json_estudiante): nunca incluye la respuesta
+export interface RetoEstudiante {
+  id: string
+
+  tema: string
+
+  contexto: string
+
+  curso: string
+
+  dificultad: string
+
+  enunciado: string
+
+  pregunta: string
+
+  totalPistas: number
+
+  // Solo en el reto local de respaldo; con sesión real las pistas las entrega fn_solicitar_pista
+  pistasLocales?: string[]
+}
+
+export interface SesionEstudiante {
+  sesionId: string
+
+  pin: string
+
+  alias: string
+
+  titulo: string
+
+  ejercicios: RetoEstudiante[]
+
+  isOffline: boolean
+}

@@ -10,8 +10,9 @@ import {
   SEED_EJERCICIOS_PISA,
   SEED_AULA_ACTIVA,
   FullPisaExercise,
+  RETO_LOCAL_DEMO,
 } from "../models/seedData";
-import { Exercise, TeacherUser } from "../models/types";
+import { Exercise, PasoBloqueo, RetoEstudiante, SesionEstudiante, TeacherUser } from "../models/types";
 
 // ==============================================================================
 // 1. SEGURIDAD, OWASP Y SANITIZACIÓN DE ENTRADAS
@@ -960,20 +961,78 @@ export const aulasController = {
 // 8. CONTROLADOR DE ACCESO ESTUDIANTIL Y TUTOR SOCRÁTICO (CERO-PII)
 // ==============================================================================
 
+const SESION_ESTUDIANTE_KEY = "ecdulearn_sesion_estudiante";
+
+type EjercicioJson = {
+  id: string;
+  tema?: string;
+  contexto?: string;
+  curso_bgu?: string;
+  dificultad?: string;
+  enunciado?: string;
+  pregunta?: string;
+  total_pistas?: number;
+};
+
+function mapEjercicio(e: EjercicioJson): RetoEstudiante {
+  return {
+    id: e.id,
+    tema: e.tema || "Reto de razonamiento",
+    contexto: e.contexto || "",
+    curso: e.curso_bgu || "",
+    dificultad: e.dificultad || "",
+    enunciado: e.enunciado || "",
+    pregunta: e.pregunta || "",
+    totalPistas: e.total_pistas ?? 0,
+  };
+}
+
+function guardarSesion(sesion: SesionEstudiante): void {
+  try {
+    localStorage.setItem(SESION_ESTUDIANTE_KEY, JSON.stringify(sesion));
+    // Claves sueltas que aún leen otras vistas
+    localStorage.setItem("ecdulearn_sesion_id", sesion.sesionId);
+    localStorage.setItem("ecdulearn_alias_temporal", sesion.alias);
+  } catch {
+    // Sin almacenamiento la sesión dura lo que la pestaña.
+  }
+}
+
+function sesionLocal(pin: string): SesionEstudiante {
+  return {
+    sesionId: `ses-anon-${Date.now()}`,
+    pin,
+    alias: `Estudiante #${Math.floor(10 + Math.random() * 89)}`,
+    titulo: "Reto de práctica",
+    ejercicios: [RETO_LOCAL_DEMO],
+    isOffline: true,
+  };
+}
+
+// Las RPC del estudiante exigen sesión real (UUID) y el hash del dispositivo que la abrió.
+async function rpcEstudiante<T>(fn: string, sesion: SesionEstudiante, params: Record<string, unknown>): Promise<T | null> {
+  const client = getSupabaseClient();
+  if (!client || sesion.isOffline || !isValidUuid(sesion.sesionId)) return null;
+  const { data, error } = await client.rpc(fn, {
+    p_sesion_id: sesion.sesionId,
+    p_token_hash: await generateDeviceTokenHash(),
+    ...params,
+  });
+  if (error) {
+    console.warn(`[estudiante] ${fn} falló (${error.code}): ${error.message}`);
+    return null;
+  }
+  return data as T;
+}
+
 export const estudianteSocraticoController = {
   /**
-   * Crea o recupera una sesión anónima efímera de estudiante por PIN (Zero-PII estricto).
+   * Crea o retoma la sesión anónima del PIN (Zero-PII) y guarda los retos que publicó el docente.
    */
-  async iniciarSesionAnonima(pin: string): Promise<{
-    sesionId: string;
-    alias: string;
-    tokenHash: string;
-    isOffline: boolean;
-  }> {
+  async iniciarSesionAnonima(pin: string): Promise<SesionEstudiante & { tokenHash: string }> {
     const cleanPin = sanitizeInput(pin).toUpperCase().replace(/\s+/g, "");
     const tokenHash = await generateDeviceTokenHash();
 
-    // Invocar función RPC en Supabase si está disponible
     const client = getSupabaseClient();
     if (client) {
       try {
@@ -982,33 +1041,84 @@ export const estudianteSocraticoController = {
           p_token_hash: tokenHash,
         });
 
-        if (data && !error && data.sesion_id) {
-          return {
+        if (error) {
+          console.warn(`[estudiante] fn_iniciar_sesion_anonima falló (${error.code}): ${error.message}`);
+        } else if (data?.sesion_id) {
+          const sesion: SesionEstudiante = {
             sesionId: data.sesion_id,
-            alias: data.alias || "Estudiante Anónimo",
-            tokenHash,
+            pin: cleanPin,
+            alias: data.alias || "Estudiante anónimo",
+            titulo: data.contenido?.titulo || "Reto del colegio",
+            ejercicios: (data.contenido?.ejercicios ?? []).map(mapEjercicio),
             isOffline: false,
           };
+          guardarSesion(sesion);
+          return { ...sesion, tokenHash };
         }
-      } catch (err) {
-        console.warn("[dbService] Fallo en fn_iniciar_sesion_anonima, operando local:", err);
+      } catch {
+        // Fallo de red: se continúa con la sesión local.
       }
     }
 
-    // Fallback local Zero-PII
-    const localId = `ses-anon-${Date.now()}`;
-    const alias = `Estudiante #${Math.floor(10 + Math.random() * 89)}`;
+    const sesion = sesionLocal(cleanPin);
+    guardarSesion(sesion);
+    return { ...sesion, tokenHash };
+  },
 
-    return {
-      sesionId: localId,
-      alias,
-      tokenHash,
-      isOffline: true,
-    };
+  getSesionActual(): SesionEstudiante | null {
+    try {
+      const raw = localStorage.getItem(SESION_ESTUDIANTE_KEY);
+      return raw ? (JSON.parse(raw) as SesionEstudiante) : null;
+    } catch {
+      return null;
+    }
   },
 
   /**
-   * Registra un mensaje o intento en el tutor socrático (candado anti-copia).
+   * Entrega la siguiente pista del ejercicio, en orden, y la cuenta en la base.
+   * Devuelve null si no hay sesión real (la vista usa entonces las pistas locales o el tutor IA).
+   */
+  async solicitarPista(
+    sesion: SesionEstudiante,
+    ejercicioId: string
+  ): Promise<{ pista: string | null; numero: number; restantes: number } | null> {
+    return rpcEstudiante("fn_solicitar_pista", sesion, { p_ejercicio_id: ejercicioId });
+  },
+
+  /** Registra en qué fase se trabó o si logró resolverlo (alimenta el panel docente). */
+  async registrarIntento(
+    sesion: SesionEstudiante,
+    params: { ejercicioId: string; logroResolver?: boolean; pasoBloqueo?: PasoBloqueo }
+  ): Promise<void> {
+    await rpcEstudiante("fn_registrar_intento", sesion, {
+      p_ejercicio_id: params.ejercicioId,
+      p_logro_resolver: params.logroResolver ?? false,
+      p_paso_bloqueo: params.pasoBloqueo ?? null,
+    });
+  },
+
+  /** Guarda un mensaje de la conversación con el tutor (no bloquea la UI si falla). */
+  async registrarMensaje(
+    sesion: SesionEstudiante,
+    params: {
+      ejercicioId: string;
+      remitente: "ESTUDIANTE" | "TUTOR_IA";
+      tipo?: "TEXTO_LIBRE" | "CHIP_RAPIDO" | "INTENTO_COPIA_BLOQUEADO";
+      contenido: string;
+    }
+  ): Promise<void> {
+    const contenido = sanitizeInput(params.contenido).slice(0, 4000);
+    if (!contenido) return;
+    await rpcEstudiante("fn_registrar_mensaje", sesion, {
+      p_ejercicio_id: params.ejercicioId,
+      p_remitente: params.remitente,
+      p_tipo_interaccion: params.tipo ?? "TEXTO_LIBRE",
+      p_contenido: contenido,
+    });
+  },
+
+  /**
+   * Compatibilidad con vistas antiguas: registra el mensaje contra el primer reto de la sesión.
    */
   async registrarInteraccionSocratica(params: {
     pin: string;
@@ -1019,21 +1129,15 @@ export const estudianteSocraticoController = {
     pasoBloqueo?: string;
     pistasUsadas?: number;
   }): Promise<void> {
-    const client = getSupabaseClient();
-    if (client) {
-      try {
-        // Registro no bloqueante en telemetría
-        await client.from("student_interactions").insert({
-          pin: sanitizeInput(params.pin).toUpperCase(),
-          student_session_id: params.sesionId,
-          role: params.role,
-          message: sanitizeInput(params.mensaje),
-          is_blocked_attempt: Boolean(params.isBlockedAttempt),
-          paso_bloqueo: params.pasoBloqueo || null,
-          pistas_solicitadas: params.pistasUsadas || 0,
-        });
-      } catch {}
-    }
+    const sesion = this.getSesionActual();
+    const ejercicioId = sesion?.ejercicios[0]?.id;
+    if (!sesion || !ejercicioId) return;
+    await this.registrarMensaje(sesion, {
+      ejercicioId,
+      remitente: params.role === "student" ? "ESTUDIANTE" : "TUTOR_IA",
+      tipo: params.isBlockedAttempt ? "INTENTO_COPIA_BLOQUEADO" : "TEXTO_LIBRE",
+      contenido: params.mensaje,
+    });
   },
 };
 

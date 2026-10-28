@@ -1,129 +1,9 @@
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, useState } from "react";
 import { socraticTutorAI } from "./services/aiService";
-import { apiAdapter } from "./services/apiAdapter";
+import { estudianteSocraticoController } from "./services/dbService";
+import ZoneIcon from "./components/ZoneIcon";
+import RetoColegio from "./views/RetoColegio";
 
-type ZoneIconName =
-  | "algebra"
-  | "arrow-left"
-  | "book"
-  | "brain"
-  | "check"
-  | "chevron"
-  | "compass"
-  | "formula"
-  | "graduation"
-  | "grid"
-  | "key"
-  | "logic"
-  | "send"
-  | "shield"
-  | "sparkles"
-  | "target";
-
-const zoneIconPaths: Record<ZoneIconName, ReactNode> = {
-  algebra: <path d="M4 6h7M7.5 2.5v7M14 4l6 6M20 4l-6 6M4 16h7M14 16h6M14 20h6" />,
-  "arrow-left": (
-    <>
-      <path d="m15 18-6-6 6-6" />
-      <path d="M9 12h11" />
-    </>
-  ),
-  book: (
-    <>
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
-      <path d="M8 7h8M8 11h6" />
-    </>
-  ),
-  brain: (
-    <>
-      <path d="M9.5 4.5A3 3 0 0 0 4 6.2 3.5 3.5 0 0 0 3 12a3.5 3.5 0 0 0 1.5 5.8A3 3 0 0 0 10 19.5V4.5Z" />
-      <path d="M14.5 4.5A3 3 0 0 1 20 6.2a3.5 3.5 0 0 1 1 5.8 3.5 3.5 0 0 1-1.5 5.8 3 3 0 0 1-5.5 1.7V4.5ZM10 9H7.5M14 9h2.5M10 15H7.5M14 15h2.5" />
-    </>
-  ),
-  check: <path d="m5 12 4 4L19 6" />,
-  chevron: <path d="m9 18 6-6-6-6" />,
-  compass: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m16 8-2.5 5.5L8 16l2.5-5.5Z" />
-    </>
-  ),
-  formula: (
-    <>
-      <path d="M5 4h6M8 4v16M5 20h6M15 7l5 10M20 7l-5 10" />
-    </>
-  ),
-  graduation: (
-    <>
-      <path d="m2 10 10-5 10 5-10 5Z" />
-      <path d="M6 12.5V17c3 2 9 2 12 0v-4.5M22 10v6" />
-    </>
-  ),
-  grid: (
-    <>
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </>
-  ),
-  key: (
-    <>
-      <circle cx="8" cy="15" r="4" />
-      <path d="m11 12 9-9M16 7l3 3M14 9l3 3" />
-    </>
-  ),
-  logic: (
-    <>
-      <circle cx="6" cy="6" r="2" />
-      <circle cx="18" cy="6" r="2" />
-      <circle cx="12" cy="18" r="2" />
-      <path d="M8 6h8M7 8l4 8M17 8l-4 8" />
-    </>
-  ),
-  send: (
-    <>
-      <path d="m22 2-7 20-4-9-9-4Z" />
-      <path d="M22 2 11 13" />
-    </>
-  ),
-  shield: (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </>
-  ),
-  sparkles: (
-    <>
-      <path d="m12 3-1.1 3.1A4.3 4.3 0 0 1 8.3 8.7L5 10l3.3 1.3a4.3 4.3 0 0 1 2.6 2.6L12 17l1.1-3.1a4.3 4.3 0 0 1 2.6-2.6L19 10l-3.3-1.3a4.3 4.3 0 0 1-2.6-2.6L12 3Z" />
-    </>
-  ),
-  target: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" />
-    </>
-  ),
-};
-
-function ZoneIcon({ name, className = "size-5" }: { name: ZoneIconName; className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {zoneIconPaths[name]}
-    </svg>
-  );
-}
 
 type Message = {
   id: number;
@@ -202,6 +82,8 @@ export default function AutonomousZone({
   onSimulator: () => void;
 }) {
   const [view, setView] = useState<"dashboard" | "free" | "school">("dashboard");
+  const sesionGuardada = estudianteSocraticoController.getSesionActual();
+  const retosAsignados = sesionGuardada?.ejercicios.length ?? 0;
   const [newPin, setNewPin] = useState("");
   const [pinNotice, setPinNotice] = useState("");
   const [formulaOpen, setFormulaOpen] = useState(false);
@@ -213,10 +95,6 @@ export default function AutonomousZone({
       text: "Aquí tienes un reto de lógica. ¿Cuál crees que es el primer paso?",
     },
   ]);
-  const [stepInput, setStepInput] = useState("");
-  const [stepStatus, setStepStatus] = useState<"idle" | "review" | "success">("idle");
-  const [stepHint, setStepHint] = useState("");
-  const [schoolStep, setSchoolStep] = useState(1);
 
   const socraticReply = (prompt: string) => {
     const normalized = prompt.toLowerCase();
@@ -253,13 +131,6 @@ export default function AutonomousZone({
     ]);
     setChatInput("");
 
-    // Registrar interacción formativa en el adaptador de métricas
-    const activePin = localStorage.getItem("ecdulearm_active_pin") || "PISA26";
-    apiAdapter.registrarInteraccionSocratica(activePin, {
-      tipo: "pista",
-      detalle: prompt,
-    });
-
     try {
       const history = messages.map((m) => ({ role: m.role, text: m.text }));
       const res = await socraticTutorAI(prompt, history, "Reto de lógica y patrones numéricos");
@@ -282,13 +153,6 @@ export default function AutonomousZone({
       { id: studentId, role: "student", text: prompt },
     ]);
 
-    // Registrar interacción socrática por chip
-    const activePin = localStorage.getItem("ecdulearm_active_pin") || "PISA26";
-    apiAdapter.registrarInteraccionSocratica(activePin, {
-      tipo: "pista",
-      detalle: prompt,
-    });
-
     try {
       const history = messages.map((m) => ({ role: m.role, text: m.text }));
       const res = await socraticTutorAI(prompt, history, "Reto de lógica y patrones numéricos");
@@ -301,47 +165,6 @@ export default function AutonomousZone({
         ...current,
         { id: Date.now() + 1, role: "tutor", text: socraticReply(prompt) },
       ]);
-    }
-  };
-
-  const validateStep = async () => {
-    const answer = stepInput.toLowerCase();
-    const isUseful =
-      schoolStep === 1
-        ? (answer.includes("tiempo") || answer.includes("minuto")) &&
-          (answer.includes("velocidad") || answer.includes("distancia") || answer.includes("km"))
-        : answer.includes("minuto") && (answer.includes("segundo") || answer.includes("60") || answer.includes("hora"));
-
-    const activePin = typeof window !== "undefined" ? localStorage.getItem("ecdulearm_active_pin") || "PISA26" : "PISA26";
-
-    if (isUseful) {
-      setStepStatus("success");
-      apiAdapter.registrarInteraccionSocratica(activePin, {
-        tipo: "completado",
-        paso: schoolStep,
-        detalle: `Paso ${schoolStep} completado con éxito`,
-      });
-    } else {
-      setStepStatus("review");
-      apiAdapter.registrarInteraccionSocratica(activePin, {
-        tipo: "bloqueo",
-        paso: schoolStep,
-        detalle: `Bloqueo en paso ${schoolStep}: ${stepInput.slice(0, 80)}`,
-      });
-      try {
-        const hintRes = await socraticTutorAI(
-          `El estudiante respondió en el paso ${schoolStep}: "${stepInput}". Dale una pista reflexiva corta sin darle el cálculo final.`,
-          [],
-          "Vehículo a 60 km/h durante 45 minutos. Determinar distancia y justificar conversión de unidades."
-        );
-        setStepHint(hintRes.data);
-      } catch {
-        setStepHint(
-          schoolStep === 1
-            ? "Revisa bien el texto: ¿cuáles son las dos magnitudes numéricas conocidas y cuál es la variable que te piden encontrar?"
-            : "Recuerda que la velocidad está en km/h y el tiempo en minutos. ¿Qué fracción de una hora representan 45 minutos?"
-        );
-      }
     }
   };
 
@@ -412,15 +235,13 @@ export default function AutonomousZone({
                   </span>
                   <span className="rounded-full bg-hint-100 px-2.5 py-1 text-xs font-bold text-hint-900">En curso</span>
                 </div>
-                <p className="mt-7 text-xs font-bold uppercase tracking-widest text-ink-800">Matemática · 2do BGU</p>
-                <h3 className="mt-2 text-xl font-semibold text-sand-950">Guía PISA: Análisis de Estructuras</h3>
-                <div className="mt-6 flex items-center justify-between text-xs font-semibold text-sand-600">
-                  <span>2 de 5 completados</span>
-                  <span>40%</span>
-                </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-sand-200">
-                  <div className="h-full w-2/5 rounded-full bg-hint-500" />
-                </div>
+                <p className="mt-7 text-xs font-bold uppercase tracking-widest text-ink-800">
+                  {sesionGuardada?.ejercicios[0]?.curso || "Tu clase"}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-sand-950">{sesionGuardada?.titulo || "Reto del colegio"}</h3>
+                <p className="mt-6 text-xs font-semibold text-sand-600">
+                  {retosAsignados === 1 ? "1 reto asignado" : retosAsignados > 1 ? `${retosAsignados} retos asignados` : "Entra para ver tus retos"}
+                </p>
                 <button
                   type="button"
                   onClick={() => setView("school")}
@@ -606,124 +427,5 @@ export default function AutonomousZone({
     );
   }
 
-  return (
-    <div className="min-h-screen bg-sand-50 text-sand-950">
-      <StudentHeader onBack={() => setView("dashboard")} title="Guía PISA: Análisis de Estructuras" />
-      <main className="mx-auto max-w-4xl px-4 py-5 pb-10 sm:px-6 sm:py-8">
-        <section className="border border-sand-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-ink-800">Reto del colegio</p>
-              <h1 className="mt-1 text-lg font-semibold text-sand-950">Reto PISA · Pregunta 1 de 3</h1>
-            </div>
-            <span className="text-sm font-bold text-ink-900">33%</span>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-sand-200">
-            <div className="h-full w-1/3 rounded-full bg-hint-500" />
-          </div>
-
-          <div className="mt-8 border-l-2 border-hint-500 bg-sand-50 p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-sand-500">Centro comunitario seguro</p>
-            <p className="mt-3 text-base leading-8 text-sand-700">
-              Un equipo evalúa una estructura modular para un centro comunitario. Un vehículo transporta las piezas a
-              velocidad constante de 60 km/h durante 45 minutos. Para planificar la entrega, el equipo debe determinar la
-              distancia recorrida y justificar cada conversión de unidades.
-            </p>
-          </div>
-        </section>
-
-        <section className="mt-4 border border-sand-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex items-start gap-4">
-            <span
-              className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${
-                stepStatus === "success" ? "bg-ink-100 text-ink-900" : "bg-ink-100 text-ink-900"
-              }`}
-            >
-              {stepStatus === "success" ? <ZoneIcon name="check" className="size-5" /> : schoolStep}
-            </span>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-sand-500">Paso {schoolStep} de 3</p>
-              <h2 className="mt-1 text-xl font-semibold text-sand-950">
-                {schoolStep === 1 ? "Identifica las variables" : "Unifica las unidades"}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-sand-600">
-                {schoolStep === 1
-                  ? "Escribe qué datos conoces, con sus unidades, y qué necesitas encontrar."
-                  : "Explica cómo convertirías el tiempo para que sea compatible con la velocidad."}
-              </p>
-            </div>
-          </div>
-
-          <label htmlFor="school-step-input" className="sr-only">
-            Respuesta del paso actual
-          </label>
-          <textarea
-            id="school-step-input"
-            rows={5}
-            value={stepInput}
-            onChange={(event) => {
-              setStepInput(event.target.value);
-              setStepStatus("idle");
-            }}
-            placeholder={
-              schoolStep === 1
-                ? "Ej. Conozco la velocidad en... y el tiempo en..."
-                : "Describe la conversión sin calcular la respuesta final..."
-            }
-            className={`mt-6 w-full resize-none rounded-2xl border p-4 text-sm leading-relaxed outline-none transition placeholder:text-sand-400 focus:ring-4 ${
-              stepStatus === "review"
-                ? "border-hint-300 bg-hint-50 focus:border-hint-400 focus:ring-hint-100"
-                : stepStatus === "success"
-                  ? "border-ink-300 bg-ink-50 focus:border-ink-500 focus:ring-ink-100"
-                  : "border-sand-300 bg-white focus:border-ink-600 focus:ring-ink-100"
-            }`}
-          />
-
-          {stepStatus === "review" && (
-            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-hint-200 bg-hint-50 p-4" role="status">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-hint-800">
-                <ZoneIcon name="brain" className="size-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-hint-900">Pista del tutor</p>
-                <p className="mt-1 text-sm leading-relaxed text-hint-950">
-                  {stepHint ||
-                    "Revisa bien el texto, ¿seguro que el tiempo está en horas y no en minutos? Nombra también la variable que representa la velocidad."}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {stepStatus === "success" && (
-            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm font-semibold text-ink-950" role="status">
-              <ZoneIcon name="check" className="size-5 shrink-0" />
-              Buen análisis. Identificaste las variables y sus unidades; ya puedes avanzar.
-            </div>
-          )}
-
-          <button
-            type="button"
-            disabled={!stepInput.trim()}
-            onClick={() => {
-              if (stepStatus === "success") {
-                setSchoolStep((current) => Math.min(current + 1, 3));
-                setStepInput("");
-                setStepStatus("idle");
-              } else {
-                validateStep();
-              }
-            }}
-            className="mt-6 min-h-14 w-full rounded-2xl bg-ink-600 px-6 text-sm font-bold text-white shadow-lg shadow-ink-600/20 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300 disabled:shadow-none"
-          >
-            {stepStatus === "success" ? "Continuar al siguiente paso" : "Validar paso"}
-          </button>
-        </section>
-
-        <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-sand-500">
-          <ZoneIcon name="shield" className="size-4 text-ink-700" />
-          La retroalimentación orienta tu proceso sin revelar el resultado final.
-        </p>
-      </main>
-    </div>
-  );
+  return <RetoColegio header={(titulo) => <StudentHeader onBack={() => setView("dashboard")} title={titulo} />} />;
 }

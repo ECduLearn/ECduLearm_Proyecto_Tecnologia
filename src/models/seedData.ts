@@ -1,4 +1,4 @@
-import { Exercise, ErcaPhase } from "./types";
+import { Exercise, ErcaPhase, RetoEstudiante } from "./types";
 
 export interface FullPisaExercise extends Exercise {
   id: string;
@@ -332,4 +332,23 @@ export const SEED_AULA_ACTIVA: AulaActiva = {
       resolucionAritmetica: 24,
     },
   },
+};
+
+// Reto de respaldo cuando no hay sesión real (modo demo u offline).
+export const RETO_LOCAL_DEMO: RetoEstudiante = {
+  id: "reto-local-demo",
+  tema: "Conversión de unidades y movimiento uniforme",
+  contexto: "Centro comunitario seguro",
+  curso: "1ro BGU",
+  dificultad: "Básica",
+  enunciado:
+    "Un equipo evalúa una estructura modular para un centro comunitario. Un vehículo transporta las piezas a velocidad constante de 60 km/h durante 45 minutos.",
+  pregunta:
+    "¿Qué distancia recorre el vehículo? Justifica cada conversión de unidades que utilices.",
+  totalPistas: 3,
+  pistasLocales: [
+    "¿Qué datos numéricos te da el enunciado y en qué unidades está cada uno?",
+    "La velocidad está en km/h y el tiempo en minutos. ¿Qué fracción de una hora representan 45 minutos?",
+    "¿Qué relación conecta distancia, velocidad y tiempo cuando la velocidad es constante?",
+  ],
 };
