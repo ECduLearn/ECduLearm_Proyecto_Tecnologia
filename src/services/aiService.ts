@@ -1,16 +1,8 @@
 import { Exercise, ErcaPhase } from "../models/types";
 
-// Modelos ordenados por eficiencia de cuota y velocidad (Flash-Lite no quema thinking tokens y tiene mayor cuota diaria gratuita)
-export const CANDIDATE_MODELS = [
-  "gemini-3.5-flash-lite",
-  "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite",
-  "gemini-3.5-flash",
-  "gemini-3.7-flash",
-  "gemini-3.8-flash",
-];
-
-const TIMEOUT_MS = 12000;
+// La clave de IA y los system prompts viven en el servidor (api/ai.ts).
+const AI_ENDPOINT = "/api/ai";
+const CLIENT_TIMEOUT_MS = 18000;
 
 export interface AIResult<T> {
   data: T;
@@ -18,162 +10,69 @@ export interface AIResult<T> {
   message?: string;
 }
 
-export function getGeminiApiKey(): string {
-  if (typeof window !== "undefined") {
-    const local = localStorage.getItem("ecdulearm_gemini_key");
-    if (local && local.trim()) return local.trim();
-  }
-  return (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+type AITask = "ping" | "exercise" | "tutor" | "erca" | "exam-review";
+
+// Versiones anteriores guardaban la clave de Gemini en el navegador; se elimina para no dejar secretos ahí.
+try {
+  localStorage.removeItem("ecdulearm_gemini_key");
+} catch {
+  // Almacenamiento no disponible (modo privado o SSR): no hay nada que limpiar.
 }
 
-export function setGeminiApiKey(key: string): void {
-  if (typeof window !== "undefined") {
-    if (key.trim()) {
-      localStorage.setItem("ecdulearm_gemini_key", key.trim());
-    } else {
-      localStorage.removeItem("ecdulearm_gemini_key");
-    }
+async function requestAI(task: AITask, input: Record<string, unknown> = {}): Promise<string> {
+  const response = await fetch(AI_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
+    body: JSON.stringify({ task, input }),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || `HTTP ${response.status}`);
+  }
+  if (typeof payload?.text !== "string" || !payload.text.trim()) {
+    throw new Error("empty_response");
+  }
+  return payload.text;
+}
+
+export async function getAIStatus(): Promise<{ online: boolean }> {
+  try {
+    const response = await fetch(AI_ENDPOINT, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return { online: false };
+    const payload = await response.json();
+    return { online: Boolean(payload?.online) };
+  } catch {
+    return { online: false };
   }
 }
 
-export async function testGeminiConnection(customKey?: string): Promise<{ success: boolean; message: string }> {
-  const apiKey = (customKey !== undefined ? customKey : getGeminiApiKey()).trim();
-  if (!apiKey) {
+const AI_ERROR_MESSAGES: Record<string, string> = {
+  ai_not_configured: "El servidor no tiene configurada la variable GEMINI_API_KEY. La plataforma sigue funcionando con el motor offline.",
+  ai_unavailable: "Ningún modelo de Gemini respondió a tiempo (posible límite de cuota). Se usará el motor offline mientras tanto.",
+  rate_limited: "Se alcanzó el límite de peticiones por minuto. Espera un momento y vuelve a probar.",
+};
+
+export async function testAIConnection(): Promise<{ success: boolean; message: string }> {
+  try {
+    await requestAI("ping");
+    return { success: true, message: "Conexión verificada: el servidor respondió con Google Gemini." };
+  } catch (error) {
+    const code = (error as Error).message;
     return {
       success: false,
-      message: "No hay API Key configurada. El sistema está operando en Modo Fallback Offline Inteligente.",
+      message: AI_ERROR_MESSAGES[code] || "No se pudo contactar con el servicio de IA. La plataforma sigue funcionando con el motor offline.",
     };
   }
-
-  // Probar secuencialmente los modelos disponibles para verificar cuál tiene cuota activa
-  for (const model of CANDIDATE_MODELS) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: "Responde brevemente 'CONEXION_OK' si recibes este mensaje." }],
-            },
-          ],
-          generationConfig: {
-            maxOutputTokens: 50,
-          },
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        return {
-          success: true,
-          message: `¡Conexión verificada con Google Gemini (${model})! Respuesta: ${text.trim().slice(0, 50)}`,
-        };
-      }
-    } catch {
-      // Probar siguiente modelo
-    }
-  }
-
-  return {
-    success: false,
-    message: "No se pudo verificar la conexión con los modelos de Gemini. Es posible que hayas alcanzado el límite de cuota (Rate Limit) o la API Key sea inválida.",
-  };
-}
-
-async function callGemini(systemInstruction: string, prompt: string): Promise<string> {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    throw new Error("No API key configured");
-  }
-
-  let lastError: Error | null = null;
-
-  // Multi-model fallback: si un modelo supera cuota (429) o no responde, pasa inmediatamente al siguiente
-  for (const model of CANDIDATE_MODELS) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${systemInstruction}\n\nInstrucción / Mensaje del usuario:\n${prompt}` }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1200, // Optimizado para ahorrar tokens y evitar agotar cuota
-          },
-        }),
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.warn(`[ECduLearm AI] Modelo ${model} respondió con error ${response.status}:`, errText.slice(0, 150));
-        lastError = new Error(`HTTP error ${response.status} en ${model}`);
-        continue; // Intentar con el siguiente modelo en la lista de candidatos
-      }
-
-      const json = await response.json();
-      const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!candidateText) {
-        lastError = new Error(`Empty response from ${model}`);
-        continue;
-      }
-      return candidateText;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.warn(`[ECduLearm AI] Excepción al llamar a ${model}:`, (error as Error).message);
-      lastError = error as Error;
-    }
-  }
-
-  throw lastError || new Error("Todos los modelos de Gemini fallaron o agotaron cuota");
 }
 
 export async function generateExerciseAI(
   prompt: string,
   currentExercise?: Exercise
 ): Promise<AIResult<{ exercise: Exercise; reply: string }>> {
-  const systemPrompt = `Eres el asistente pedagógico inteligente de ECduLearm para docentes de bachillerato en Ecuador.
-Objetivos y comportamiento:
-1. Si el docente te saluda (ej: "Hola", "Buenas tardes", "¿Cómo estás?"), hace una pregunta pedagógica general o conversa, responde como un colega pedagógico cercano, profesional y amable, presentándote y sugiriendo temas (como Metro de Quito, Galápagos, finanzas, funciones, etc.) para crear actividades. No necesitas generar un ejercicio si solo es un saludo o consulta.
-2. Si el docente te pide crear, adaptar o contextualizar un ejercicio (o menciona un tema, dificultad o nivel como "Metro de Quito", "física", "más difícil", "agrega una pregunta"), genera o adapta la actividad con enfoque PISA para Ecuador.
-
-Si tu respuesta genera o modifica un ejercicio, responde OBLIGATORIAMENTE incluyendo un bloque JSON con esta estructura exacta:
-\`\`\`json
-{
-  "topic": "Título conciso del tema",
-  "context": "Contexto vocacional o de la vida real (ej. Transporte, Biología, Ingeniería, Finanzas)",
-  "level": "Nivel educativo (ej. 1ro BGU, 2do BGU, 3ro BGU)",
-  "difficulty": "Básica | Intermedia | Avanzada",
-  "questions": 3,
-  "situation": "Párrafo completo descriptivo de la situación problemática contextualizada en Ecuador",
-  "questionList": ["Pregunta 1", "Pregunta 2", "Pregunta 3"],
-  "reply": "Tu mensaje conversacional explicando la propuesta o los cambios pedagógicos aplicados"
-}
-\`\`\`
-
-Si es solo un saludo o conversación sin generar un ejercicio nuevo, puedes responder con texto conversacional directo sin bloque JSON.`;
-
   try {
-    const raw = await callGemini(
-      systemPrompt,
-      `Ejercicio actual en pantalla: ${JSON.stringify(currentExercise || null)}\nMensaje del docente: ${prompt}`
-    );
+    const raw = await requestAI("exercise", { message: prompt, currentExercise: currentExercise ?? null });
 
     // Check if Gemini returned a JSON block (for exercises)
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -257,7 +156,7 @@ function generateFallbackExercise(
   if (norm.startsWith("hola") || norm === "buenas" || norm.includes("saludos") || norm.includes("buenos dias") || norm.includes("buenas tardes")) {
     return {
       exercise: currentExercise || defaultInitialExercise(),
-      reply: "¡Hola, colega docente! Es un gusto saludarte. Soy tu asistente pedagógico en ECduLearm. ¿En qué tema te gustaría que enfoquemos la actividad de hoy? Puedes pedirme, por ejemplo: 'Crea un ejercicio sobre el Metro de Quito', 'Funciones en Galápagos', o 'Economía familiar en Ecuador'.",
+      reply: "¡Hola, colega docente! Es un gusto saludarte. Soy tu asistente pedagógico en ECduLearn. ¿En qué tema te gustaría que enfoquemos la actividad de hoy? Puedes pedirme, por ejemplo: 'Crea un ejercicio sobre el Metro de Quito', 'Funciones en Galápagos', o 'Economía familiar en Ecuador'.",
     };
   }
 
@@ -445,21 +344,8 @@ export async function socraticTutorAI(
   history: { role: string; text: string }[],
   exerciseContext?: string
 ): Promise<AIResult<string>> {
-  const systemPrompt = `Eres el Tutor Socrático Anti-Copia de ECduLearm para estudiantes de bachillerato en Ecuador.
-REGLA CARDINAL ESTRICTA:
-- El agente tiene TERMINANTEMENTE PROHIBIDO dar la respuesta final, la solución numérica o resolver el cálculo por el estudiante.
-- Solo puedes responder con preguntas guía reflexivas, pistas graduales (andamiaje cognitivo) y validación lógica de los pasos que el estudiante proponga.
-- Si el estudiante te pide la respuesta directa o que le hagas la tarea, recuérdale con calidez que tu labor es ayudarlo a razonar para que sea capaz de resolver cualquier problema por sí mismo.
-- Emplea un tono cercano, motivador, empático y respetuoso (español de Ecuador/Latinoamérica).`;
-
   try {
-    const conversation = history
-      .map((h) => `${h.role === "student" || h.role === "user" ? "Estudiante" : "Tutor"}: ${h.text}`)
-      .join("\n");
-
-    const prompt = `Contexto del reto actual: ${exerciseContext || "Razonamiento lógico aplicado"}\nHistorial:\n${conversation}\nEstudiante: ${userMessage}\n\nResponde como Tutor Socrático:`;
-
-    const raw = await callGemini(systemPrompt, prompt);
+    const raw = await requestAI("tutor", { message: userMessage, history, context: exerciseContext });
     return {
       data: raw.trim(),
       isOfflineFallback: false,
@@ -512,20 +398,17 @@ export async function planErcaAI(
   duration: string,
   context?: string
 ): Promise<AIResult<ErcaPhase[]>> {
-  const systemPrompt = `Eres un asesor metodológico experto en el modelo ERCA (Experiencia, Reflexión, Conceptualización, Aplicación) para el Ministerio de Educación de Ecuador.
-Tu labor es estructurar un plan de clase de 4 fases para docentes de bachillerato.
-Responde estrictamente con un array JSON de 4 fases con las claves: "id", "tag", "duration", "title", "body".
-Los IDs deben ser exactamente: "experience", "reflection", "conceptualization", "application".`;
-
   try {
-    const raw = await callGemini(
-      systemPrompt,
-      `Objetivo: ${objective}\nDuración total: ${duration}\nContexto: ${context || "General"}`
-    );
+    const raw = await requestAI("erca", { objective, duration, context });
 
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      const isValidPlan =
+        Array.isArray(parsed) &&
+        parsed.length === 4 &&
+        parsed.every((phase) => typeof phase?.id === "string" && typeof phase?.title === "string" && typeof phase?.body === "string");
+      if (!isValidPlan) throw new Error("Invalid ERCA JSON shape");
       return {
         data: parsed,
         isOfflineFallback: false,
@@ -575,16 +458,8 @@ export async function reviewExamAI(
   studentChoice: string,
   studentMessage: string
 ): Promise<AIResult<string>> {
-  const systemPrompt = `Eres el Tutor Socrático de Revisión de Examen de ECduLearm.
-El estudiante acaba de rendir un simulador de admisión universitaria y falló una pregunta.
-Tu meta es ayudarlo a descubrir DÓNDE estuvo la falacia en su procedimiento sin darle la respuesta servida.
-Sé conciso, empático y formula una pregunta reflexiva que despierte el '¡Ajá!' cognitivo.`;
-
   try {
-    const raw = await callGemini(
-      systemPrompt,
-      `Pregunta: ${questionTitle}\nEnunciado: ${questionPrompt}\nOpción que eligió el estudiante: ${studentChoice}\nComentario del estudiante: ${studentMessage}`
-    );
+    const raw = await requestAI("exam-review", { questionTitle, questionPrompt, studentChoice, studentMessage });
     return {
       data: raw.trim(),
       isOfflineFallback: false,
@@ -623,13 +498,12 @@ export async function consultarTutorSocratico(params: {
   mensajeEstudiante: string;
 }): Promise<AIResult<string>> {
   return await socraticTutorAI(
-    params.enunciadoProblema,
     params.mensajeEstudiante,
     params.historialChat?.map((h) => ({
-      id: Date.now(),
       role: h.role === "assistant" || h.role === "tutor" ? "tutor" : "student",
       text: h.text,
-    })) || []
+    })) || [],
+    params.enunciadoProblema
   );
 }
 

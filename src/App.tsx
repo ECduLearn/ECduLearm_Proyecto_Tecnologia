@@ -1,26 +1,12 @@
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react"
-
-import { AccessPortal, TeacherDashboard } from "./Portal"
-
-import AutonomousZone from "./AutonomousZone"
-
-import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules"
-
-import { LandingPage } from "./LandingPage"
-
-import { AdminDashboard } from "./AdminDashboard"
-
-import { AppView, useAppRouter } from "./router"
-
-export type { AppView } from "./router"
-
-import {
-  generateExerciseAI,
-  getGeminiApiKey,
-  setGeminiApiKey,
-  testGeminiConnection,
-} from "./services/aiService"
-
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { AccessPortal, TeacherDashboard } from "./Portal";
+import AutonomousZone from "./AutonomousZone";
+import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
+import { LandingPage } from "./LandingPage";
+import { AdminDashboard } from "./AdminDashboard";
+import { AppView, useAppRouter } from "./router";
+export type { AppView } from "./router";
+import { generateExerciseAI, getAIStatus, testAIConnection } from "./services/aiService";
 import {
   getSupabaseConfig,
   setSupabaseConfig,
@@ -1552,18 +1538,10 @@ function EvaluatorTopBar({
 
   const [modalTab, setModalTab] = useState<"ai" | "database">("ai")
 
-  // Gemini state
-
-  const [currentKey, setCurrentKey] = useState("")
-
-  const [inputKey, setInputKey] = useState("")
-
-  const [testResult, setTestResult] = useState<{
-    success: boolean
-    message: string
-  } | null>(null)
-
-  const [isTesting, setIsTesting] = useState(false)
+  // Estado de la IA (la clave vive en el servidor)
+  const [aiOnline, setAiOnline] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   // Supabase state
 
@@ -1581,51 +1559,28 @@ function EvaluatorTopBar({
   const [isDbTesting, setIsDbTesting] = useState(false)
 
   useEffect(() => {
-    const key = getGeminiApiKey()
+    let active = true;
+    getAIStatus().then((status) => {
+      if (active) setAiOnline(status.online);
+    });
 
-    setCurrentKey(key)
+    const dbConfig = getSupabaseConfig();
+    setSupabaseUrl(dbConfig.url);
+    setSupabaseKey(dbConfig.anonKey);
+    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey));
+    return () => {
+      active = false;
+    };
+  }, [keyModalOpen]);
 
-    setInputKey(key)
-
-    const dbConfig = getSupabaseConfig()
-
-    setSupabaseUrl(dbConfig.url)
-
-    setSupabaseKey(dbConfig.anonKey)
-
-    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey))
-  }, [keyModalOpen])
-
-  const handleSaveAndTest = async () => {
-    setIsTesting(true)
-
-    setTestResult(null)
-
-    setGeminiApiKey(inputKey)
-
-    setCurrentKey(inputKey)
-
-    const result = await testGeminiConnection(inputKey)
-
-    setTestResult(result)
-
-    setIsTesting(false)
-  }
-
-  const handleClearKey = () => {
-    setGeminiApiKey("")
-
-    setCurrentKey("")
-
-    setInputKey("")
-
-    setTestResult({
-      success: true,
-
-      message:
-        "Clave eliminada. El sistema operará con el motor de Fallback Offline Inteligente.",
-    })
-  }
+  const handleTestAI = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    const result = await testAIConnection();
+    setTestResult(result);
+    setAiOnline(result.success);
+    setIsTesting(false);
+  };
 
   const handleSaveAndTestDb = async () => {
     setIsDbTesting(true)
@@ -1873,18 +1828,14 @@ function EvaluatorTopBar({
                 setKeyModalOpen(true)
               }}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
-                currentKey
+                aiOnline
                   ? "border-ink-500/60 bg-ink-950/70 text-ink-300 hover:bg-ink-900/60"
                   : "border-sand-700 bg-sand-900 text-sand-300 hover:bg-sand-800"
               }`}
-              title="Configurar o probar API Key de Google Gemini"
+              title="Ver o probar la conexión con Google Gemini"
             >
-              <span
-                className={`inline-block size-1.5 rounded-full ${
-                  currentKey ? "bg-ink-400" : "bg-hint-400"
-                }`}
-              />
-              <span>{currentKey ? "Gemini Online" : "Motor Offline"}</span>
+              <span className={`inline-block size-1.5 rounded-full ${aiOnline ? "bg-ink-400" : "bg-hint-400"}`} />
+              <span>{aiOnline ? "Gemini Online" : "Motor Offline"}</span>
               <span className="text-[10px]">⚙️</span>
             </button>
 
@@ -1988,10 +1939,8 @@ function EvaluatorTopBar({
             {modalTab === "ai" ? (
               <div className="mt-4 space-y-4 text-xs">
                 <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
-                  <p className="text-sand-300 font-semibold mb-1">
-                    Estado de la IA en este momento:
-                  </p>
-                  {currentKey ? (
+                  <p className="text-sand-300 font-semibold mb-1">Estado de la IA en este momento:</p>
+                  {aiOnline ? (
                     <p className="text-ink-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-ink-400" />
                       <strong>Modo Online Activo:</strong> Se envían peticiones
@@ -2001,48 +1950,23 @@ function EvaluatorTopBar({
                   ) : (
                     <p className="text-hint-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-hint-400" />
-                      <strong>Modo Offline Inteligente:</strong> Respuestas
-                      automáticas dinámicas adaptadas al currículo ecuatoriano
-                      (sin necesidad de API Key).
+                      <strong>Modo Offline Inteligente:</strong> Respuestas automáticas adaptadas al currículo ecuatoriano mientras el servidor no tenga IA disponible.
                     </p>
                   )}
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="gemini-key-input"
-                    className="block font-semibold text-sand-200 mb-1"
-                  >
-                    API Key de Google Gemini (opcional):
-                  </label>
-                  <input
-                    id="gemini-key-input"
-                    type="password"
-                    value={inputKey}
-                    onChange={(e) => setInputKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="w-full rounded-xl border border-sand-700 bg-sand-950 px-3 py-2 text-xs text-white outline-none focus:border-ink-400 font-mono"
-                  />
-                  <p className="mt-1.5 text-[11px] text-sand-400">
-                    Puedes obtener tu clave gratuita en{" "}
-                    <a
-                      href="https://aistudio.google.com/app/apikey"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-ink-400 underline hover:text-ink-300"
-                    >
-                      Google AI Studio
-                    </a>
-                    .
-                  </p>
-                </div>
+                <p className="text-[11px] leading-relaxed text-sand-400">
+                  La clave de Gemini se configura en el servidor (variable <code className="font-mono text-sand-200">GEMINI_API_KEY</code> en
+                  Vercel o en <code className="font-mono text-sand-200">.env</code> en local). El navegador nunca la recibe.
+                </p>
 
                 {testResult && (
                   <div
+                    role="status"
                     className={`rounded-xl border p-3 ${
                       testResult.success
                         ? "border-ink-500/50 bg-ink-950/50 text-ink-200"
-                        : "border-rose-500/50 bg-rose-950/50 text-rose-200"
+                        : "border-hint-500/50 bg-hint-950/50 text-hint-200"
                     }`}
                   >
                     <p className="font-semibold">
@@ -2058,20 +1982,11 @@ function EvaluatorTopBar({
                   <button
                     type="button"
                     disabled={isTesting}
-                    onClick={handleSaveAndTest}
-                    className="flex-1 rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
+                    onClick={handleTestAI}
+                    className="flex-1 min-h-[44px] rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
                   >
-                    {isTesting ? "Probando..." : "Guardar y Probar Conexión IA"}
+                    {isTesting ? "Probando..." : "Probar conexión IA"}
                   </button>
-                  {currentKey && (
-                    <button
-                      type="button"
-                      onClick={handleClearKey}
-                      className="rounded-xl border border-rose-800 bg-rose-950/40 px-3 py-2.5 font-semibold text-rose-300 hover:bg-rose-900/60"
-                    >
-                      Quitar Clave
-                    </button>
-                  )}
                 </div>
               </div>
             ) : (

@@ -1,11 +1,11 @@
 import { Exercise, PinSession } from "../models/types";
 
 export function formatPin(rawPin: string): string {
-  const digits = rawPin.replace(/\D/g, "").slice(0, 6);
-  if (digits.length > 3) {
-    return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+  const chars = rawPin.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  if (chars.length > 3) {
+    return `${chars.slice(0, 3)} ${chars.slice(3)}`;
   }
-  return digits;
+  return chars;
 }
 
 export function cleanPin(formattedPin: string): string {
