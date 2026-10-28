@@ -207,7 +207,7 @@ export function AccessPortal({
     const cleanPin = pin.trim().replace(/\s+/g, "").toUpperCase()
 
     if (!cleanPin) {
-      setPinError("Escribe el PIN o pega el enlace de tu clase.")
+      setPinError("Escribe el PIN que te dio tu docente.")
 
       return
     }
@@ -274,7 +274,7 @@ export function AccessPortal({
       }
     } catch {
       setLoginError(
-        "Error de comunicación al verificar credenciales con la base de datos.",
+        "No pudimos conectarnos para revisar tus datos. Revisa tu internet y vuelve a intentarlo.",
       )
     } finally {
       setLoginLoading(false)
@@ -304,7 +304,7 @@ export function AccessPortal({
         setLoginError(res.message)
       }
     } catch {
-      setLoginError("Error de comunicación al verificar credenciales demo.")
+      setLoginError("No pudimos abrir la cuenta de prueba. Vuelve a intentarlo en unos segundos.")
     } finally {
       setLoginLoading(false)
     }
@@ -338,7 +338,7 @@ export function AccessPortal({
       }
     } catch {
       setLoginError(
-        "Error de comunicación al verificar credenciales de administrador.",
+        "No pudimos abrir la cuenta de administración. Vuelve a intentarlo en unos segundos.",
       )
     } finally {
       setLoginLoading(false)
@@ -395,8 +395,8 @@ export function AccessPortal({
             ¿Cuál es el código de tu clase?
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-sand-600">
-            Escribe el PIN o pega el enlace que compartió tu docente. Sin cuenta
-            y sin datos personales (Zero-PII).
+            Escribe el PIN que compartió tu docente. No necesitas cuenta ni
+            datos personales.
           </p>
 
           <form
@@ -431,7 +431,7 @@ export function AccessPortal({
               className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-6 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 sm:w-auto disabled:opacity-60"
             >
               {pinLoading ? (
-                <span>Validando PIN en BD...</span>
+                <span>Buscando tu clase…</span>
               ) : (
                 <>
                   <span>Entrar a la clase</span>
@@ -456,7 +456,7 @@ export function AccessPortal({
           <div className="mt-8 border-t border-sand-300 pt-5">
             <p className="flex items-center justify-center gap-2 text-sm font-semibold text-ink-900">
               <PortalIcon name="shield" className="size-5 text-ink-800" />
-              Tu privacidad primero (Zero-PII)
+              Tu privacidad primero
             </p>
             <p className="mt-2 text-center text-xs leading-relaxed text-sand-600">
               Tu colegio administra esta experiencia. No solicitamos nombres,
@@ -497,8 +497,7 @@ export function AccessPortal({
                   Acceso institucional
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-sand-600">
-                  Autenticación con roles en base de datos PostgreSQL
-                  (`usuarios_institucionales`).
+                  Entra con el correo y la contraseña que te dio tu colegio.
                 </p>
               </div>
               <button
@@ -561,7 +560,7 @@ export function AccessPortal({
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-5 text-sm font-bold text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:opacity-60"
               >
                 {loginLoading ? (
-                  <span>Verificando credenciales en BD...</span>
+                  <span>Entrando…</span>
                 ) : (
                   <>
                     <span>Ingresar al panel</span>
@@ -1027,6 +1026,13 @@ const rooms = [
   },
 ]
 
+function saludoDelDia(): string {
+  const hora = new Date().getHours()
+  if (hora < 12) return "Buenos días"
+  if (hora < 19) return "Buenas tardes"
+  return "Buenas noches"
+}
+
 export function TeacherDashboard({
   onExit,
 
@@ -1190,11 +1196,11 @@ export function TeacherDashboard({
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/10 p-4">
           <div className="flex items-center gap-2 text-xs font-bold text-ink-200">
             <PortalIcon name="shield" className="size-4" />
-            Privacidad B2B Estricta
+            Datos protegidos
           </div>
           <p className="mt-2 text-xs leading-relaxed text-ink-100">
-            Persistencia relacional anonimizada (Cero-PII). Cumple LOPDP
-            Ecuador.
+            Tus estudiantes son anónimos: aquí solo ves resultados del grupo.
+            Cumplimos la LOPDP de Ecuador.
           </p>
         </div>
         <button
@@ -1262,11 +1268,10 @@ export function TeacherDashboard({
                 </p>
               </div>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-sand-950">
-                Buenos días, {teacherName.split(" ")[0]}
+                {saludoDelDia()}, {teacherName.split(" ")[0]}
               </h1>
               <p className="mt-2 text-sm text-sand-600">
-                Métricas calculadas en tiempo real desde la base de datos
-                PostgreSQL de Supabase.
+                Así va tu clase hoy.
               </p>
             </div>
             <button
@@ -1360,7 +1365,7 @@ export function TeacherDashboard({
 
                     value: `${metricas?.ejerciciosGenerados ?? 14}`,
 
-                    detail: "generados y almacenados en BD",
+                    detail: "creados y guardados",
 
                     icon: "chart" as const,
                   },

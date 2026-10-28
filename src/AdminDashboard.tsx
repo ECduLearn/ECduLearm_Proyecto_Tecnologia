@@ -374,7 +374,7 @@ export function AdminDashboard({
                 </span>
               </div>
               <p className="text-[11px] text-sand-600 font-medium">
-                Panel Maestro de Usuarios y Control B2B · Ecuador
+                Usuarios, colegios y permisos
               </p>
             </div>
           </div>
@@ -429,7 +429,7 @@ export function AdminDashboard({
                   Acceso Restringido
                 </span>
                 <span className="text-xs text-sand-500 font-mono">
-                  B2B SaaS Security
+                  Solo administradores
                 </span>
               </div>
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-sand-950 sm:text-3xl">
@@ -547,14 +547,14 @@ export function AdminDashboard({
             <div className="rounded-2xl border border-sand-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-sand-600 uppercase tracking-wide">
-                  Seguridad B2B
+                  Privacidad
                 </span>
                 <span className="grid size-7 place-items-center rounded-lg bg-ink-50 text-ink-700 text-xs">
                   🛡️
                 </span>
               </div>
               <p className="mt-2 text-base font-extrabold text-ink-900">
-                Zero-PII Estricto
+                Estudiantes anónimos
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-sand-600">
                 Aislamiento por colegio. Cumplimiento con LOPDP Ecuador.
@@ -865,7 +865,7 @@ export function AdminDashboard({
                   usuarios registrados
                 </span>
                 <span className="font-semibold text-ink-900">
-                  Total B2B Activos:{" "}
+                  Cuentas activas:{" "}
                   {stats.docentesActivos + stats.coordinadores}
                 </span>
               </div>
@@ -882,7 +882,7 @@ export function AdminDashboard({
                   Instituciones Educativas Asociadas
                 </h2>
                 <p className="text-xs text-sand-600">
-                  Colegios bajo contrato B2B en Ecuador con límites de docentes.
+                  Colegios con licencia y cuántos docentes puede tener cada uno.
                 </p>
               </div>
               <button

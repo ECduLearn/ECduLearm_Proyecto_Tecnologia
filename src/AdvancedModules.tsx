@@ -160,8 +160,8 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   };
 
   const applyAI = (action: string) => {
-    setNotice(`Aplicando “${action}”...`);
-    window.setTimeout(() => setNotice("Cambio aplicado y guardado"), 600);
+    setNotice(`Aplicando «${action}»…`);
+    window.setTimeout(() => setNotice("Listo, ya está guardado"), 600);
   };
 
   const generatePisa = async () => {
@@ -172,7 +172,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
       setIsGeneratingPisa(false);
       setPisaInserted(true);
       setPisaModalOpen(false);
-      setNotice(`Ejercicio PISA “${res.data.exercise.topic}” insertado en Aplicación (Guardado en BD)`);
+      setNotice(`Agregamos «${res.data.exercise.topic}» a la fase de Aplicación.`);
       localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
 
       // Persistir ejercicio en tabla ejercicios_pisa
@@ -194,7 +194,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
       setIsGeneratingPisa(false);
       setPisaInserted(true);
       setPisaModalOpen(false);
-      setNotice("Ejercicio PISA insertado en Aplicación");
+      setNotice("Agregamos el ejercicio a la fase de Aplicación");
     }
   };
 
@@ -489,7 +489,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setNotice("Edición manual activada en el ejercicio")}
+                                onClick={() => setNotice("Ya puedes editar el ejercicio a mano")}
                                 className="min-h-10 rounded-lg px-3 text-xs font-bold text-sand-600 hover:bg-white"
                               >
                                 ✏️ Editar a mano

@@ -195,7 +195,7 @@ const initialMessages: Message[] = [
 
     role: "assistant",
 
-    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearn, potenciado en tiempo real con Google Gemini Flash (con balanceo multimodelo y ahorro de cuota).\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
+    text: "¡Hola! Soy tu asistente para preparar clases.\n\nTe dejé lista una guía de ejemplo con enfoque PISA. Puedes pedirme que la ajuste («hazla más fácil», «agrega una pregunta»), que cree otra sobre un tema distinto («Metro de Quito», «Galápagos», «finanzas») o consultarme cualquier duda sobre cómo plantear un ejercicio.",
 
     exercise: initialExercise,
   },
@@ -399,13 +399,13 @@ function EditorView({
   const [selectionOpen, setSelectionOpen] = useState(false)
 
   const applyAI = async (label: string) => {
-    setNotice(`Aplicando “${label}” con IA...`)
+    setNotice(`Aplicando «${label}»…`)
 
     try {
       const res = await generateExerciseAI(label, exercise)
 
       setNotice(
-        `Cambios aplicados: ${res.data.exercise.topic} (Guardado en BD)`,
+        `Listo: ${res.data.exercise.topic}. Ya está guardado.`,
       )
 
       localStorage.setItem(
@@ -429,7 +429,7 @@ function EditorView({
         etiquetaVersion: etiqueta,
       })
     } catch {
-      setNotice("Cambios de IA aplicados y guardados")
+      setNotice("No pudimos aplicar el cambio. Inténtalo otra vez.")
     }
 
     setCommand("")
@@ -1608,7 +1608,7 @@ function EvaluatorTopBar({
         success: false,
 
         message:
-          "Por favor proporciona la URL y la Anon Key de tu proyecto de Supabase.",
+          "Falta la dirección del proyecto o su clave pública. Las encuentras en Supabase, en Project Settings → API.",
       })
 
       setIsDbTesting(false)
@@ -1646,7 +1646,7 @@ function EvaluatorTopBar({
         setDbTestResult({
           success: false,
 
-          message: `Error al consultar Supabase (${error.code}): ${error.message}. Recuerda ejecutar el script 'supabase/schema.sql' en el SQL Editor de Supabase.`,
+          message: `Nos conectamos, pero la base de datos todavía no tiene las tablas de ECduLearn. Ejecuta supabase/schema.sql en el SQL Editor de Supabase y vuelve a probar. (Detalle: ${error.code})`,
         })
       } else {
         const pinList = data
@@ -1657,14 +1657,16 @@ function EvaluatorTopBar({
         setDbTestResult({
           success: true,
 
-          message: `¡Conexión exitosa a Supabase PostgreSQL! Tabla '${tableName}' activa con ${data?.length || 0} aulas registradas (${pinList || "lista vacía"}).`,
+          message: data?.length
+            ? `Todo bien: la base de datos responde y tiene ${data.length === 1 ? "1 aula" : `${data.length} aulas`} (${pinList}).`
+            : `Todo bien: la base de datos responde, aunque todavía no tiene aulas creadas.${tableName === "pin_sessions" ? " Usa el esquema antiguo (v1)." : ""}`,
         })
       }
     } catch (err) {
       setDbTestResult({
         success: false,
 
-        message: `Fallo de conexión: ${(err as Error).message}`,
+        message: "No pudimos conectar con la base de datos. Revisa la dirección y la clave, o tu conexión a internet.",
       })
     } finally {
       setIsDbTesting(false)
@@ -1689,8 +1691,8 @@ function EvaluatorTopBar({
       success: true,
 
       message: dbConfig.url
-        ? `Configuración manual eliminada. Se usa la base de datos del despliegue (${new URL(dbConfig.url).host}).`
-        : "Configuración eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
+        ? `Listo. Volvimos a la base de datos del despliegue (${new URL(dbConfig.url).host}).`
+        : "Listo. Sin base de datos configurada, la información se guarda solo en este navegador.",
     })
   }
 
@@ -1852,7 +1854,7 @@ function EvaluatorTopBar({
               title="Ver o probar la conexión con Google Gemini"
             >
               <span className={`inline-block size-1.5 rounded-full ${aiOnline ? "bg-ink-400" : "bg-hint-400"}`} />
-              <span>{aiOnline ? "Gemini Online" : "Motor Offline"}</span>
+              <span>{aiOnline ? "IA conectada" : "IA sin conexión"}</span>
               <span className="text-[10px]">⚙️</span>
             </button>
 
@@ -1877,10 +1879,10 @@ function EvaluatorTopBar({
               />
               <span>
                 {supabaseOverride
-                  ? "Supabase manual ⚠️"
+                  ? "Base de datos manual ⚠️"
                   : isDbConnected
-                    ? "Supabase Cloud"
-                    : "DB Local"}
+                    ? "Base de datos en línea"
+                    : "Solo este navegador"}
               </span>
               <span className="text-[10px]">🗄️</span>
             </button>
@@ -1917,7 +1919,7 @@ function EvaluatorTopBar({
             <div className="flex items-start justify-between gap-3 border-b border-sand-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-hint-300 flex items-center gap-2">
-                  <span>⚙️ Configuración de Conectividad & Servicios</span>
+                  <span>Conexiones de la plataforma</span>
                 </h3>
                 <p className="mt-1 text-xs text-sand-400">
                   Gestión para el jurado / evaluador: Inteligencia Artificial y
@@ -1944,7 +1946,7 @@ function EvaluatorTopBar({
                     : "text-sand-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                🤖 IA Google Gemini
+                Inteligencia artificial
               </button>
               <button
                 type="button"
@@ -1955,7 +1957,7 @@ function EvaluatorTopBar({
                     : "text-sand-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                🗄️ Base de Datos Supabase (PostgreSQL)
+                Base de datos
               </button>
             </div>
 
@@ -1966,14 +1968,12 @@ function EvaluatorTopBar({
                   {aiOnline ? (
                     <p className="text-ink-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-ink-400" />
-                      <strong>Modo Online Activo:</strong> Se envían peticiones
-                      optimizadas con balanceo multimodelo (Flash-Lite / Flash)
-                      para máximo ahorro de tokens y alta disponibilidad.
+                      <strong>Conectada.</strong> El asistente docente y el tutor responden con Google Gemini.
                     </p>
                   ) : (
                     <p className="text-hint-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-hint-400" />
-                      <strong>Modo Offline Inteligente:</strong> Respuestas automáticas adaptadas al currículo ecuatoriano mientras el servidor no tenga IA disponible.
+                      <strong>Sin conexión.</strong> Mientras tanto, la plataforma responde con ejercicios y pistas preparados de antemano.
                     </p>
                   )}
                 </div>
@@ -1993,7 +1993,7 @@ function EvaluatorTopBar({
                     }`}
                   >
                     <p className="font-semibold">
-                      {testResult.success ? "✅ Éxito" : "⚠️ Aviso"}
+                      {testResult.success ? "Funciona" : "Algo no salió bien"}
                     </p>
                     <p className="mt-0.5 text-[11px] leading-relaxed">
                       {testResult.message}
@@ -2008,7 +2008,7 @@ function EvaluatorTopBar({
                     onClick={handleTestAI}
                     className="flex-1 min-h-[44px] rounded-xl bg-ink-600 px-4 py-2.5 font-bold text-white transition hover:bg-ink-500 disabled:opacity-50"
                   >
-                    {isTesting ? "Probando..." : "Probar conexión IA"}
+                    {isTesting ? "Probando…" : "Probar la IA"}
                   </button>
                 </div>
               </div>
@@ -2050,15 +2050,12 @@ function EvaluatorTopBar({
                   {isDbConnected ? (
                     <p className="text-hint-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-hint-400" />
-                      <strong>Supabase Cloud Activo:</strong> Sincronización en
-                      tiempo real de PINs y ejercicios entre diferentes
-                      computadoras y teléfonos.
+                      <strong>En línea.</strong> Las aulas, los PIN y los ejercicios se comparten entre computadoras y celulares.
                     </p>
                   ) : (
                     <p className="text-amber-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-amber-400" />
-                      <strong>Modo LocalStorage:</strong> Las aulas y PINs se
-                      almacenan localmente en el navegador de este dispositivo.
+                      <strong>Solo este navegador.</strong> Las aulas y los PIN se guardan aquí y no se ven desde otros equipos.
                     </p>
                   )}
                 </div>

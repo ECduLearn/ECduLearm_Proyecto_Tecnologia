@@ -23,7 +23,7 @@ export const VIEW_PATHS: Record<AppView, string> = {
 }
 
 export const VIEW_TITLES: Record<AppView, string> = {
-  landing: "ECduLearn - Plataforma EdTech SaaS B2B Ecuador",
+  landing: "ECduLearn · Ejercicios tipo PISA y un tutor que hace pensar",
 
   portal: "Portal de Acceso | ECduLearn",
 

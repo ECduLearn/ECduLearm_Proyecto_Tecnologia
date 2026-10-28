@@ -49,20 +49,20 @@ export async function getAIStatus(): Promise<{ online: boolean }> {
 }
 
 const AI_ERROR_MESSAGES: Record<string, string> = {
-  ai_not_configured: "El servidor no tiene configurada la variable GEMINI_API_KEY. La plataforma sigue funcionando con el motor offline.",
-  ai_unavailable: "Ningún modelo de Gemini respondió a tiempo (posible límite de cuota). Se usará el motor offline mientras tanto.",
-  rate_limited: "Se alcanzó el límite de peticiones por minuto. Espera un momento y vuelve a probar.",
+  ai_not_configured: "La IA todavía no está configurada en el servidor (falta GEMINI_API_KEY). Mientras tanto, la plataforma usa ejercicios y pistas preparados de antemano.",
+  ai_unavailable: "La IA está tardando demasiado en responder, quizá por exceso de uso. Mientras tanto, la plataforma usa ejercicios y pistas preparados.",
+  rate_limited: "Hubo demasiadas pruebas seguidas. Espera un minuto y vuelve a intentarlo.",
 };
 
 export async function testAIConnection(): Promise<{ success: boolean; message: string }> {
   try {
     await requestAI("ping");
-    return { success: true, message: "Conexión verificada: el servidor respondió con Google Gemini." };
+    return { success: true, message: "La IA está conectada y respondiendo." };
   } catch (error) {
     const code = (error as Error).message;
     return {
       success: false,
-      message: AI_ERROR_MESSAGES[code] || "No se pudo contactar con el servicio de IA. La plataforma sigue funcionando con el motor offline.",
+      message: AI_ERROR_MESSAGES[code] || "No pudimos comunicarnos con la IA. La plataforma sigue funcionando con ejercicios y pistas preparados.",
     };
   }
 }
