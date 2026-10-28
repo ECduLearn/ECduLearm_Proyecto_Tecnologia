@@ -444,7 +444,7 @@ function EditorView({
   }
 
   return (
-    <div className="min-h-screen bg-sand-200 text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-200 text-sand-950">
       <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur print:hidden">
         <div className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3 px-3 sm:px-5">
           <button
@@ -1228,7 +1228,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-sand-100 text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-100 text-sand-950">
       <EvaluatorTopBar currentView={view} onViewChange={setView} />
       {sidebarOpen && (
         <button
@@ -1409,13 +1409,13 @@ function App() {
             >
               {messages.map((message) =>
                 message.role === "user" ? (
-                  <div key={message.id} className="flex justify-end">
+                  <div key={message.id} className="ui-msg flex justify-end">
                     <div className="max-w-xl rounded-2xl rounded-br-md bg-ink-950 px-4 py-3 text-sm leading-relaxed text-white shadow-sm sm:px-5">
                       {message.text}
                     </div>
                   </div>
                 ) : (
-                  <div key={message.id} className="space-y-4">
+                  <div key={message.id} className="ui-msg space-y-4">
                     <div className="flex items-start gap-3">
                       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-800 shadow-sm">
                         <Icon name="sparkles" className="size-4" />
@@ -1437,16 +1437,20 @@ function App() {
               )}
 
               {isGenerating && (
-                <div className="flex items-start gap-3" aria-live="polite">
+                <div className="ui-msg flex items-start gap-3" aria-live="polite">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-800">
-                    <Icon name="sparkles" className="size-4 animate-spin" />
+                    <Icon name="sparkles" className="size-4" />
                   </span>
                   <div
                     className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-ink-200 bg-ink-50/80 px-5 text-sm font-semibold text-ink-900 shadow-sm"
                     role="status"
                   >
-                    <span className="size-4 animate-spin rounded-full border-2 border-ink-400 border-t-ink-700" />
-                    Consultando Google Gemini en tiempo real...
+                    <span className="ui-typing flex items-center gap-1" aria-hidden="true">
+                      <span className="size-1.5 rounded-full bg-ink-600" />
+                      <span className="size-1.5 rounded-full bg-ink-600" />
+                      <span className="size-1.5 rounded-full bg-ink-600" />
+                    </span>
+                    Preparando tu ejercicio…
                   </div>
                 </div>
               )}
@@ -1889,14 +1893,14 @@ function EvaluatorTopBar({
               }}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
                 isDbConnected
-                  ? "border-teal-500/60 bg-teal-950/70 text-teal-300 hover:bg-teal-900/60"
-                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                  ? "border-ink-500/60 bg-ink-950/70 text-ink-300 hover:bg-ink-900/60"
+                  : "border-sand-700 bg-sand-900 text-sand-300 hover:bg-sand-800"
               }`}
               title="Configurar o probar persistencia en base de datos Supabase PostgreSQL"
             >
               <span
                 className={`inline-block size-1.5 rounded-full ${
-                  isDbConnected ? "bg-teal-400" : "bg-amber-400"
+                  isDbConnected ? "bg-ink-400" : "bg-hint-400"
                 }`}
               />
               <span>
@@ -1936,8 +1940,8 @@ function EvaluatorTopBar({
       </aside>
 
       {keyModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
-          <div className="w-full max-w-lg rounded-2xl border border-sand-700 bg-sand-900 p-6 text-white shadow-2xl">
+        <div className="ui-view fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm print:hidden font-sans">
+          <div className="ui-pop w-full max-w-lg rounded-2xl border border-sand-700 bg-sand-900 p-6 text-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-sand-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-hint-300 flex items-center gap-2">
@@ -2075,8 +2079,8 @@ function EvaluatorTopBar({
                       <strong>En línea.</strong> Las aulas, los PIN y los ejercicios se comparten entre computadoras y celulares.
                     </p>
                   ) : (
-                    <p className="text-amber-400 flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-amber-400" />
+                    <p className="text-hint-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-hint-400" />
                       <strong>Solo este navegador.</strong> Las aulas y los PIN se guardan aquí y no se ven desde otros equipos.
                     </p>
                   )}
@@ -2125,7 +2129,7 @@ function EvaluatorTopBar({
                       supabase.com
                     </a>{" "}
                     y ejecuta el script disponible en{" "}
-                    <span className="font-mono text-amber-300">
+                    <span className="font-mono text-hint-300">
                       supabase/schema.sql
                     </span>
                     .
@@ -2137,7 +2141,7 @@ function EvaluatorTopBar({
                     className={`rounded-xl border p-3 ${
                       dbTestResult.success
                         ? "border-emerald-500/50 bg-emerald-950/50 text-emerald-200"
-                        : "border-rose-500/50 bg-rose-950/50 text-rose-200"
+                        : "border-hint-500/50 bg-hint-950/50 text-hint-200"
                     }`}
                   >
                     <p className="font-semibold">

@@ -12,8 +12,8 @@
   ],
   "start_url": "./",
   "scope": "./",
-  "background_color": "#f7f4ec",
-  "theme_color": "#0f3b2e",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0b2559",
   "display": "standalone",
   "orientation": "portrait-primary",
   "lang": "es"

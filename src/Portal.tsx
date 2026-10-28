@@ -337,7 +337,7 @@ export function AccessPortal({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-sand-50 text-sand-950 font-sans">
+    <div className="ui-view relative min-h-screen overflow-hidden bg-sand-50 text-sand-950 font-sans">
       <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-ink-100/70 blur-3xl" />
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <div className="flex items-center gap-4">
@@ -434,7 +434,7 @@ export function AccessPortal({
 
           {pinError && (
             <div
-              className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 text-left"
+              className="mt-4 rounded-xl border border-hint-300 bg-hint-50 p-3 text-sm font-medium text-hint-900 text-left"
               role="alert"
             >
               <p className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export function AccessPortal({
       </footer>
 
       {loginOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/50 p-4 backdrop-blur-sm">
+        <div className="ui-view fixed inset-0 z-50 grid place-items-center bg-sand-950/50 p-4 backdrop-blur-sm">
           <button
             type="button"
             className="absolute inset-0"
@@ -471,7 +471,7 @@ export function AccessPortal({
             aria-label="Cerrar acceso docente"
           />
           <section
-            className="relative w-full max-w-md rounded-2xl border border-sand-300 bg-sand-50 p-6 shadow-2xl sm:p-8"
+            className="ui-pop relative w-full max-w-md rounded-2xl border border-sand-300 bg-sand-50 p-6 shadow-2xl sm:p-8"
             role="dialog"
             aria-modal="true"
             aria-labelledby="teacher-login-title"
@@ -503,7 +503,7 @@ export function AccessPortal({
 
             {loginError && (
               <div
-                className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
+                className="mt-4 rounded-xl border border-hint-300 bg-hint-50 p-3 text-xs font-semibold text-hint-900"
                 role="alert"
               >
                 ⚠️ {loginError}
@@ -738,7 +738,7 @@ export function StudentWorkspace({ onExit }: { onExit: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-sand-50 text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
       <header className="border-b border-sand-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="min-w-0">
@@ -1093,7 +1093,7 @@ export function TeacherDashboard({
     currentUser?.institution || "Colegio Experimental San Gabriel de Quito"
 
   return (
-    <div className="min-h-screen bg-sand-50 text-sand-950 font-sans">
+    <div className="ui-view min-h-screen bg-sand-50 text-sand-950 font-sans">
       {sidebarOpen && (
         <button
           type="button"
@@ -1266,7 +1266,7 @@ export function TeacherDashboard({
           {/* Estado de Error Suave */}
           {uxState === "error" && (
             <div
-              className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 flex items-center justify-between gap-4"
+              className="mt-6 rounded-2xl border border-hint-300 bg-hint-50 p-4 text-hint-900 flex items-center justify-between gap-4"
               role="alert"
             >
               <div className="flex items-center gap-3">
@@ -1275,7 +1275,7 @@ export function TeacherDashboard({
                   <p className="text-sm font-bold">
                     Aviso de sincronización de métricas
                   </p>
-                  <p className="text-xs text-amber-800">
+                  <p className="text-xs text-hint-800">
                     No fue posible conectar con las vistas analíticas de la base
                     de datos remota. Se están mostrando métricas de contingencia
                     en caché local.
@@ -1285,7 +1285,7 @@ export function TeacherDashboard({
               <button
                 type="button"
                 onClick={loadDashboardData}
-                className="shrink-0 rounded-lg bg-amber-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-900"
+                className="shrink-0 rounded-lg bg-hint-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-hint-900"
               >
                 Reintentar
               </button>
@@ -1294,7 +1294,7 @@ export function TeacherDashboard({
 
           {/* Métricas Rápidas: Estado Loading (Skeleton) vs Active */}
           <section
-            className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            className="ui-stagger mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
             aria-label="Métricas rápidas"
           >
             {uxState === "loading"
@@ -1415,7 +1415,7 @@ export function TeacherDashboard({
                   </button>
                 </div>
               ) : (
-                <div className="divide-y divide-sand-200">
+                <div className="ui-stagger divide-y divide-sand-200">
                   {roomsList.map((room) => (
                     <button
                       key={room.name}

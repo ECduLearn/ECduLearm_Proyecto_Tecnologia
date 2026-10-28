@@ -171,7 +171,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
 
   if (estado === "loading") {
     return (
-      <div className="min-h-screen bg-sand-50 text-sand-950">
+      <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
         {header("Reto del colegio")}
         <main className="mx-auto max-w-4xl px-4 py-5 sm:px-6 sm:py-8" aria-busy="true">
           <p className="sr-only" role="status">
@@ -189,7 +189,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
   if (estado !== "ready" || !reto || !sesion) {
     const aviso = AVISOS_SIN_RETO[estado === "ready" ? "empty" : estado];
     return (
-      <div className="min-h-screen bg-sand-50 text-sand-950">
+      <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
         {header("Reto del colegio")}
         <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
           <section className="border border-sand-200 bg-white p-6 text-center shadow-sm sm:p-10">
@@ -207,7 +207,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
   const progreso = Math.round(((indice + (resuelto ? 1 : 0)) / total) * 100);
 
   return (
-    <div className="min-h-screen bg-sand-50 text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
       {header(sesion.titulo)}
       <main className="mx-auto max-w-4xl px-4 py-5 pb-10 sm:px-6 sm:py-8">
         {sesion.isOffline && (
@@ -265,7 +265,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
           {pistas.length > 0 && (
             <ol className="mt-4 space-y-2" aria-live="polite">
               {pistas.map((pista, i) => (
-                <li key={i} className="rounded-2xl border border-hint-200 bg-hint-50 p-4 text-sm leading-relaxed text-hint-950">
+                <li key={i} className="ui-enter rounded-2xl border border-hint-200 bg-hint-50 p-4 text-sm leading-relaxed text-hint-950">
                   <span className="block text-xs font-bold uppercase tracking-wide text-hint-800">Pista {i + 1}</span>
                   {pista}
                 </li>
@@ -326,7 +326,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
           {mensajes.length > 0 && (
             <div className="max-h-80 space-y-3 overflow-y-auto bg-sand-50 p-4 sm:p-5" aria-live="polite">
               {mensajes.map((m) => (
-                <div key={m.id} className={`flex ${m.role === "student" ? "justify-end" : "justify-start"}`}>
+                <div key={m.id} className={`ui-msg flex ${m.role === "student" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       m.role === "student"
@@ -339,7 +339,12 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
                 </div>
               ))}
               {enviando && (
-                <p className="text-xs font-medium text-sand-500" role="status">
+                <p className="ui-msg flex items-center gap-2 text-xs font-medium text-sand-500" role="status">
+                  <span className="ui-typing flex items-center gap-1" aria-hidden="true">
+                    <span className="size-1.5 rounded-full bg-ink-500" />
+                    <span className="size-1.5 rounded-full bg-ink-500" />
+                    <span className="size-1.5 rounded-full bg-ink-500" />
+                  </span>
                   El tutor está pensando en tu procedimiento…
                 </p>
               )}
@@ -373,7 +378,7 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
 
         {resuelto ? (
           <div className="mt-4 space-y-3">
-            <p className="flex items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm font-semibold text-ink-950" role="status">
+            <p className="ui-pop flex items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm font-semibold text-ink-950" role="status">
               <ZoneIcon name="check" className="size-5 shrink-0" />
               ¡Bien hecho! Registramos que resolviste este reto.
             </p>

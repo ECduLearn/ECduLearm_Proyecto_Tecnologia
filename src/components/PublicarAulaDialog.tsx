@@ -60,14 +60,14 @@ export default function PublicarAulaDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="ui-view fixed inset-0 z-50 grid place-items-center bg-sand-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
       <section
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="publicar-titulo"
         onClick={(event) => event.stopPropagation()}
-        className="relative w-full max-w-md rounded-[1.25rem] border border-sand-200 bg-sand-50 p-6 shadow-2xl sm:p-8"
+        className="ui-pop relative w-full max-w-md rounded-[1.25rem] border border-sand-200 bg-sand-50 p-6 shadow-2xl sm:p-8"
       >
         <button
           type="button"

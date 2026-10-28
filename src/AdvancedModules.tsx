@@ -222,7 +222,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-sand-50 text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
       <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur">
         <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6">
           <button
@@ -700,7 +700,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
 
   if (mode === "results") {
     return (
-      <div className="min-h-screen bg-sand-100 px-4 py-8 text-sand-950 sm:py-14">
+      <div className="ui-view min-h-screen bg-sand-100 px-4 py-8 text-sand-950 sm:py-14">
         <main className="mx-auto max-w-3xl">
           <div className="rounded-3xl border border-sand-200 bg-white p-6 text-center shadow-xl shadow-sand-900/5 sm:p-10">
             <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-100 text-ink-900">
@@ -762,7 +762,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
 
   if (mode === "review") {
     return (
-      <div className="min-h-screen bg-sand-100 text-sand-950">
+      <div className="ui-view min-h-screen bg-sand-100 text-sand-950">
         <header className="border-b border-sand-200 bg-white">
           <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
             <button
@@ -874,7 +874,7 @@ export function AdmissionSimulator({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-white text-sand-950">
+    <div className="ui-view min-h-screen bg-white text-sand-950">
       <header className="sticky top-0 z-30 border-b-2 border-sand-950 bg-white">
         <div className="mx-auto grid min-h-20 max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 sm:px-6">
           <div className="min-w-0">

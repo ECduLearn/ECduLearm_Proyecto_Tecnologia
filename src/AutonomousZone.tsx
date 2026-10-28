@@ -170,7 +170,7 @@ export default function AutonomousZone({
 
   if (view === "dashboard") {
     return (
-      <div className="min-h-screen bg-sand-50 text-sand-950">
+      <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
         <StudentHeader />
         <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -203,11 +203,11 @@ export default function AutonomousZone({
                   value={newPin}
                   onChange={(event) => setNewPin(event.target.value)}
                   placeholder="Ej. 482 917"
-                  className="min-h-10 min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-normal placeholder:text-sand-400"
+                  className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-normal placeholder:text-sand-400"
                 />
                 <button
                   type="submit"
-                  className="min-h-10 rounded-md bg-ink-800 px-3 text-xs font-bold text-white hover:bg-ink-900"
+                  className="min-h-11 rounded-md bg-ink-800 px-3 text-xs font-bold text-white hover:bg-ink-900"
                 >
                   Vincular
                 </button>
@@ -227,8 +227,8 @@ export default function AutonomousZone({
               <span className="text-xs font-medium text-sand-400">Desliza para explorar</span>
             </div>
 
-            <div className="-mx-4 mt-5 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-              <article className="min-w-[88%] snap-center border border-sand-300 bg-white p-6 shadow-md shadow-sand-900/5 sm:min-w-[30rem]">
+            <div className="ui-stagger -mx-4 mt-5 flex snap-x gap-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
+              <article className="ui-lift min-w-[88%] snap-center border border-sand-300 bg-white p-6 shadow-md shadow-sand-900/5 sm:min-w-[30rem]">
                 <div className="flex items-start justify-between gap-4">
                   <span className="grid size-11 place-items-center rounded-full bg-ink-100 text-ink-900">
                     <ZoneIcon name="target" className="size-5" />
@@ -252,7 +252,7 @@ export default function AutonomousZone({
                 </button>
               </article>
 
-              <article className="min-w-[82%] snap-center border border-sand-300 bg-white p-6 sm:min-w-[25rem]">
+              <article className="ui-lift min-w-[82%] snap-center border border-sand-300 bg-white p-6 sm:min-w-[25rem]">
                 <span className="grid size-11 place-items-center rounded-xl bg-hint-100 text-hint-900">
                   <ZoneIcon name="graduation" className="size-5" />
                 </span>
@@ -273,9 +273,9 @@ export default function AutonomousZone({
           <section className="mt-10">
             <p className="text-xs font-bold uppercase tracking-widest text-hint-800">A tu ritmo</p>
             <h2 className="mt-1 text-xl font-semibold text-sand-950">Práctica libre</h2>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            <div className="ui-stagger mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {practiceCategories.map((category) => (
-                <article key={category.name} className="flex min-h-56 flex-col border border-sand-200 bg-white p-4 sm:p-5">
+                <article key={category.name} className="ui-lift flex min-h-56 flex-col border border-sand-200 bg-white p-4 sm:p-5">
                   <span className={`grid size-11 place-items-center rounded-xl ${category.tone}`}>
                     <ZoneIcon name={category.icon} className="size-5" />
                   </span>
@@ -314,7 +314,7 @@ export default function AutonomousZone({
 
   if (view === "free") {
     return (
-      <div className="min-h-screen bg-sand-50 text-sand-950">
+      <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
         <StudentHeader onBack={() => setView("dashboard")} title="Práctica libre · Razonamiento Lógico" />
         <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6">
           <section className="border border-sand-200 bg-white p-5 shadow-sm sm:p-7">
@@ -371,7 +371,7 @@ export default function AutonomousZone({
             </div>
             <div className="max-h-72 flex-1 space-y-3 overflow-y-auto bg-sand-50 p-4 sm:p-5" aria-live="polite">
               {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === "student" ? "justify-end" : "justify-start"}`}>
+                <div key={message.id} className={`ui-msg flex ${message.role === "student" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       message.role === "student"

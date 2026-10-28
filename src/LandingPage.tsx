@@ -229,7 +229,7 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
 
             {/* Página del cuaderno: el momento que define al producto */}
             <figure className="reveal relative mx-auto w-full max-w-md lg:max-w-none" style={{ "--delay": "200ms" } as React.CSSProperties}>
-              <div className="paper-grid relative rounded-[1.25rem] border border-sand-300/80 p-6 shadow-[0_1px_0_rgba(15,59,46,0.06),0_24px_48px_-28px_rgba(15,59,46,0.35)] sm:p-8 lg:rotate-[0.6deg]">
+              <div className="paper-grid relative rounded-[1.25rem] border border-sand-300/80 p-6 shadow-[0_1px_0_rgba(11,37,89,0.06),0_24px_48px_-28px_rgba(11,37,89,0.3)] sm:p-8 lg:rotate-[0.6deg]">
                 <div className="flex items-baseline justify-between gap-4">
                   <p className="font-mono text-xs text-sand-500">Reto semanal · 2do BGU</p>
                   <p className="font-mono text-xs text-sand-500">Pista 1 de 3</p>

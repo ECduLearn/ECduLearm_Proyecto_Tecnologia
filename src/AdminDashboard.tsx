@@ -329,7 +329,7 @@ export function AdminDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-sand-100 text-sand-950 font-sans selection:bg-hint-200 selection:text-sand-950">
+    <div className="ui-view min-h-screen bg-sand-100 text-sand-950 font-sans selection:bg-hint-200 selection:text-sand-950">
       {/* Toast Alert Flotante */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-ink-950 px-5 py-3 text-white shadow-2xl ring-1 ring-ink-700/60 animate-in fade-in slide-in-from-bottom-4">
@@ -799,13 +799,13 @@ export function AdminDashboard({
                                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
                                   u.activo
                                     ? "bg-ink-100 text-ink-900 hover:bg-ink-200"
-                                    : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                                    : "bg-hint-100 text-hint-800 hover:bg-hint-200"
                                 }`}
                                 title="Clic para alternar permiso activo/inactivo"
                               >
                                 <span
                                   className={`size-1.5 rounded-full ${
-                                    u.activo ? "bg-ink-600" : "bg-rose-600"
+                                    u.activo ? "bg-ink-600" : "bg-hint-600"
                                   }`}
                                 />
                                 <span>
@@ -844,7 +844,7 @@ export function AdminDashboard({
                                     setUserToDelete(u)
                                     setDeleteConfirmOpen(true)
                                   }}
-                                  className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                                  className="rounded-lg border border-hint-200 bg-hint-50 px-2 py-1 text-[11px] font-semibold text-hint-700 transition hover:bg-hint-100"
                                   title="Eliminar usuario"
                                 >
                                   🗑️
@@ -945,7 +945,7 @@ export function AdminDashboard({
                         <div
                           className={`h-2 rounded-full ${
                             pct >= 100
-                              ? "bg-rose-500"
+                              ? "bg-hint-500"
                               : pct >= 75
                                 ? "bg-hint-500"
                                 : "bg-ink-600"
@@ -1061,7 +1061,7 @@ export function AdminDashboard({
 
             <form onSubmit={handleCreateUser} className="mt-4 space-y-4">
               {formError && (
-                <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs font-semibold text-rose-900">
+                <div className="rounded-xl border border-hint-300 bg-hint-50 p-3 text-xs font-semibold text-hint-900">
                   ⚠️ {formError}
                 </div>
               )}
@@ -1432,7 +1432,7 @@ export function AdminDashboard({
 
             <form onSubmit={handleCreateSchool} className="mt-4 space-y-4">
               {schoolError && (
-                <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs font-semibold text-rose-900">
+                <div className="rounded-xl border border-hint-300 bg-hint-50 p-3 text-xs font-semibold text-hint-900">
                   ⚠️ {schoolError}
                 </div>
               )}
@@ -1600,7 +1600,7 @@ export function AdminDashboard({
       {deleteConfirmOpen && userToDelete && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-sand-300 bg-white p-6 shadow-2xl text-center">
-            <span className="grid size-12 place-items-center rounded-full bg-rose-100 text-rose-700 text-xl mx-auto">
+            <span className="grid size-12 place-items-center rounded-full bg-hint-100 text-hint-700 text-xl mx-auto">
               ⚠️
             </span>
             <h3 className="mt-3 text-base font-bold text-sand-950">
@@ -1624,7 +1624,7 @@ export function AdminDashboard({
               <button
                 type="button"
                 onClick={handleDeleteUser}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700"
+                className="rounded-xl bg-hint-600 px-4 py-2 text-xs font-bold text-white hover:bg-hint-700"
               >
                 Confirmar Eliminación
               </button>
