@@ -52,12 +52,6 @@ export function AdminDashboard({
     null,
   )
   const [schoolModalOpen, setSchoolModalOpen] = useState(false)
-  const [pinModalOpen, setPinModalOpen] = useState(false)
-  const [pinModalData, setPinModalData] = useState<{
-    pin: string
-    email: string
-    name: string
-  } | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<UsuarioConDetalles | null>(
     null,
@@ -262,18 +256,10 @@ export function AdminDashboard({
     }
   }
 
-  // Manejador: Generar PIN / Clave provisional
-  const handleGeneratePin = async (user: UsuarioConDetalles) => {
+  // Manejador: enviar correo para crear una contraseña nueva
+  const handleResetPassword = async (user: UsuarioConDetalles) => {
     const res = await adminController.resetPassword(user.id)
-    if (res.success) {
-      setPinModalData({
-        pin: res.pinProvisional,
-        email: user.email_institucional,
-        name: user.nombre_completo,
-      })
-      setPinModalOpen(true)
-      await loadData()
-    }
+    showToast(res.message, res.success ? "success" : "info")
   }
 
   // Manejador: Eliminar Usuario
@@ -819,11 +805,11 @@ export function AdminDashboard({
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => handleGeneratePin(u)}
+                                  onClick={() => handleResetPassword(u)}
                                   className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1 text-[11px] font-semibold text-sand-700 transition hover:bg-sand-200"
-                                  title="Generar clave provisional de bienvenida"
+                                  title="Enviar un correo para crear una contraseña nueva"
                                 >
-                                  🔑 PIN
+                                  Restablecer clave
                                 </button>
 
                                 <button
@@ -1545,56 +1531,6 @@ export function AdminDashboard({
       )}
 
       {/* MODAL 4: PIN de Acceso / Bienvenida */}
-      {pinModalOpen && pinModalData && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-sand-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-sand-300 bg-white p-6 shadow-2xl text-center">
-            <span className="grid size-14 place-items-center rounded-full bg-hint-100 text-hint-800 text-2xl mx-auto">
-              🔑
-            </span>
-            <h3 className="mt-4 text-lg font-bold text-sand-950">
-              Clave Provisional Generada
-            </h3>
-            <p className="mt-1 text-xs text-sand-600">
-              Entrega esta clave al docente para su primer ingreso al sistema
-              ECduLearn:
-            </p>
-
-            <div className="my-5 rounded-2xl bg-sand-100 p-4 border border-sand-300">
-              <p className="text-xs text-sand-500 font-semibold">
-                Docente: {pinModalData.name}
-              </p>
-              <p className="text-xs font-mono text-sand-600">
-                {pinModalData.email}
-              </p>
-              <div className="mt-3 text-3xl font-extrabold font-mono tracking-widest text-ink-950">
-                {pinModalData.pin}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(
-                  `Hola ${pinModalData.name}, tu cuenta docente en ECduLearn ha sido autorizada. Ingresa con tu correo ${pinModalData.email} y clave provisional: ${pinModalData.pin}`,
-                )
-                showToast("Mensaje copiado al portapapeles", "success")
-                setPinModalOpen(false)
-              }}
-              className="btn-pop-ink w-full rounded-xl bg-ink-950 py-2.5 text-xs font-bold text-white"
-            >
-              Copiar Mensaje de Bienvenida
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPinModalOpen(false)}
-              className="mt-3 text-xs font-semibold text-sand-600 hover:text-sand-900"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* MODAL 5: Confirmar Eliminación */}
       {deleteConfirmOpen && userToDelete && (

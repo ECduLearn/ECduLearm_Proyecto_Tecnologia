@@ -364,6 +364,26 @@ export const authController = {
     return cached;
   },
 
+  /** Cambia la contraseña de la sesión abierta por el enlace de recuperación de Supabase Auth. */
+  async actualizarClave(nueva: string): Promise<{ success: boolean; message: string }> {
+    const client = getSupabaseClient();
+    if (!client) return { success: false, message: "La base de datos no está configurada." };
+    const { data } = await client.auth.getSession();
+    if (!data.session) {
+      return { success: false, message: "El enlace ya no es válido. Pide uno nuevo a la administración de tu colegio." };
+    }
+    const { error } = await client.auth.updateUser({ password: nueva });
+    if (error) {
+      console.warn(`[auth] No se pudo actualizar la contraseña (${error.code}): ${error.message}`);
+      return {
+        success: false,
+        message: error.code === "weak_password" ? "Esa contraseña es muy débil. Usa al menos 8 caracteres." : "No pudimos guardar la contraseña. Inténtalo otra vez.",
+      };
+    }
+    await client.auth.signOut();
+    return { success: true, message: "Listo, tu contraseña quedó guardada. Ya puedes iniciar sesión." };
+  },
+
   async logoutDocente(): Promise<void> {
     clearCurrentUser();
     const client = getSupabaseClient();
@@ -1521,12 +1541,32 @@ function recordAuditLog(
   }
 }
 
+// Las escrituras de administración van a la base solo con una sesión real; la cuenta demo trabaja en este navegador
+function clienteAdmin(): SupabaseClient | null {
+  const client = getSupabaseClient();
+  const user = authController.getCurrentUser();
+  return client && user && !user.isDemo && isValidUuid(user.id) ? client : null;
+}
+
+function sufijoDemo(): string {
+  return clienteAdmin() ? "" : " (modo demo: solo en este navegador)";
+}
+
+function mensajeErrorAdmin(error: { code?: string; message: string }, accion: string): string {
+  console.warn(`[adminController] ${accion} rechazado (${error.code}): ${error.message}`);
+  if (error.code === "42501") {
+    return "La base de datos no permite esta acción para tu cuenta. Revisa que tengas rol de administrador y que el SQL de administración esté aplicado.";
+  }
+  if (error.code === "23505") return "Ya existe un registro con esos datos (por ejemplo, el mismo correo).";
+  return "No pudimos guardar el cambio en la base de datos. Inténtalo otra vez.";
+}
+
 export const adminController = {
   /**
    * Obtiene la lista de usuarios institucionales (con nombres de colegio y asignatura).
    */
   async getUsuarios(): Promise<UsuarioConDetalles[]> {
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
       try {
         const { data, error } = await client
@@ -1534,7 +1574,7 @@ export const adminController = {
           .select("*, instituciones(nombre, codigo_amie), asignaturas(nombre)")
           .order("created_at", { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           return data.map((u: any) => ({
             id: u.id,
             institucion_id: u.institucion_id,
@@ -1631,10 +1671,9 @@ export const adminController = {
     };
 
     // Intentar inserción en Supabase
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
-      try {
-        await client.from("usuarios_institucionales").insert({
+      const { error } = await client.from("usuarios_institucionales").insert({
           id: newUser.id,
           institucion_id: newUser.institucion_id,
           nombre_completo: newUser.nombre_completo,
@@ -1643,9 +1682,7 @@ export const adminController = {
           asignatura_principal_id: newUser.asignatura_principal_id,
           activo: newUser.activo,
         });
-      } catch (err) {
-        console.warn("[adminController] No se pudo guardar en Supabase directamente:", err);
-      }
+      if (error) return { success: false, message: mensajeErrorAdmin(error, "Crear usuario") };
     }
 
     // Persistir localmente
@@ -1663,7 +1700,7 @@ export const adminController = {
     return {
       success: true,
       usuario: newUser,
-      message: `Usuario "${cleanNombre}" creado con éxito. Cuenta autorizada para ingresar a ECduLearn.`,
+      message: `Usuario «${cleanNombre}» registrado${sufijoDemo()}. Para que pueda entrar, crea su acceso con este mismo correo en Supabase (Authentication → Users).`,
     };
   },
 
@@ -1713,10 +1750,9 @@ export const adminController = {
 
     list[index] = updatedUser;
 
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
-      try {
-        await client
+      const { error } = await client
           .from("usuarios_institucionales")
           .update({
             nombre_completo: updatedUser.nombre_completo,
@@ -1727,9 +1763,7 @@ export const adminController = {
             activo: updatedUser.activo,
           })
           .eq("id", id);
-      } catch (err) {
-        console.warn("[adminController] Error actualizando en Supabase:", err);
-      }
+      if (error) return { success: false, message: mensajeErrorAdmin(error, "Editar usuario") };
     }
 
     if (typeof window !== "undefined") {
@@ -1746,7 +1780,7 @@ export const adminController = {
     return {
       success: true,
       usuario: updatedUser,
-      message: `Usuario "${updatedUser.nombre_completo}" actualizado correctamente.`,
+      message: `Usuario «${updatedUser.nombre_completo}» actualizado${sufijoDemo()}.`,
     };
   },
 
@@ -1760,13 +1794,10 @@ export const adminController = {
 
     user.activo = activo;
 
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
-      try {
-        await client.from("usuarios_institucionales").update({ activo }).eq("id", id);
-      } catch (err) {
-        console.warn("[adminController] Error toggle en Supabase:", err);
-      }
+      const { error } = await client.from("usuarios_institucionales").update({ activo }).eq("id", id);
+      if (error) return { success: false, message: mensajeErrorAdmin(error, "Activar o desactivar usuario") };
     }
 
     if (typeof window !== "undefined") {
@@ -1799,13 +1830,10 @@ export const adminController = {
 
     const remaining = list.filter((u) => u.id !== id);
 
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
-      try {
-        await client.from("usuarios_institucionales").delete().eq("id", id);
-      } catch (err) {
-        console.warn("[adminController] Error eliminando en Supabase:", err);
-      }
+      const { error } = await client.from("usuarios_institucionales").delete().eq("id", id);
+      if (error) return { success: false, message: mensajeErrorAdmin(error, "Eliminar usuario") };
     }
 
     if (typeof window !== "undefined") {
@@ -1820,38 +1848,51 @@ export const adminController = {
 
     return {
       success: true,
-      message: `Usuario "${user.nombre_completo}" eliminado del sistema.`,
+      message: `Usuario «${user.nombre_completo}» eliminado${sufijoDemo()}.`,
     };
   },
 
   /**
    * Genera una clave provisional / PIN de bienvenida para el docente.
    */
-  async resetPassword(id: string): Promise<{ success: boolean; pinProvisional: string; message: string }> {
+  /**
+   * Envía al usuario un enlace de Supabase Auth para crear una contraseña nueva (/restablecer).
+   * El navegador no puede cambiar la contraseña de otra cuenta: eso solo lo hace el propio usuario.
+   */
+  async resetPassword(id: string): Promise<{ success: boolean; message: string }> {
     const list = await this.getUsuarios();
     const user = list.find((u) => u.id === id);
-    if (!user) return { success: false, pinProvisional: "", message: "Usuario no encontrado." };
+    if (!user) return { success: false, message: "Usuario no encontrado." };
 
-    const pinProvisional = "ECU" + Math.floor(1000 + Math.random() * 9000);
+    const client = clienteAdmin();
+    if (!client) {
+      return {
+        success: false,
+        message: "En modo demo no se envían correos. Con una cuenta real, el usuario recibe un enlace para crear su contraseña.",
+      };
+    }
+
+    const { error } = await client.auth.resetPasswordForEmail(user.email_institucional, {
+      redirectTo: `${window.location.origin}/restablecer`,
+    });
+    if (error) {
+      console.warn(`[adminController] Envío de restablecimiento rechazado (${error.code}): ${error.message}`);
+      return { success: false, message: "No pudimos enviar el correo. Inténtalo de nuevo en unos minutos." };
+    }
 
     recordAuditLog(
       "RESET_PASSWORD",
-      `Se generó una clave de acceso provisional (${pinProvisional}) para "${user.nombre_completo}".`,
+      `Se envió un enlace para restablecer la contraseña de "${user.nombre_completo}".`,
       user.email_institucional
     );
-
-    return {
-      success: true,
-      pinProvisional,
-      message: `Clave provisional generada con éxito para ${user.email_institucional}: ${pinProvisional}`,
-    };
+    return { success: true, message: `Enviamos a ${user.email_institucional} un enlace para crear una contraseña nueva.` };
   },
 
   /**
    * Obtiene la lista de instituciones educativas / colegios B2B.
    */
   async getInstituciones(): Promise<DbInstitucion[]> {
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
       try {
         const { data, error } = await client
@@ -1859,7 +1900,7 @@ export const adminController = {
           .select("*")
           .order("nombre", { ascending: true });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           return data;
         }
       } catch (err) {
@@ -1901,13 +1942,10 @@ export const adminController = {
       provincia: data.provincia || "Pichincha",
     };
 
-    const client = getSupabaseClient();
+    const client = clienteAdmin();
     if (client) {
-      try {
-        await client.from("instituciones").insert(newInst);
-      } catch (err) {
-        console.warn("[adminController] Error insertando colegio en Supabase:", err);
-      }
+      const { error } = await client.from("instituciones").insert(newInst);
+      if (error) return { success: false, message: mensajeErrorAdmin(error, "Crear colegio") };
     }
 
     const list = await this.getInstituciones();
@@ -1924,7 +1962,7 @@ export const adminController = {
     return {
       success: true,
       institucion: newInst,
-      message: `Institución "${newInst.nombre}" registrada exitosamente.`,
+      message: `Colegio «${newInst.nombre}» registrado${sufijoDemo()}.`,
     };
   },
 

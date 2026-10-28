@@ -9,6 +9,7 @@ const TeacherDashboard = lazy(() => cargarPortal().then((m) => ({ default: m.Tea
 const AutonomousZone = lazy(cargarZonaEstudiante);
 const PlanningWorkspace = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.PlanningWorkspace })));
 const AdmissionSimulator = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.AdmissionSimulator })));
+const RestablecerClave = lazy(() => import("./views/RestablecerClave"));
 const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
 import PublicarAulaDialog from "./components/PublicarAulaDialog";
 import { AppView, useAppRouter } from "./router";
@@ -1193,6 +1194,10 @@ function App() {
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
     )
+  }
+
+  if (view === "restablecer") {
+    return <RestablecerClave onIrAlPortal={() => setView("portal")} />
   }
 
   if (view === "admin") {
