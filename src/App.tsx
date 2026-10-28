@@ -8,7 +8,7 @@ const AccessPortal = lazy(() => cargarPortal().then((m) => ({ default: m.AccessP
 const TeacherDashboard = lazy(() => cargarPortal().then((m) => ({ default: m.TeacherDashboard })));
 const AutonomousZone = lazy(cargarZonaEstudiante);
 const PlanningWorkspace = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.PlanningWorkspace })));
-const AdmissionSimulator = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.AdmissionSimulator })));
+const AdmissionSimulator = lazy(() => import("./views/SimuladorAdmision"));
 const ReporteInstitucional = lazy(() => import("./views/ReporteInstitucional"));
 const RestablecerClave = lazy(() => import("./views/RestablecerClave"));
 const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));

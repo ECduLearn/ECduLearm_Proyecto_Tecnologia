@@ -982,6 +982,7 @@ type EjercicioJson = {
   enunciado?: string;
   pregunta?: string;
   total_pistas?: number;
+  opciones?: unknown;
 };
 
 function mapEjercicio(e: EjercicioJson): RetoEstudiante {
@@ -994,6 +995,7 @@ function mapEjercicio(e: EjercicioJson): RetoEstudiante {
     enunciado: e.enunciado || "",
     pregunta: e.pregunta || "",
     totalPistas: e.total_pistas ?? 0,
+    opciones: Array.isArray(e.opciones) ? e.opciones.map(String) : undefined,
   };
 }
 
@@ -1098,6 +1100,7 @@ export const estudianteSocraticoController = {
             alias: data.alias || "Estudiante anónimo",
             titulo: data.contenido?.titulo || "Reto del colegio",
             modo: data.contenido?.modo,
+            tiempoLimiteMinutos: data.contenido?.tiempo_limite_minutos ?? undefined,
             ejercicios: (data.contenido?.ejercicios ?? []).map(mapEjercicio),
             isOffline: false,
           };
@@ -1141,16 +1144,32 @@ export const estudianteSocraticoController = {
     return rpcEstudiante("fn_solicitar_pista", sesion, { p_ejercicio_id: ejercicioId });
   },
 
-  /** Registra en qué fase se trabó o si logró resolverlo (alimenta el panel docente). */
+  /**
+   * Registra en qué fase se trabó, si logró resolverlo o, en simuladores, la opción elegida
+   * (la nota la pone el servidor). Devuelve si el intento quedó resuelto, o null sin sesión real.
+   */
   async registrarIntento(
     sesion: SesionEstudiante,
-    params: { ejercicioId: string; logroResolver?: boolean; pasoBloqueo?: PasoBloqueo }
-  ): Promise<void> {
-    await rpcEstudiante("fn_registrar_intento", sesion, {
+    params: {
+      ejercicioId: string;
+      logroResolver?: boolean;
+      pasoBloqueo?: PasoBloqueo;
+      opcionSeleccionada?: number;
+      marcadaConBandera?: boolean;
+    }
+  ): Promise<{ logro_resolver: boolean } | null> {
+    return rpcEstudiante("fn_registrar_intento", sesion, {
       p_ejercicio_id: params.ejercicioId,
       p_logro_resolver: params.logroResolver ?? false,
       p_paso_bloqueo: params.pasoBloqueo ?? null,
+      p_opcion_seleccionada: params.opcionSeleccionada ?? null,
+      p_marcada_con_bandera: params.marcadaConBandera ?? false,
     });
+  },
+
+  /** Cierra la sesión; en un aula de simulador el servidor calcula el puntaje. */
+  async finalizarSesion(sesion: SesionEstudiante): Promise<{ puntaje_simulador: number | null } | null> {
+    return rpcEstudiante("fn_finalizar_sesion", sesion, {});
   },
 
   /** Guarda un mensaje de la conversación con el tutor (no bloquea la UI si falla). */
@@ -1159,7 +1178,7 @@ export const estudianteSocraticoController = {
     params: {
       ejercicioId: string;
       remitente: "ESTUDIANTE" | "TUTOR_IA";
-      tipo?: "TEXTO_LIBRE" | "CHIP_RAPIDO" | "INTENTO_COPIA_BLOQUEADO";
+      tipo?: "TEXTO_LIBRE" | "CHIP_RAPIDO" | "INTENTO_COPIA_BLOQUEADO" | "REVISION_POST_SIMULADOR";
       contenido: string;
     }
   ): Promise<void> {

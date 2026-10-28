@@ -1,4 +1,4 @@
-import { Exercise, ErcaPhase, RetoEstudiante } from "./types";
+import { Exercise, ErcaPhase, PreguntaSimulador, RetoEstudiante } from "./types";
 
 export interface FullPisaExercise extends Exercise {
   id: string;
@@ -353,3 +353,19 @@ export const RETO_LOCAL_DEMO: RetoEstudiante = {
     "¿Qué relación conecta distancia, velocidad y tiempo cuando la velocidad es constante?",
   ],
 };
+
+// Simulador de admisión local: respuestas verificadas a mano (índice de la opción correcta)
+export const PREGUNTAS_SIMULADOR: PreguntaSimulador[] = [
+  { id: "sim-01", area: "Geometría", enunciado: "Una escalera de 5 m se apoya contra una pared y su base está a 3 m de ella. ¿Qué expresión da la altura que alcanza?", opciones: ["5² + 3²", "√(5² − 3²)", "5 × 3 ÷ 2", "(5 + 3)²"], correcta: 1 },
+  { id: "sim-02", area: "Álgebra", enunciado: "Si 3x + 7 = 25, ¿cuál es el valor de x?", opciones: ["6", "8", "10,7", "4"], correcta: 0 },
+  { id: "sim-03", area: "Porcentajes", enunciado: "Un precio sube 20 % y luego baja 20 %. Comparado con el precio inicial, el precio final es:", opciones: ["Igual", "4 % menor", "4 % mayor", "20 % menor"], correcta: 1 },
+  { id: "sim-04", area: "Estadística", enunciado: "El promedio de 7, 9, 10 y x es 9. ¿Cuánto vale x?", opciones: ["8", "9", "10", "11"], correcta: 2 },
+  { id: "sim-05", area: "Razonamiento numérico", enunciado: "Un tren recorre 150 km en 2 horas y 30 minutos. ¿Cuál es su velocidad media?", opciones: ["50 km/h", "60 km/h", "65 km/h", "75 km/h"], correcta: 1 },
+  { id: "sim-06", area: "Probabilidad", enunciado: "Se lanzan dos dados. ¿Cuál es la probabilidad de que la suma sea 7?", opciones: ["1/12", "1/9", "1/6", "7/36"], correcta: 2 },
+  { id: "sim-07", area: "Potencias", enunciado: "¿Cuál es el valor de 2⁵ · 2³ ÷ 2⁶?", opciones: ["2", "4", "8", "16"], correcta: 1 },
+  { id: "sim-08", area: "Geometría", enunciado: "¿Cuál es el área de un círculo de 10 cm de diámetro?", opciones: ["10π cm²", "25π cm²", "50π cm²", "100π cm²"], correcta: 1 },
+  { id: "sim-09", area: "Proporcionalidad", enunciado: "Cinco obreros terminan una obra en 12 días. Al mismo ritmo, ¿en cuántos días la terminan seis obreros?", opciones: ["10", "14,4", "8", "11"], correcta: 0 },
+  { id: "sim-10", area: "Funciones", enunciado: "¿Cuál es la pendiente de la recta que pasa por (1, 2) y (4, 11)?", opciones: ["2", "3", "9", "1/3"], correcta: 1 },
+  { id: "sim-11", area: "Porcentajes", enunciado: "Un artículo de $80 tiene 15 % de descuento. ¿Cuánto se paga?", opciones: ["$65", "$68", "$72", "$75"], correcta: 1 },
+  { id: "sim-12", area: "Sucesiones", enunciado: "En la sucesión 3, 7, 15, 31, … ¿cuál es el siguiente término?", opciones: ["47", "55", "63", "64"], correcta: 2 },
+];

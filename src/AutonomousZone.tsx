@@ -3,6 +3,7 @@ import { socraticTutorAI } from "./services/aiService";
 import { estudianteSocraticoController } from "./services/dbService";
 import ZoneIcon from "./components/ZoneIcon";
 import RetoColegio from "./views/RetoColegio";
+import { PREGUNTAS_SIMULADOR } from "./models/seedData";
 
 
 type Message = {
@@ -258,7 +259,9 @@ export default function AutonomousZone({
                 </span>
                 <p className="mt-7 text-xs font-bold uppercase tracking-widest text-sand-500">Simulador asignado</p>
                 <h3 className="mt-2 text-xl font-semibold text-sand-950">Preparación para admisión</h3>
-                <p className="mt-3 text-sm text-sand-500">Disponible hasta el viernes · 20 preguntas</p>
+                <p className="mt-3 text-sm text-sand-500">
+                  {PREGUNTAS_SIMULADOR.length} preguntas · {Math.round((PREGUNTAS_SIMULADOR.length * 90) / 60)} minutos
+                </p>
                 <button
                   type="button"
                   onClick={onSimulator}

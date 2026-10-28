@@ -127,6 +127,9 @@ export interface RetoEstudiante {
 
   totalPistas: number
 
+  // Solo en simuladores: opciones de respuesta (la respuesta correcta nunca llega al navegador)
+  opciones?: string[]
+
   // Solo en el reto local de respaldo; con sesión real las pistas las entrega fn_solicitar_pista
   pistasLocales?: string[]
 }
@@ -143,7 +146,23 @@ export interface SesionEstudiante {
   // Modo del aula según fn_contenido_sesion; PRACTICA_LIBRE = sesión de un PIN de grado
   modo?: "RETO_CLASE" | "PRACTICA_LIBRE" | "SIMULADOR_ADMISION"
 
+  tiempoLimiteMinutos?: number
+
   ejercicios: RetoEstudiante[]
 
   isOffline: boolean
+}
+
+// Pregunta del simulador de admisión local (modo demo u offline)
+export interface PreguntaSimulador {
+  id: string
+
+  area: string
+
+  enunciado: string
+
+  opciones: string[]
+
+  // Índice de la opción correcta; solo existe en el banco local
+  correcta?: number
 }
