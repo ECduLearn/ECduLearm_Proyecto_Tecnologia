@@ -1,9 +1,15 @@
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { AccessPortal, TeacherDashboard } from "./Portal";
-import AutonomousZone from "./AutonomousZone";
-import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
+import { FormEvent, ReactNode, lazy, useEffect, useRef, useState } from "react";
 import { LandingPage } from "./LandingPage";
-import { AdminDashboard } from "./AdminDashboard";
+
+// Vistas con carga diferida: la landing no descarga el código del portal, el panel ni la zona del estudiante
+const cargarPortal = () => import("./Portal");
+const cargarZonaEstudiante = () => import("./AutonomousZone");
+const AccessPortal = lazy(() => cargarPortal().then((m) => ({ default: m.AccessPortal })));
+const TeacherDashboard = lazy(() => cargarPortal().then((m) => ({ default: m.TeacherDashboard })));
+const AutonomousZone = lazy(cargarZonaEstudiante);
+const PlanningWorkspace = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.PlanningWorkspace })));
+const AdmissionSimulator = lazy(() => import("./AdvancedModules").then((m) => ({ default: m.AdmissionSimulator })));
+const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
 import PublicarAulaDialog from "./components/PublicarAulaDialog";
 import { AppView, useAppRouter } from "./router";
 export type { AppView } from "./router";
@@ -895,6 +901,20 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
 }
 
 function App() {
+  // Con la landing ya pintada y el navegador libre, se precargan los siguientes pasos habituales
+  useEffect(() => {
+    const precargar = () => {
+      cargarPortal()
+      cargarZonaEstudiante()
+    }
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(precargar, { timeout: 3000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = setTimeout(precargar, 1500)
+    return () => clearTimeout(id)
+  }, [])
+
   const [publicarOpen, setPublicarOpen] = useState(false)
 
   const { view, setView } = useAppRouter()
