@@ -1693,8 +1693,15 @@ function recordAuditLog(
 function clienteAdmin(): SupabaseClient | null {
   const client = getSupabaseClient();
   const user = authController.getCurrentUser();
-  return client && user && !user.isDemo && isValidUuid(user.id) ? client : null;
+  return client && user && user.role === "admin" && !user.isDemo && isValidUuid(user.id) ? client : null;
 }
+
+// Las escrituras de administración exigen rol admin también en modo demo (no tocan ni el localStorage)
+function esAdmin(): boolean {
+  return authController.getCurrentUser()?.role === "admin";
+}
+
+const ACCESO_DENEGADO_ADMIN = "Acceso denegado: se requiere perfil de Administrador.";
 
 function sufijoDemo(): string {
   return clienteAdmin() ? "" : " (modo demo: solo en este navegador)";
@@ -1766,6 +1773,7 @@ export const adminController = {
     asignatura_principal_id?: number | null;
     activo?: boolean;
   }): Promise<{ success: boolean; usuario?: UsuarioConDetalles; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const cleanEmail = sanitizeInput(data.email_institucional).toLowerCase();
     const cleanNombre = sanitizeInput(data.nombre_completo);
 
@@ -1859,6 +1867,7 @@ export const adminController = {
     id: string,
     updates: Partial<UsuarioConDetalles>
   ): Promise<{ success: boolean; usuario?: UsuarioConDetalles; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const list = await this.getUsuarios();
     const index = list.findIndex((u) => u.id === id);
     if (index === -1) {
@@ -1936,6 +1945,7 @@ export const adminController = {
    * Concede o revoca permisos de acceso de un usuario con un clic (toggle activo).
    */
   async toggleUsuarioActivo(id: string, activo: boolean): Promise<{ success: boolean; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const list = await this.getUsuarios();
     const user = list.find((u) => u.id === id);
     if (!user) return { success: false, message: "Usuario no encontrado." };
@@ -1972,6 +1982,7 @@ export const adminController = {
    * Elimina un usuario de la lista de gestión institucional.
    */
   async deleteUsuario(id: string): Promise<{ success: boolean; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const list = await this.getUsuarios();
     const user = list.find((u) => u.id === id);
     if (!user) return { success: false, message: "Usuario no encontrado." };
@@ -2072,6 +2083,7 @@ export const adminController = {
   async createInstitucion(
     data: Omit<DbInstitucion, "id">
   ): Promise<{ success: boolean; institucion?: DbInstitucion; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const cleanNombre = sanitizeInput(data.nombre);
     const cleanAmie = sanitizeInput(data.codigo_amie || "").toUpperCase();
 

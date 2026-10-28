@@ -19,6 +19,9 @@ export function AdminDashboard({
   onNavigateTeacher,
   onNavigateLanding,
 }: AdminDashboardProps) {
+  // Guardia de rol: solo una sesión con rol admin ve y carga la administración
+  const [acceso, setAcceso] = useState<"verificando" | "permitido" | "denegado">("verificando")
+
   // Estados de datos
   const [usuarios, setUsuarios] = useState<UsuarioConDetalles[]>([])
   const [instituciones, setInstituciones] = useState<DbInstitucion[]>([])
@@ -121,7 +124,19 @@ export function AdminDashboard({
   }
 
   useEffect(() => {
-    loadData()
+    let activo = true
+    authController.restoreSession().then((user) => {
+      if (!activo) return
+      if (user?.role === "admin") {
+        setAcceso("permitido")
+        loadData()
+      } else {
+        setAcceso("denegado")
+      }
+    })
+    return () => {
+      activo = false
+    }
   }, [])
 
   const currentUser = authController.getCurrentUser()
@@ -312,6 +327,57 @@ export function AdminDashboard({
     } finally {
       setSchoolSubmitting(false)
     }
+  }
+
+  if (acceso === "verificando") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-sand-100">
+        <p className="text-sm font-medium text-sand-600" role="status">
+          Verificando tus permisos…
+        </p>
+      </div>
+    )
+  }
+
+  if (acceso === "denegado") {
+    return (
+      <div className="ui-view grid min-h-screen place-items-center bg-sand-100 px-4 py-10 text-sand-950">
+        <section
+          className="ui-pop w-full max-w-md rounded-2xl border border-sand-200 bg-white p-6 text-center shadow-xl sm:p-8"
+          aria-labelledby="acceso-admin-titulo"
+        >
+          <span className="mx-auto grid size-12 place-items-center rounded-full bg-hint-100 text-hint-800" aria-hidden="true">
+            <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+          </span>
+          <h1 id="acceso-admin-titulo" className="mt-5 text-xl font-semibold text-ink-950">
+            Acceso exclusivo para Administración Central
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-sand-600">
+            Tu cuenta actual no tiene permisos de administrador (ADMIN). Si necesitas gestionar usuarios o colegios,
+            entra con una cuenta de administración.
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={onNavigateTeacher || onExit}
+              className="min-h-11 rounded-xl border border-sand-300 px-4 text-sm font-semibold text-sand-800 hover:bg-sand-100"
+            >
+              Volver a mi panel docente
+            </button>
+            <button
+              type="button"
+              onClick={onExit}
+              className="min-h-11 rounded-xl bg-ink-950 px-4 text-sm font-semibold text-sand-50 hover:bg-ink-800"
+            >
+              Iniciar sesión como Administrador
+            </button>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
