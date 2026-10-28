@@ -4,9 +4,8 @@ function cleanSupabaseUrl(raw: string): string {
   return raw.trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
 }
 
-const DEFAULT_SUPABASE_URL = "https://qguetzyywxljmcsuinkx.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndWV0enl5d3hsam1jc3Vpbmt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwNTAwODksImV4cCI6MjEwODYyNjA4OX0.byvsrPuUitkSyAT0N1dpl8QRs24UWbdLYQf8Y7e6gEQ";
+const DEFAULT_SUPABASE_URL = "https://ihnrldouoqhglskszsoe.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "";
 
 export function getBuildSupabaseUrl(): string {
   return cleanSupabaseUrl(import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL);
