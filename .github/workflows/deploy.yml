@@ -40,6 +40,9 @@ jobs:
       - name: Build production bundle
         env:
           VITE_BASE: ./
+          # Variables del repositorio (Settings > Secrets and variables > Actions > Variables)
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: |
           pnpm run build
           cp dist/index.html dist/404.html
