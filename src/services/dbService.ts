@@ -264,7 +264,14 @@ async function fetchTeacherProfile(client: SupabaseClient, authUserId: string): 
     .eq("activo", true)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    console.warn(
+      error
+        ? `[auth] Error al leer el perfil docente (${error.code}): ${error.message}`
+        : "[auth] Sin perfil docente visible: falta vincular auth_user_id, el usuario está inactivo o la institución está suspendida."
+    );
+    return null;
+  }
   const institucion = Array.isArray(data.instituciones) ? data.instituciones[0] : data.instituciones;
   return {
     id: data.id,
