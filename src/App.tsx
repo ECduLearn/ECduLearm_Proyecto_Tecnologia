@@ -9,6 +9,7 @@ export type { AppView } from "./router";
 import { generateExerciseAI, getAIStatus, testAIConnection } from "./services/aiService";
 import {
   getSupabaseConfig,
+  getSupabaseOverride,
   setSupabaseConfig,
   isSupabaseConnected,
   getSupabaseClient,
@@ -1562,6 +1563,8 @@ function EvaluatorTopBar({
 
   const [isDbTesting, setIsDbTesting] = useState(false)
 
+  const [supabaseOverride, setSupabaseOverride] = useState(getSupabaseOverride())
+
   useEffect(() => {
     let active = true;
     getAIStatus().then((status) => {
@@ -1572,6 +1575,7 @@ function EvaluatorTopBar({
     setSupabaseUrl(dbConfig.url);
     setSupabaseKey(dbConfig.anonKey);
     setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey));
+    setSupabaseOverride(getSupabaseOverride());
     return () => {
       active = false;
     };
@@ -1594,6 +1598,8 @@ function EvaluatorTopBar({
     setSupabaseConfig(supabaseUrl, supabaseKey)
 
     setIsDbConnected(Boolean(supabaseUrl.trim() && supabaseKey.trim()))
+
+    setSupabaseOverride(getSupabaseOverride())
 
     const client = getSupabaseClient()
 
@@ -1668,17 +1674,23 @@ function EvaluatorTopBar({
   const handleClearDb = () => {
     setSupabaseConfig("", "")
 
-    setSupabaseUrl("")
+    // Al quitar la configuración manual vuelve a regir la del despliegue
+    const dbConfig = getSupabaseConfig()
 
-    setSupabaseKey("")
+    setSupabaseUrl(dbConfig.url)
 
-    setIsDbConnected(false)
+    setSupabaseKey(dbConfig.anonKey)
+
+    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey))
+
+    setSupabaseOverride(null)
 
     setDbTestResult({
       success: true,
 
-      message:
-        "Configuración de Supabase eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
+      message: dbConfig.url
+        ? `Configuración manual eliminada. Se usa la base de datos del despliegue (${new URL(dbConfig.url).host}).`
+        : "Configuración eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
     })
   }
 
@@ -1863,7 +1875,13 @@ function EvaluatorTopBar({
                   isDbConnected ? "bg-teal-400" : "bg-amber-400"
                 }`}
               />
-              <span>{isDbConnected ? "Supabase Cloud" : "DB Local"}</span>
+              <span>
+                {supabaseOverride
+                  ? "Supabase manual ⚠️"
+                  : isDbConnected
+                    ? "Supabase Cloud"
+                    : "DB Local"}
+              </span>
               <span className="text-[10px]">🗄️</span>
             </button>
 
@@ -1996,6 +2014,35 @@ function EvaluatorTopBar({
               </div>
             ) : (
               <div className="mt-4 space-y-4 text-xs">
+                {supabaseOverride && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-hint-500/50 bg-hint-950/60 p-3 text-hint-100"
+                  >
+                    <p className="font-semibold">
+                      ⚠️ Este navegador usa una base de datos distinta a la del despliegue
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-hint-200">
+                      Guardada aquí:{" "}
+                      <code className="font-mono">
+                        {new URL(supabaseOverride.url).host}
+                      </code>
+                      <br />
+                      Del despliegue:{" "}
+                      <code className="font-mono">
+                        {new URL(supabaseOverride.buildUrl).host}
+                      </code>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleClearDb}
+                      className="mt-2 min-h-[44px] w-full rounded-lg bg-hint-500 px-3 font-bold text-sand-950 transition hover:bg-hint-400"
+                    >
+                      Usar la del despliegue
+                    </button>
+                  </div>
+                )}
+
                 <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
                   <p className="text-sand-300 font-semibold mb-1">
                     Estado de la Base de Datos:
