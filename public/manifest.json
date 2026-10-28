@@ -1,19 +1,19 @@
 {
-  "short_name": "ECduLearm",
-  "name": "ECduLearm - Plataforma EdTech B2B",
+  "short_name": "ECduLearn",
+  "name": "ECduLearn - Plataforma EdTech B2B",
   "description": "Plataforma de razonamiento lógico y pensamiento crítico PISA para colegios en Ecuador",
   "icons": [
     {
       "src": "icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "./",
   "scope": "./",
-  "background_color": "#020617",
-  "theme_color": "#0f172a",
+  "background_color": "#f7f4ec",
+  "theme_color": "#0f3b2e",
   "display": "standalone",
   "orientation": "portrait-primary",
   "lang": "es"

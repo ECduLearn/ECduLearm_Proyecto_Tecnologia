@@ -40,7 +40,7 @@ export function LandingPage({
             </span>
             <div className="flex flex-col">
               <span className="text-xl font-extrabold tracking-tight text-sand-950">
-                EC<span className="text-hint-600">du</span>Learm
+                EC<span className="text-hint-600">du</span>Learn
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-sand-500">
                 EdTech B2B · Ecuador
@@ -124,7 +124,7 @@ export function LandingPage({
               </h1>
 
               <p className="mt-6 max-w-xl text-base leading-relaxed text-sand-700 sm:text-lg">
-                <strong>ECduLearm</strong> automatiza la creación de problemas
+                <strong>ECduLearn</strong> automatiza la creación de problemas
                 contextualizados tipo PISA para docentes de bachillerato y
                 acompaña a cada estudiante con un{" "}
                 <strong>Tutor Socrático de IA</strong> que brinda pistas
@@ -314,7 +314,7 @@ export function LandingPage({
               Ecuador están bajo el Nivel 2 en PISA
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-sand-700">
-              Solo el 17,4% alcanza el desempeño matemático básico. ECduLearm
+              Solo el 17,4% alcanza el desempeño matemático básico. ECduLearn
               transforma la copia pasiva en destreza reflexiva dentro del aula
               escolar.
             </p>
@@ -471,7 +471,7 @@ export function LandingPage({
           </div>
         </section>
 
-        {/* 5. Sección: Ecosistema Dual de ECduLearm (Alto contraste: Dark Navy Anchor en Tarjeta Docente) */}
+        {/* 5. Sección: Ecosistema Dual de ECduLearn (Alto contraste: Dark Navy Anchor en Tarjeta Docente) */}
         <section
           id="solucion"
           className="border-t border-sand-200 bg-sand-100 py-20 sm:py-24"
@@ -762,7 +762,7 @@ export function LandingPage({
                 Lo que usan los colegios hoy y por qué falla
               </h2>
               <p className="mt-4 text-base text-sand-700">
-                Comparamos el enfoque de ECduLearm frente a las alternativas
+                Comparamos el enfoque de ECduLearn frente a las alternativas
                 tradicionales que generan frustración docente y plagio
                 estudiantil.
               </p>
@@ -782,7 +782,7 @@ export function LandingPage({
                       scope="col"
                       className="px-6 py-4 text-ink-900 font-extrabold"
                     >
-                      Con ECduLearm
+                      Con ECduLearn
                     </th>
                   </tr>
                 </thead>
@@ -913,7 +913,7 @@ export function LandingPage({
                 </h3>
                 <p className="mt-2 text-xs text-sand-600 leading-relaxed">
                   Software transparente auditado y registrado bajo licencia
-                  permisiva MIT (Copyright © 2026 Equipo ECduLearm - PUCE).
+                  permisiva MIT (Copyright © 2026 Equipo ECduLearn - PUCE).
                 </p>
               </div>
             </div>
@@ -934,7 +934,7 @@ export function LandingPage({
         <section className="border-t border-ink-950 bg-ink-950 py-16 text-center text-white">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-extrabold text-white sm:text-4xl tracking-tight">
-              ¿Listo para ver ECduLearm en acción en tu colegio?
+              ¿Listo para ver ECduLearn en acción en tu colegio?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base text-sand-200">
               Prueba la plataforma web directamente desde el navegador de tu
@@ -967,7 +967,7 @@ export function LandingPage({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sand-950">ECduLearm</span>
+              <span className="font-extrabold text-sand-950">ECduLearn</span>
               <span>·</span>
               <span>Proyecto de Emprendimiento Tecnológico</span>
               <span>·</span>
@@ -985,7 +985,7 @@ export function LandingPage({
                 Política de Privacidad
               </button>
               <a
-                href="https://github.com/ECduLearn/ECduLearm_Proyecto_Tecnologia"
+                href="https://github.com/ECduLearn/ECduLearn_Proyecto_Tecnologia"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 font-medium text-sand-700 hover:text-sand-950"
@@ -1052,7 +1052,7 @@ export function LandingPage({
                   Ley Orgánica de Protección de Datos Personales (LOPDP) de
                   Ecuador,{" "}
                   <strong>
-                    ECduLearm no solicita, almacena ni procesa información
+                    ECduLearn no solicita, almacena ni procesa información
                     personal identificable (PII) de los estudiantes
                   </strong>
                   . El acceso a las actividades y al tutor socrático se efectúa
@@ -1093,7 +1093,7 @@ export function LandingPage({
                   4. Licencia y Transparencia del Código
                 </h4>
                 <p className="mt-1">
-                  ECduLearm se distribuye bajo los términos de la{" "}
+                  ECduLearn se distribuye bajo los términos de la{" "}
                   <strong>MIT License</strong>, garantizando la auditoría de
                   seguridad, trazabilidad de código y transparencia algorítmica
                   para las instituciones educativas licenciadas.

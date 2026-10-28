@@ -194,7 +194,7 @@ const initialMessages: Message[] = [
 
     role: "assistant",
 
-    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearm, potenciado en tiempo real con Google Gemini Flash (con balanceo multimodelo y ahorro de cuota).\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
+    text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearn, potenciado en tiempo real con Google Gemini Flash (con balanceo multimodelo y ahorro de cuota).\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
 
     exercise: initialExercise,
   },
@@ -257,12 +257,12 @@ function Icon({
 
 function Logo() {
   return (
-    <div className="flex items-center gap-3" aria-label="ECduLearm">
+    <div className="flex items-center gap-3" aria-label="ECduLearn">
       <span className="grid size-10 place-items-center rounded-xl bg-ink-950 text-sand-50">
         <Icon name="book" className="size-5" />
       </span>
       <span className="text-lg font-bold tracking-tight text-sand-900">
-        EC<span className="text-hint-600">du</span>Learm
+        EC<span className="text-hint-600">du</span>Learn
       </span>
     </div>
   )
@@ -631,7 +631,7 @@ function EditorView({
                     <Icon name="book" className="size-5" />
                   </span>
                   <span className="text-lg font-bold tracking-tight text-ink-950">
-                    ECduLearm
+                    ECduLearn
                   </span>
                 </div>
                 <span className="rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-900">
@@ -727,7 +727,7 @@ function EditorView({
             </div>
 
             <div className="mt-12 flex flex-wrap justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-400">
-              <span>ECduLearm · Material para uso educativo</span>
+              <span>ECduLearn · Material para uso educativo</span>
               <span>
                 Generado con asistencia de IA · Revisión docente recomendada
               </span>
@@ -896,7 +896,7 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-500">
-          <span>ECduLearm · Guía docente generada con Google Gemini</span>
+          <span>ECduLearn · Guía docente generada con Google Gemini</span>
           <span>Solucionario disponible al exportar</span>
         </div>
       </div>
@@ -1439,7 +1439,7 @@ function App() {
                   ¿Qué vamos a crear hoy?
                 </h1>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-sand-600">
-                  Describe un tema, curso o contexto. ECduLearm lo convertirá en
+                  Describe un tema, curso o contexto. ECduLearn lo convertirá en
                   una actividad de razonamiento lista para usar.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -1486,7 +1486,7 @@ function App() {
             </div>
             <div className="flex items-end gap-2 rounded-2xl border border-sand-300 bg-white p-2 shadow-lg shadow-sand-900/5 transition focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100">
               <label htmlFor="chat-input" className="sr-only">
-                Escribe una instrucción para ECduLearm
+                Escribe una instrucción para ECduLearn
               </label>
               <textarea
                 id="chat-input"
@@ -1514,7 +1514,7 @@ function App() {
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-sand-400">
-              ECduLearm puede equivocarse. Revisa los resultados antes de
+              ECduLearn puede equivocarse. Revisa los resultados antes de
               usarlos en clase.
             </p>
           </form>

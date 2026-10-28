@@ -19,7 +19,7 @@ export function isValidPin(pin: string): boolean {
 
 export async function copyPinToClipboard(pin: string): Promise<boolean> {
   const formatted = formatPin(pin);
-  const shareText = `PIN de ECduLearm: ${formatted}\nEnlace directo: https://ecdulearm.edu.ec/s/${cleanPin(pin)}`;
+  const shareText = `PIN de ECduLearn: ${formatted}\nEntra en: ${window.location.origin}/portal`;
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(shareText);

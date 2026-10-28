@@ -194,7 +194,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const defaultUser: TeacherUser = {
       id: "tea-evaluator",
       name: "Prof. Carlos Mera (Jurado / Evaluador)",
-      email: "carlos.mera@ecdulearm.edu.ec",
+      email: "carlos.mera@ecdulearn.edu.ec",
       institution: "Unidad Educativa Bilingüe Quito",
       role: "docente",
     };
@@ -224,7 +224,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setActivePin(pin);
     // Persistencia en Supabase en segundo plano
     savePinSessionToDatabase(newSession).catch((err) =>
-      console.warn("[ECduLearm Store] Error persistiendo PIN en Supabase:", err)
+      console.warn("[ECduLearn Store] Error persistiendo PIN en Supabase:", err)
     );
     return pin;
   };

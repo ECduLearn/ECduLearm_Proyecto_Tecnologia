@@ -1593,7 +1593,7 @@ export const adminController = {
     return {
       success: true,
       usuario: newUser,
-      message: `Usuario "${cleanNombre}" creado con éxito. Cuenta autorizada para ingresar a ECduLearm.`,
+      message: `Usuario "${cleanNombre}" creado con éxito. Cuenta autorizada para ingresar a ECduLearn.`,
     };
   },
 

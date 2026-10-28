@@ -24,20 +24,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # La versión de pnpm sale del campo packageManager de package.json
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build production bundle
         env:
           VITE_BASE: ./
         run: |
-          npm run build
+          pnpm run build
           cp dist/index.html dist/404.html
 
       - name: Setup Pages

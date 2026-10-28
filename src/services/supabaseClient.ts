@@ -66,7 +66,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     lastKey = anonKey;
     return cachedClient;
   } catch (error) {
-    console.warn("[ECduLearm Supabase] Error al inicializar cliente:", error);
+    console.warn("[ECduLearn Supabase] Error al inicializar cliente:", error);
     return null;
   }
 }
@@ -173,7 +173,7 @@ export async function fetchPinFromDatabase(pin: string): Promise<PinSession | nu
 
     return session;
   } catch (err) {
-    console.warn("[ECduLearm DB] Error al consultar PIN en Supabase:", err);
+    console.warn("[ECduLearn DB] Error al consultar PIN en Supabase:", err);
     return null;
   }
 }
@@ -241,7 +241,7 @@ export async function savePinSessionToDatabase(session: PinSession): Promise<boo
 
     return !error;
   } catch (err) {
-    console.warn("[ECduLearm DB] Excepción al guardar en Supabase:", err);
+    console.warn("[ECduLearn DB] Excepción al guardar en Supabase:", err);
     return false;
   }
 }

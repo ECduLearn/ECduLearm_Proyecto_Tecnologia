@@ -23,23 +23,23 @@ export const VIEW_PATHS: Record<AppView, string> = {
 }
 
 export const VIEW_TITLES: Record<AppView, string> = {
-  landing: "ECduLearm - Plataforma EdTech SaaS B2B Ecuador",
+  landing: "ECduLearn - Plataforma EdTech SaaS B2B Ecuador",
 
-  portal: "Portal de Acceso | ECduLearm",
+  portal: "Portal de Acceso | ECduLearn",
 
-  student: "Aula Virtual & Tutor Socrático | ECduLearm",
+  student: "Aula Virtual & Tutor Socrático | ECduLearn",
 
-  dashboard: "Panel de Gestión Docente | ECduLearm",
+  dashboard: "Panel de Gestión Docente | ECduLearn",
 
-  chat: "Generador de Problemas PISA | ECduLearm",
+  chat: "Generador de Problemas PISA | ECduLearn",
 
-  planner: "Planificador Curricular ERCA | ECduLearm",
+  planner: "Planificador Curricular ERCA | ECduLearn",
 
-  simulator: "Simulador de Admisión Universitaria | ECduLearm",
+  simulator: "Simulador de Admisión Universitaria | ECduLearn",
 
-  editor: "Editor de Ejercicio | ECduLearm",
+  editor: "Editor de Ejercicio | ECduLearn",
 
-  admin: "Panel de Administración y Control de Usuarios | ECduLearm",
+  admin: "Panel de Administración y Control de Usuarios | ECduLearn",
 }
 
 /**
@@ -57,7 +57,7 @@ export function getBasePrefix(): string {
     return envBase.replace(/\/+$/, "")
   }
 
-  // 2. Auto-detección en GitHub Pages (ej. /ECduLearm_Proyecto_Tecnologia)
+  // 2. Auto-detección en GitHub Pages (ej. /ECduLearn_Proyecto_Tecnologia)
 
   const pathname = window.location.pathname
 
@@ -220,7 +220,7 @@ export function useAppRouter() {
 
         // Actualizar título de la pestaña del navegador
 
-        document.title = VIEW_TITLES[targetView] || "ECduLearm"
+        document.title = VIEW_TITLES[targetView] || "ECduLearn"
 
         // Scroll al tope al navegar
 
@@ -242,7 +242,7 @@ export function useAppRouter() {
 
     setViewState(initialView)
 
-    document.title = VIEW_TITLES[initialView] || "ECduLearm"
+    document.title = VIEW_TITLES[initialView] || "ECduLearn"
 
     // Si la ruta escrita fue un alias como /acceso o le falta el trailing slash al prefijo base,
 
@@ -267,7 +267,7 @@ export function useAppRouter() {
 
       setViewState(currentView)
 
-      document.title = VIEW_TITLES[currentView] || "ECduLearm"
+      document.title = VIEW_TITLES[currentView] || "ECduLearn"
 
       window.scrollTo({ top: 0, behavior: "instant" })
     }

@@ -367,7 +367,7 @@ export function AdminDashboard({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-extrabold tracking-tight text-sand-950">
-                  EC<span className="text-hint-600">du</span>Learm
+                  EC<span className="text-hint-600">du</span>Learn
                 </span>
                 <span className="rounded-md bg-ink-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-hint-300">
                   Admin Central
@@ -1418,7 +1418,7 @@ export function AdminDashboard({
                   Registrar Nueva Institución Educativa
                 </h3>
                 <p className="text-xs text-sand-600">
-                  Nuevo plantel socio para la plataforma ECduLearm.
+                  Nuevo plantel socio para la plataforma ECduLearn.
                 </p>
               </div>
               <button
@@ -1556,7 +1556,7 @@ export function AdminDashboard({
             </h3>
             <p className="mt-1 text-xs text-sand-600">
               Entrega esta clave al docente para su primer ingreso al sistema
-              ECduLearm:
+              ECduLearn:
             </p>
 
             <div className="my-5 rounded-2xl bg-sand-100 p-4 border border-sand-300">
@@ -1575,7 +1575,7 @@ export function AdminDashboard({
               type="button"
               onClick={() => {
                 navigator.clipboard?.writeText(
-                  `Hola ${pinModalData.name}, tu cuenta docente en ECduLearm ha sido autorizada. Ingresa con tu correo ${pinModalData.email} y clave provisional: ${pinModalData.pin}`,
+                  `Hola ${pinModalData.name}, tu cuenta docente en ECduLearn ha sido autorizada. Ingresa con tu correo ${pinModalData.email} y clave provisional: ${pinModalData.pin}`,
                 )
                 showToast("Mensaje copiado al portapapeles", "success")
                 setPinModalOpen(false)

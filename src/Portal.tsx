@@ -147,7 +147,7 @@ function PortalIcon({
 
 function Brand({ dark = false }: { dark?: boolean }) {
   return (
-    <div className="flex items-center gap-3" aria-label="ECduLearm">
+    <div className="flex items-center gap-3" aria-label="ECduLearn">
       <span
         className={`grid size-10 place-items-center rounded-xl ${
           dark ? "bg-ink-950 text-white" : "bg-white text-ink-950"
@@ -160,7 +160,7 @@ function Brand({ dark = false }: { dark?: boolean }) {
           dark ? "text-ink-950" : "text-white"
         }`}
       >
-        EC<span className="text-hint-600">du</span>Learm
+        EC<span className="text-hint-600">du</span>Learn
       </span>
     </div>
   )
@@ -467,7 +467,7 @@ export function AccessPortal({
       </main>
 
       <footer className="relative z-10 px-5 pb-6 text-center text-xs text-sand-500">
-        Tu colegio administra esta experiencia. ECduLearm no solicita datos
+        Tu colegio administra esta experiencia. ECduLearn no solicita datos
         personales ni crea perfiles de estudiantes.
       </footer>
 

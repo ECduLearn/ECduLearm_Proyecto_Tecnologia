@@ -60,7 +60,7 @@ function StudentHeader({
               <ZoneIcon name="book" className="size-5" />
             </span>
             <span className="font-semibold tracking-tight text-sand-950">
-              EC<span className="text-hint-600">du</span>Learm
+              EC<span className="text-hint-600">du</span>Learn
             </span>
           </div>
         )}
