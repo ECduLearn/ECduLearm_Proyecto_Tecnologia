@@ -4,7 +4,22 @@ import { socraticTutorAI } from "@/services/aiService";
 import { estudianteSocraticoController as estudiante } from "@/services/dbService";
 import type { PasoBloqueo, RetoEstudiante, SesionEstudiante } from "@/models/types";
 
-type Estado = "loading" | "ready" | "empty";
+type Estado = "loading" | "ready" | "empty" | "no_encontrada" | "aula_llena";
+
+const AVISOS_SIN_RETO: Record<"empty" | "no_encontrada" | "aula_llena", { titulo: string; texto: string }> = {
+  empty: {
+    titulo: "Tu docente aún no ha publicado retos",
+    texto: "Cuando asigne un ejercicio a esta clase aparecerá aquí. Mientras tanto puedes entrenar en Práctica libre.",
+  },
+  no_encontrada: {
+    titulo: "No encontramos tu clase",
+    texto: "El PIN no existe o la clase ya terminó. Pídele el PIN de nuevo a tu docente.",
+  },
+  aula_llena: {
+    titulo: "Esta clase ya está completa",
+    texto: "Llegó al máximo de estudiantes. Avísale a tu docente para que te ayude a entrar.",
+  },
+};
 
 type Mensaje = { id: number; role: "student" | "tutor"; text: string };
 
@@ -62,7 +77,13 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
       let actual = estudiante.getSesionActual();
       // Reintenta la sesión real si la guardada es local o de otro PIN
       if (!actual || actual.isOffline || actual.pin !== pin) {
-        actual = await estudiante.iniciarSesionAnonima(pin);
+        const resultado = await estudiante.ingresarConPin(pin);
+        if (!activo) return;
+        if (!("sesion" in resultado)) {
+          setEstado(resultado.estado);
+          return;
+        }
+        actual = resultado.sesion;
       }
       if (!activo) return;
       setSesion(actual);
@@ -165,7 +186,8 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
     );
   }
 
-  if (estado === "empty" || !reto || !sesion) {
+  if (estado !== "ready" || !reto || !sesion) {
+    const aviso = AVISOS_SIN_RETO[estado === "ready" ? "empty" : estado];
     return (
       <div className="min-h-screen bg-sand-50 text-sand-950">
         {header("Reto del colegio")}
@@ -174,10 +196,8 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
             <span className="mx-auto grid size-12 place-items-center rounded-full bg-hint-100 text-hint-900">
               <ZoneIcon name="target" className="size-6" />
             </span>
-            <h1 className="mt-5 text-lg font-semibold text-sand-950">Tu docente aún no ha publicado retos</h1>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-sand-600">
-              Cuando asigne un ejercicio a esta clase aparecerá aquí. Mientras tanto puedes entrenar en Práctica libre.
-            </p>
+            <h1 className="mt-5 text-lg font-semibold text-sand-950">{aviso.titulo}</h1>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-sand-600">{aviso.texto}</p>
           </section>
         </main>
       </div>

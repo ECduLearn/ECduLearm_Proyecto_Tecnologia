@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react"
+import { estudianteSocraticoController } from "@/services/dbService"
 
 export interface LandingPageProps {
   onEnterApp: () => void
@@ -95,8 +96,9 @@ function Marca() {
 export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingPageProps) {
   const [pin, setPin] = useState("")
   const [pinError, setPinError] = useState("")
+  const [buscandoClase, setBuscandoClase] = useState(false)
 
-  const entrarConPin = (event: FormEvent) => {
+  const entrarConPin = async (event: FormEvent) => {
     event.preventDefault()
     const limpio = pin.replace(/\s+/g, "").toUpperCase()
     if (!/^[A-Z0-9]{6}$/.test(limpio)) {
@@ -104,6 +106,17 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
       return
     }
     setPinError("")
+    setBuscandoClase(true)
+    const resultado = await estudianteSocraticoController.ingresarConPin(limpio)
+    setBuscandoClase(false)
+    if (resultado.estado === "no_encontrada") {
+      setPinError("No encontramos una clase con ese PIN. Revísalo con tu docente.")
+      return
+    }
+    if (resultado.estado === "aula_llena") {
+      setPinError("Esta clase ya está completa. Avísale a tu docente.")
+      return
+    }
     if (onStudentEnter) onStudentEnter(limpio)
     else onEnterApp()
   }
@@ -391,9 +404,10 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
                 />
                 <button
                   type="submit"
-                  className="min-h-12 rounded-xl bg-hint-500 px-6 font-semibold text-sand-950 transition-colors duration-150 hover:bg-hint-400 active:translate-y-px focus:outline-none focus-visible:ring-4 focus-visible:ring-hint-300/40"
+                  disabled={buscandoClase}
+                  className="min-h-12 rounded-xl bg-hint-500 disabled:opacity-70 px-6 font-semibold text-sand-950 transition-colors duration-150 hover:bg-hint-400 active:translate-y-px focus:outline-none focus-visible:ring-4 focus-visible:ring-hint-300/40"
                 >
-                  Entrar a mi clase
+                  {buscandoClase ? "Buscando tu clase…" : "Entrar a mi clase"}
                 </button>
               </div>
               <p id="landing-pin-ayuda" className="mt-3 min-h-5 text-sm" aria-live="polite">

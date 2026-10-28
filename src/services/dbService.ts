@@ -452,6 +452,9 @@ export const ejerciciosController = {
         level2: ejercicio.pistasSocraticas?.[1] || "¿Qué relación o fórmula vincula las variables?",
         level3: ejercicio.pistasSocraticas?.[2] || "Plantea la ecuación antes de operar numéricamente.",
       },
+      solucionDocente: ejercicio.solucionDocente,
+      respuestaCorrecta: ejercicio.respuestaCorrecta,
+      pistasSocraticas: ejercicio.pistasSocraticas,
     };
 
     // Intentar persistir en Supabase en la tabla 'ejercicios_pisa'
@@ -472,14 +475,15 @@ export const ejerciciosController = {
           nivel_pisa: 4,
           enunciado_contexto: record.situation,
           pregunta_razonamiento: record.questionList.join("\n"),
-          respuesta_correcta: "Procedimiento verificado en solución guiada",
-          solucion_paso_a_paso_docente: ejercicio.solucionDocente || record.teacherSolution.steps[0].explanation,
+          respuesta_correcta: ejercicio.respuestaCorrecta || "Revisa la solución paso a paso.",
+          solucion_paso_a_paso_docente:
+            ejercicio.solucionDocente || "Solución pendiente: complétala antes de publicar el ejercicio.",
           pistas_socraticas_base: ejercicio.pistasSocraticas || [
             record.socraticHints.level1,
             record.socraticHints.level2,
             record.socraticHints.level3,
           ],
-          es_publico: true,
+          es_publico: false,
           generado_por_ia: true,
           tiempo_creacion_segundos: Math.max(1, ejercicio.tiempoCreacionSegundos || 8),
         };
@@ -490,6 +494,8 @@ export const ejerciciosController = {
           if (!error && data) {
             record.id = data.id;
             savedInDb = true;
+          } else if (error) {
+            console.warn(`[dbService] ejercicios_pisa rechazó el guardado (${error.code}): ${error.message}`);
           }
         } else {
           // Dejar que PostgreSQL gen_random_uuid() asigne el UUID
@@ -497,6 +503,8 @@ export const ejerciciosController = {
           if (!error && data) {
             record.id = data.id;
             savedInDb = true;
+          } else if (error) {
+            console.warn(`[dbService] ejercicios_pisa rechazó el guardado (${error.code}): ${error.message}`);
           }
         }
       } catch (err) {
@@ -787,57 +795,99 @@ export const planificacionesController = {
 
 export const aulasController = {
   /**
-   * Publica un aula virtual con PIN de 6 caracteres asignándole un reto.
+   * Publica un aula con PIN y le vincula el ejercicio en aula_ejercicios, para que el estudiante lo
+   * reciba en fn_iniciar_sesion_anonima. Si el ejercicio aún no está en la base, lo guarda primero.
    */
   async publicarAula(
     pin: string,
     titulo: string,
     ejercicio: Exercise
-  ): Promise<{ success: boolean; pin: string; isOffline: boolean }> {
+  ): Promise<{
+    success: boolean;
+    pin: string;
+    isOffline: boolean;
+    ejercicioId?: string;
+    motivo?: "pin_ocupado" | "sin_sesion" | "error";
+  }> {
     const clean = sanitizeInput(pin).toUpperCase().replace(/\s+/g, "");
     const user = authController.getCurrentUser();
-    const docenteId = user?.id || DEMO_DOCENTE_USER.id;
-
     const client = getSupabaseClient();
+    let ejercicioId = isValidUuid(ejercicio.id) ? (ejercicio.id as string) : undefined;
     let savedInDb = false;
+    let motivo: "pin_ocupado" | "sin_sesion" | "error" | undefined;
 
-    if (client) {
+    // RLS exige una sesión real de docente: la cuenta demo solo publica en este navegador
+    if (client && user && !user.isDemo && isValidUuid(user.id)) {
       try {
-        // Guardar o actualizar en 'aulas_virtuales'
-        const { error } = await client.from("aulas_virtuales").upsert({
-          pin_acceso: clean,
-          docente_id: docenteId.includes("-") ? docenteId : null,
-          titulo_sesion: sanitizeInput(titulo),
-          modo_aula: "RETO_CLASE",
-          max_estudiantes: 45,
-          activa: true,
-          expires_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-        });
+        if (!ejercicioId) {
+          const creado = await ejerciciosController.createEjercicio(ejercicio);
+          if (!creado.isOffline) ejercicioId = creado.data.id;
+        }
 
-        if (!error) savedInDb = true;
+        if (!ejercicioId) {
+          motivo = "error";
+        } else {
+          const { data: aula, error } = await client
+            .from("aulas_virtuales")
+            .upsert(
+              {
+                pin_acceso: clean,
+                docente_id: user.id,
+                titulo_sesion: sanitizeInput(titulo).slice(0, 150),
+                modo_aula: "RETO_CLASE",
+                max_estudiantes: 45,
+                activa: true,
+                expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+              },
+              { onConflict: "pin_acceso" }
+            )
+            .select("id")
+            .single();
+
+          if (error || !aula) {
+            // 23505: el PIN ya es de grado; 42501: el PIN pertenece al aula de otro docente
+            motivo = error?.code === "23505" || error?.code === "42501" ? "pin_ocupado" : "error";
+            if (error) console.warn(`[dbService] aulas_virtuales rechazó el PIN (${error.code}): ${error.message}`);
+          } else {
+            // Un aula, un reto: el vínculo anterior se reemplaza
+            await client.from("aula_ejercicios").delete().eq("aula_id", aula.id);
+            const { error: errorVinculo } = await client
+              .from("aula_ejercicios")
+              .insert({ aula_id: aula.id, ejercicio_id: ejercicioId, orden: 1 });
+            if (errorVinculo) {
+              motivo = "error";
+              console.warn(`[dbService] aula_ejercicios rechazó el vínculo (${errorVinculo.code}): ${errorVinculo.message}`);
+            } else {
+              savedInDb = true;
+            }
+          }
+        }
       } catch (err) {
-        console.warn("[dbService] Fallo al guardar aula por PIN:", err);
+        motivo = "error";
+        console.warn("[dbService] Fallo al publicar el aula:", (err as Error).message);
       }
+    } else {
+      motivo = "sin_sesion";
     }
 
-    // Persistir en almacenamiento local para respaldo offline
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS);
-        const aulas = raw ? JSON.parse(raw) : {};
-        aulas[clean] = {
-          pin: clean,
-          titulo,
-          ejercicio,
-          docente: user?.name || "Docente Responsable",
-          createdAt: Date.now(),
-          active: true,
-        };
-        localStorage.setItem(STORAGE_KEYS.LOCAL_AULAS, JSON.stringify(aulas));
-      } catch {}
+    // Respaldo local (modo demo u offline)
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS);
+      const aulas = raw ? JSON.parse(raw) : {};
+      aulas[clean] = {
+        pin: clean,
+        titulo,
+        ejercicio: { ...ejercicio, id: ejercicioId ?? ejercicio.id },
+        docente: user?.name || "Docente",
+        createdAt: Date.now(),
+        active: true,
+      };
+      localStorage.setItem(STORAGE_KEYS.LOCAL_AULAS, JSON.stringify(aulas));
+    } catch {
+      // Sin almacenamiento: el aula solo existe en la base de datos.
     }
 
-    return { success: true, pin: clean, isOffline: !savedInDb };
+    return { success: savedInDb || motivo === "sin_sesion", pin: clean, isOffline: !savedInDb, ejercicioId, motivo: savedInDb ? undefined : motivo };
   },
 
   /**
@@ -1025,22 +1075,28 @@ async function rpcEstudiante<T>(fn: string, sesion: SesionEstudiante, params: Re
   return data as T;
 }
 
+export type ResultadoIngreso =
+  | { estado: "activa" | "practica"; sesion: SesionEstudiante }
+  | { estado: "no_encontrada" | "aula_llena" };
+
 export const estudianteSocraticoController = {
   /**
-   * Crea o retoma la sesión anónima del PIN (Zero-PII) y guarda los retos que publicó el docente.
+   * Valida el PIN con fn_iniciar_sesion_anonima (el rol anon no puede leer aulas_virtuales) y crea o
+   * retoma la sesión anónima. Distingue PIN inexistente, aula llena y falta de conexión.
    */
-  async iniciarSesionAnonima(pin: string): Promise<SesionEstudiante & { tokenHash: string }> {
+  async ingresarConPin(pin: string): Promise<ResultadoIngreso> {
     const cleanPin = sanitizeInput(pin).toUpperCase().replace(/\s+/g, "");
-    const tokenHash = await generateDeviceTokenHash();
+    if (!/^[A-Z0-9]{6}$/.test(cleanPin)) return { estado: "no_encontrada" };
 
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.rpc("fn_iniciar_sesion_anonima", {
           p_pin: cleanPin,
-          p_token_hash: tokenHash,
+          p_token_hash: await generateDeviceTokenHash(),
         });
 
+        if (error?.code === "P0001") return { estado: "aula_llena" };
         if (error) {
           console.warn(`[estudiante] fn_iniciar_sesion_anonima falló (${error.code}): ${error.message}`);
         } else if (data?.sesion_id) {
@@ -1053,16 +1109,20 @@ export const estudianteSocraticoController = {
             isOffline: false,
           };
           guardarSesion(sesion);
-          return { ...sesion, tokenHash };
+          return { estado: "activa", sesion };
+        } else if (cleanPin !== "PISA26") {
+          // La función respondió sin sesión: el PIN no existe o el aula ya expiró
+          return { estado: "no_encontrada" };
         }
       } catch {
-        // Fallo de red: se continúa con la sesión local.
+        // Fallo de red: se continúa en modo práctica.
       }
     }
 
+    // Sin conexión (o PISA26 sin datos semilla): modo práctica con el reto local
     const sesion = sesionLocal(cleanPin);
     guardarSesion(sesion);
-    return { ...sesion, tokenHash };
+    return { estado: "practica", sesion };
   },
 
   getSesionActual(): SesionEstudiante | null {

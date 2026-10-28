@@ -217,32 +217,21 @@ export function AccessPortal({
     setPinError("")
 
     try {
-      const check = await aulasController.consultarPin(cleanPin)
+      const resultado = await estudianteSocraticoController.ingresarConPin(cleanPin)
 
-      if (check.existe) {
+      if (resultado.estado === "no_encontrada") {
+        setPinError(
+          `No encontramos una clase con el PIN ${cleanPin}. Revísalo con tu docente o prueba con PISA26.`,
+        )
+      } else if (resultado.estado === "aula_llena") {
+        setPinError("Esta clase ya está completa. Avísale a tu docente.")
+      } else {
         localStorage.setItem("ecdulearm_active_pin", cleanPin)
 
-        const sesion =
-          await estudianteSocraticoController.iniciarSesionAnonima(cleanPin)
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem("ecdulearn_sesion_id", sesion.sesionId)
-
-          localStorage.setItem("ecdulearn_alias_temporal", sesion.alias)
-        }
-
         onStudentEnter()
-      } else {
-        setPinError(
-          `No encontramos un aula activa con el PIN "${cleanPin}". Puedes probar con el PIN de demostración: PISA26`,
-        )
       }
     } catch {
-      // Contingencia inteligente offline
-
-      localStorage.setItem("ecdulearm_active_pin", cleanPin || "PISA26")
-
-      onStudentEnter()
+      setPinError("No pudimos revisar el PIN. Revisa tu internet y vuelve a intentarlo.")
     } finally {
       setPinLoading(false)
     }
