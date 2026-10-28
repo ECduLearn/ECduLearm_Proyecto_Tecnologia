@@ -312,11 +312,23 @@ export default function AutonomousZone({
     );
   }
 
+  // Con un PIN de grado la práctica usa ejercicios reales del colegio y su telemetría llega al docente
+  const practicaReal =
+    sesionGuardada && !sesionGuardada.isOffline && sesionGuardada.modo === "PRACTICA_LIBRE" && retosAsignados > 0;
+
+  if (view === "free" && practicaReal) {
+    return <RetoColegio header={(titulo) => <StudentHeader onBack={() => setView("dashboard")} title={titulo} />} />;
+  }
+
   if (view === "free") {
     return (
       <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
         <StudentHeader onBack={() => setView("dashboard")} title="Práctica libre · Razonamiento Lógico" />
         <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6">
+          <p className="flex items-start gap-2 border border-hint-200 bg-hint-50 p-3 text-xs leading-relaxed text-hint-900" role="status">
+            <ZoneIcon name="shield" className="mt-0.5 size-4 shrink-0" />
+            Este microreto es de práctica: lo que escribas aquí no se envía a tu docente.
+          </p>
           <section className="border border-sand-200 bg-white p-5 shadow-sm sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">

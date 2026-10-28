@@ -221,7 +221,8 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-widest text-ink-800">
-                Reto del colegio{reto.curso ? ` · ${reto.curso}` : ""}
+                {sesion.modo === "PRACTICA_LIBRE" ? "Práctica libre" : "Reto del colegio"}
+                {reto.curso ? ` · ${reto.curso}` : ""}
               </p>
               <h1 className="mt-1 text-lg font-semibold text-sand-950">{reto.tema}</h1>
             </div>

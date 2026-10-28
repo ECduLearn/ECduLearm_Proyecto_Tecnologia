@@ -945,122 +945,6 @@ export const aulasController = {
 
     return { success: savedInDb || motivo === "sin_sesion", pin: clean, isOffline: !savedInDb, ejercicioId, motivo: savedInDb ? undefined : motivo };
   },
-
-  /**
-   * Consulta los datos de un aula virtual ingresando su código PIN (Cero-PII).
-   */
-  async consultarPin(pin: string): Promise<{
-    existe: boolean;
-    pin: string;
-    titulo: string;
-    docente: string;
-    ejercicio: Exercise | null;
-    isOffline: boolean;
-  }> {
-    const clean = sanitizeInput(pin).toUpperCase().replace(/\s+/g, "");
-
-    // 1. Consulta en Supabase Cloud en tiempo real
-    const client = getSupabaseClient();
-    if (client) {
-      try {
-        const { data, error } = await client
-          .from("aulas_virtuales")
-          .select("id, pin_acceso, titulo_sesion, activa, expires_at, usuarios_institucionales(nombre_completo), aula_ejercicios(ejercicios_pisa(*))")
-          .eq("pin_acceso", clean)
-          .eq("activa", true)
-          .single();
-
-        if (data && !error) {
-          const teacherName = (data.usuarios_institucionales as any)?.nombre_completo || "Docente Demo PUCE";
-          const rawEx = (data.aula_ejercicios as any)?.[0]?.ejercicios_pisa;
-          let parsedExercise: Exercise | null = null;
-          if (rawEx) {
-            parsedExercise = {
-              id: rawEx.id,
-              topic: rawEx.tema_curricular,
-              context: rawEx.contexto_pisa,
-              level: rawEx.curso_bgu,
-              difficulty: rawEx.nivel_dificultad,
-              questions: 3,
-              version: 1,
-              situation: rawEx.enunciado_contexto,
-              questionList: rawEx.pregunta_razonamiento
-                ? rawEx.pregunta_razonamiento.split("\n").filter(Boolean)
-                : [],
-              rubric: `Estándar PISA Nivel ${rawEx.nivel_pisa || 4}`,
-            };
-          }
-          return {
-            existe: true,
-            pin: data.pin_acceso,
-            titulo: data.titulo_sesion,
-            docente: teacherName,
-            ejercicio: parsedExercise,
-            isOffline: false,
-          };
-        }
-      } catch (err) {
-        console.warn("[dbService] Error consultando aula en Supabase:", err);
-      }
-    }
-
-    // 2. PIN de demostración oficial PISA26 (Respaldo offline)
-    if (clean === "PISA26") {
-      return {
-        existe: true,
-        pin: "PISA26",
-        titulo: "Reto Semanal PISA: Estabilidad en el Puente del Chiche",
-        docente: "Docente Demo PUCE",
-        ejercicio: {
-          id: "ex-pisa26",
-          topic: "Razones trigonométricas en estructuras",
-          context: "Ingeniería civil y puentes de Quito",
-          level: "2do BGU",
-          difficulty: "Intermedia",
-          questions: 3,
-          version: 1,
-          situation:
-            "Para reforzar una pasarela peatonal junto al Puente del Chiche, un equipo de ingeniería propone cerchas triangulares isósceles de acero de 12 m de base con un ángulo de 35°. Se debe calcular la altura requerida.",
-          questionList: [
-            "1. Determina la altura del vértice superior y justifica el modelo trigonométrico.",
-            "2. Evalúa si cumple con la normativa de altura máxima de 5 metros.",
-            "3. ¿Qué razón trigonométrica relaciona el cateto opuesto con el adyacente de 6 m?",
-          ],
-          rubric: "Estándar PISA Nivel 4 - Modelado geométrico y toma de decisiones técnicas.",
-        },
-        isOffline: true,
-      };
-    }
-
-    // 3. Fallback a almacenamiento local
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS);
-        if (raw) {
-          const aulas = JSON.parse(raw);
-          if (aulas[clean]) {
-            return {
-              existe: true,
-              pin: clean,
-              titulo: aulas[clean].titulo || "Reto de Matemáticas",
-              docente: aulas[clean].docente || "Docente Responsable",
-              ejercicio: aulas[clean].ejercicio || null,
-              isOffline: true,
-            };
-          }
-        }
-      } catch {}
-    }
-
-    return {
-      existe: false,
-      pin: clean,
-      titulo: "",
-      docente: "",
-      ejercicio: null,
-      isOffline: true,
-    };
-  },
 };
 
 // ==============================================================================
@@ -1193,6 +1077,7 @@ export const estudianteSocraticoController = {
             pin: cleanPin,
             alias: data.alias || "Estudiante anónimo",
             titulo: data.contenido?.titulo || "Reto del colegio",
+            modo: data.contenido?.modo,
             ejercicios: (data.contenido?.ejercicios ?? []).map(mapEjercicio),
             isOffline: false,
           };

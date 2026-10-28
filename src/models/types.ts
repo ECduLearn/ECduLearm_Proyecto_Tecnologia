@@ -140,6 +140,9 @@ export interface SesionEstudiante {
 
   titulo: string
 
+  // Modo del aula según fn_contenido_sesion; PRACTICA_LIBRE = sesión de un PIN de grado
+  modo?: "RETO_CLASE" | "PRACTICA_LIBRE" | "SIMULADOR_ADMISION"
+
   ejercicios: RetoEstudiante[]
 
   isOffline: boolean
