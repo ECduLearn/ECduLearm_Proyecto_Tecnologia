@@ -10,6 +10,8 @@ import {
   DbMetricasDocente,
 } from "./services/dbService"
 
+import type { TeacherUser } from "./models/types"
+
 type PortalIconName = "arrow" | "book" | "chart" | "check" | "chevron" | "clock" | "copy" | "grid" | "help" | "link" | "lock" | "logout" | "menu" | "plus" | "send" | "shield" | "sparkles" | "users" | "x"
 
 const portalIconPaths: Record<PortalIconName, ReactNode> = {
@@ -1055,7 +1057,7 @@ export function TeacherDashboard({
 
   const [metricas, setMetricas] = useState<DbMetricasDocente | null>(null)
 
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null)
 
   const [roomsList, setRoomsList] = useState<any[]>(rooms)
 
@@ -1063,7 +1065,7 @@ export function TeacherDashboard({
     setUxState("loading")
 
     try {
-      const user = authController.getCurrentUser()
+      const user = await authController.restoreSession()
 
       setCurrentUser(user)
 
@@ -1104,6 +1106,8 @@ export function TeacherDashboard({
   }
 
   const teacherName = currentUser?.name || "Docente Demo PUCE"
+
+  const isDemoSession = !currentUser || Boolean(currentUser.isDemo)
 
   const institutionName =
     currentUser?.institution || "Colegio Experimental San Gabriel de Quito"
@@ -1195,8 +1199,8 @@ export function TeacherDashboard({
         </div>
         <button
           type="button"
-          onClick={() => {
-            authController.logoutDocente()
+          onClick={async () => {
+            await authController.logoutDocente()
 
             onExit()
           }}
@@ -1224,7 +1228,13 @@ export function TeacherDashboard({
                   {institutionName}
                 </p>
                 <p className="truncate text-xs text-sand-500">
-                  {teacherName} · Docente Titular
+                  {teacherName} ·{" "}
+                  {currentUser?.role === "coordinador" ? "Coordinación" : "Docente"}
+                  {isDemoSession && (
+                    <span className="ml-1.5 rounded-full bg-hint-50 px-2 py-0.5 font-bold text-hint-700 ring-1 ring-hint-200">
+                      Modo demo
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

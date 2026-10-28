@@ -4,6 +4,7 @@
  * Incluye sanitización OWASP, autenticación JWT/roles, Zero-PII y fallback offline inquebrantable.
  */
 
+import { isAuthRetryableFetchError, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConnected } from "./supabaseClient";
 import {
   SEED_EJERCICIOS_PISA,
@@ -170,7 +171,7 @@ export interface DbMetricasDocente {
 
 const STORAGE_KEYS = {
   USER_SESSION: "ecdulearn_auth_user",
-  JWT_TOKEN: "ecdulearn_jwt_token",
+  LEGACY_JWT_TOKEN: "ecdulearn_jwt_token",
   LOCAL_EJERCICIOS: "ecdulearn_db_ejercicios",
   LOCAL_PLANIFICACIONES: "ecdulearn_db_planificaciones",
   LOCAL_AULAS: "ecdulearn_db_aulas",
@@ -196,132 +197,136 @@ export const DEMO_DOCENTE_USER: DbUsuarioInstitucional = {
 // 4. CONTROLADOR DE AUTENTICACIÓN Y ROLES (usuarios_institucionales)
 // ==============================================================================
 
+// Cuentas demo públicas: solo operan con datos locales (sin sesión de Supabase, RLS bloquea la base).
+const DEMO_ACCOUNTS: Record<string, { password: string; user: TeacherUser }> = {
+  "docente@puce.edu.ec": {
+    password: "demo123",
+    user: {
+      id: DEMO_DOCENTE_USER.id,
+      name: DEMO_DOCENTE_USER.nombre_completo,
+      email: "docente@puce.edu.ec",
+      institution: "Unidad Educativa Demo ECduLearn",
+      role: "docente",
+      isDemo: true,
+    },
+  },
+  "admin@ecdulearn.edu.ec": {
+    password: "admin123",
+    user: {
+      id: "99999999-9999-4999-8999-999999999999",
+      name: "Administrador Demo ECduLearn",
+      email: "admin@ecdulearn.edu.ec",
+      institution: "ECduLearn · Administración Central",
+      role: "admin",
+      isDemo: true,
+    },
+  },
+};
+
+type LoginResult = { success: boolean; user: TeacherUser | null; message: string };
+
+function saveCurrentUser(user: TeacherUser): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(user));
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_JWT_TOKEN);
+  } catch {
+    // Sin almacenamiento la sesión dura lo que la pestaña.
+  }
+}
+
+function clearCurrentUser(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_JWT_TOKEN);
+  } catch {
+    // Nada que limpiar.
+  }
+}
+
+function demoLogin(email: string): LoginResult {
+  const user = DEMO_ACCOUNTS[email].user;
+  saveCurrentUser(user);
+  return { success: true, user, message: "Entraste en modo demo con datos de ejemplo." };
+}
+
+function mapRol(rol: string): TeacherUser["role"] {
+  if (rol === "ADMIN") return "admin";
+  if (rol === "COORDINADOR_RECTOR") return "coordinador";
+  return "docente";
+}
+
+// El perfil solo es visible si el colegio pre-registró el correo y la institución está activa (RLS).
+async function fetchTeacherProfile(client: SupabaseClient, authUserId: string): Promise<TeacherUser | null> {
+  const { data, error } = await client
+    .from("usuarios_institucionales")
+    .select("id, nombre_completo, email_institucional, rol, instituciones(nombre)")
+    .eq("auth_user_id", authUserId)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const institucion = Array.isArray(data.instituciones) ? data.instituciones[0] : data.instituciones;
+  return {
+    id: data.id,
+    name: data.nombre_completo,
+    email: data.email_institucional,
+    institution: (institucion as { nombre?: string } | null)?.nombre || "Institución educativa",
+    role: mapRol(data.rol),
+  };
+}
+
 export const authController = {
   /**
-   * Inicia sesión como docente, coordinador o administrador institucional.
-   * Soporta credenciales demo ('admin@ecdulearn.edu.ec', 'docente@puce.edu.ec' / 'demo123') y consulta real en Supabase.
+   * Inicia sesión con Supabase Auth (correo + contraseña); el rol sale del perfil en la base.
+   * Sin Supabase o sin red, solo se admiten las cuentas demo públicas, marcadas como tales en la UI.
    */
-  async loginDocente(
-    email: string,
-    password?: string
-  ): Promise<{ success: boolean; user: TeacherUser | null; message: string }> {
-    const cleanEmail = sanitizeInput(email).toLowerCase();
+  async loginDocente(email: string, password: string): Promise<LoginResult> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      return { success: false, user: null, message: "Escribe tu correo institucional y tu contraseña." };
+    }
+    const isDemoCredentials = DEMO_ACCOUNTS[cleanEmail]?.password === password;
 
-    // 1. Verificación en tiempo real contra Supabase PostgreSQL mediante RPC con SECURITY DEFINER
     const client = getSupabaseClient();
     if (client) {
       try {
-        const { data, error } = await client.rpc("fn_login_docente", {
-          p_email: cleanEmail,
-        });
+        const { data, error } = await client.auth.signInWithPassword({ email: cleanEmail, password });
 
-        if (!error && data) {
-          if (data.success) {
-            const normalizedRole: "docente" | "coordinador" | "admin" =
-              data.role === "ADMIN" || data.role === "admin"
-                ? "admin"
-                : data.role === "coordinador_rector" || data.role === "COORDINADOR_RECTOR"
-                ? "coordinador"
-                : "docente";
-
-            const teacherUser: TeacherUser = {
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              institution: data.institution || "Unidad Educativa Demo ECduLearn",
-              role: normalizedRole,
-            };
-            if (typeof window !== "undefined") {
-              localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(teacherUser));
-              localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, "session-supabase-" + data.id);
-            }
-            return {
-              success: true,
-              user: teacherUser,
-              message: data.message || `Bienvenido, ${data.name}.`,
-            };
-          } else {
-            // Correo no registrado en la institución
+        if (!error && data.user) {
+          const profile = await fetchTeacherProfile(client, data.user.id);
+          if (!profile) {
+            await client.auth.signOut();
             return {
               success: false,
               user: null,
-              message: data.message || "El correo institucional no está registrado en el colegio.",
+              message: "Tu cuenta existe, pero tu institución aún no la ha habilitado. Contacta con la coordinación de tu colegio.",
             };
           }
+          saveCurrentUser(profile);
+          return { success: true, user: profile, message: `Bienvenido, ${profile.name}.` };
         }
-      } catch (err) {
-        console.warn("[dbService] Error en autenticación con Supabase, verificando respaldo:", err);
+
+        if (error && !isAuthRetryableFetchError(error)) {
+          // Las cuentas demo siguen funcionando aunque no existan en Supabase Auth.
+          if (isDemoCredentials) return demoLogin(cleanEmail);
+          if (error.code === "email_not_confirmed") {
+            return { success: false, user: null, message: "Confirma tu correo institucional con el enlace que te enviamos y vuelve a intentarlo." };
+          }
+          return { success: false, user: null, message: "Correo o contraseña incorrectos." };
+        }
+      } catch {
+        // Fallo de red: se evalúan las cuentas demo más abajo.
       }
     }
 
-    // 2. Modo contingencia offline (solo si no hay internet o Supabase no responde)
-    // Cuentas institucionales oficiales precargadas con roles definidos
-    const OFFLINE_WHITELIST: Record<
-      string,
-      { id: string; name: string; role: "docente" | "coordinador" | "admin"; institution: string }
-    > = {
-      "admin@ecdulearn.edu.ec": {
-        id: "99999999-9999-4999-8999-999999999999",
-        name: "Administrador Central ECduLearn",
-        role: "admin",
-        institution: "ECduLearn HQ · Administración Central",
-      },
-      "joan.santacruz@ecdulearn.edu.ec": {
-        id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-        name: "Joan Sebastian Santacruz (Fundador & Admin)",
-        role: "admin",
-        institution: "ECduLearn HQ · Administración Central",
-      },
-      "ariel.chacha@ecdulearn.edu.ec": {
-        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        name: "Ariel Fabricio Chacha (Tech Lead & Admin)",
-        role: "admin",
-        institution: "ECduLearn HQ · Administración Central",
-      },
-      "docente@puce.edu.ec": {
-        id: DEMO_DOCENTE_USER.id,
-        name: DEMO_DOCENTE_USER.nombre_completo,
-        role: "docente",
-        institution: "Unidad Educativa Demo ECduLearn (PUCE)",
-      },
-      "rector@puce.edu.ec": {
-        id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-        name: "Mgs. Roberto Paredes (Rectorado PUCE)",
-        role: "coordinador",
-        institution: "Unidad Educativa Demo ECduLearn (PUCE)",
-      },
-    };
-
-    if (OFFLINE_WHITELIST[cleanEmail]) {
-      const match = OFFLINE_WHITELIST[cleanEmail];
-      const teacherUser: TeacherUser = {
-        id: match.id,
-        name: match.name,
-        email: cleanEmail,
-        institution: match.institution,
-        role: match.role,
-      };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(teacherUser));
-        localStorage.setItem(STORAGE_KEYS.JWT_TOKEN, "demo-session-token-ecd-2026");
-      }
-      return {
-        success: true,
-        user: teacherUser,
-        message: "Inicio de sesión exitoso en modo de contingencia local.",
-      };
-    }
-
-    // 3. Cualquier otro correo queda rotundamente denegado
-    return {
-      success: false,
-      user: null,
-      message: "Acceso denegado: el correo no está registrado como docente o directivo institucional en la base de datos.",
-    };
+    if (isDemoCredentials) return demoLogin(cleanEmail);
+    let message = "La base de datos no está configurada: solo están disponibles las cuentas demo.";
+    if (client) message = "No pudimos conectar con el servidor. Revisa tu internet e inténtalo de nuevo.";
+    else if (DEMO_ACCOUNTS[cleanEmail]) message = "Correo o contraseña incorrectos.";
+    return { success: false, user: null, message };
   },
 
   getCurrentUser(): TeacherUser | null {
-    if (typeof window === "undefined") return null;
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USER_SESSION);
       return saved ? JSON.parse(saved) : null;
@@ -330,10 +335,29 @@ export const authController = {
     }
   },
 
-  logoutDocente(): void {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(STORAGE_KEYS.USER_SESSION);
-    localStorage.removeItem(STORAGE_KEYS.JWT_TOKEN);
+  /** Devuelve el usuario solo si su sesión de Supabase sigue vigente (o si es una cuenta demo). */
+  async restoreSession(): Promise<TeacherUser | null> {
+    const cached = this.getCurrentUser();
+    if (!cached || cached.isDemo) return cached;
+
+    const client = getSupabaseClient();
+    const { data } = client ? await client.auth.getSession() : { data: { session: null } };
+    if (!data.session) {
+      clearCurrentUser();
+      return null;
+    }
+    return cached;
+  },
+
+  async logoutDocente(): Promise<void> {
+    clearCurrentUser();
+    const client = getSupabaseClient();
+    if (!client) return;
+    try {
+      await client.auth.signOut();
+    } catch {
+      // Sin red el token se borra igualmente en local.
+    }
   },
 };
 

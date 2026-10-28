@@ -394,14 +394,19 @@ export function AdminDashboard({
             <div className="hidden md:flex items-center gap-2 rounded-xl border border-sand-300 bg-white px-3 py-1.5 text-xs">
               <span className="inline-block size-2 rounded-full bg-ink-600 animate-pulse" />
               <span className="font-semibold text-sand-800">
-                {currentUser?.name || "Joan Sebastian Santacruz (Admin)"}
+                {currentUser?.name || "Administrador"}
               </span>
+              {(!currentUser || currentUser.isDemo) && (
+                <span className="rounded-full bg-hint-50 px-2 py-0.5 font-bold text-hint-700 ring-1 ring-hint-200">
+                  Modo demo
+                </span>
+              )}
             </div>
 
             <button
               type="button"
-              onClick={() => {
-                authController.logoutDocente()
+              onClick={async () => {
+                await authController.logoutDocente()
                 onExit()
               }}
               className="flex items-center gap-1.5 rounded-xl border border-hint-300/60 bg-hint-50 px-3 py-1.5 text-xs font-bold text-hint-800 transition hover:bg-hint-100"
