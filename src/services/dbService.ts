@@ -390,6 +390,22 @@ export function isValidUuid(val?: string | null): boolean {
 
 const ACTIVE_EXERCISE_KEY = "ecdulearm_active_exercise";
 
+/**
+ * Primera etiqueta libre a partir de la deseada: Versión B → C → D…; Iteración 2 → 3 → 4…
+ */
+function etiquetaLibre(deseada: string, usadas: string[]): string {
+  if (!usadas.includes(deseada)) return deseada;
+  const letra = /^Versión ([A-Z])$/.exec(deseada)?.[1];
+  if (letra) {
+    for (let c = letra.charCodeAt(0) + 1; c <= 90; c++) {
+      const candidata = `Versión ${String.fromCharCode(c)}`;
+      if (!usadas.includes(candidata)) return candidata;
+    }
+  }
+  const numeros = usadas.map((u) => Number(/^Iteración (\d+)$/.exec(u)?.[1] ?? 1));
+  return `Iteración ${Math.min(999, Math.max(1, ...numeros) + 1)}`;
+}
+
 export const ejerciciosController = {
   /**
    * Guarda el ejercicio y lo deja como activo del docente, con el UUID real si la base lo aceptó,
@@ -494,6 +510,15 @@ export const ejerciciosController = {
 
     if (client) {
       try {
+        // uq_ejercicios_version: un mismo padre no puede repetir etiqueta
+        if (isValidUuid(ejercicio.ejercicioPadreId)) {
+          const { data: hermanos } = await client
+            .from("ejercicios_pisa")
+            .select("etiqueta_version")
+            .eq("ejercicio_padre_id", ejercicio.ejercicioPadreId as string);
+          etiqueta = etiquetaLibre(etiqueta, (hermanos ?? []).map((h) => String(h.etiqueta_version)));
+        }
+
         const payload: any = {
           docente_creador_id: docenteId,
           ejercicio_padre_id: isValidUuid(ejercicio.ejercicioPadreId) ? ejercicio.ejercicioPadreId : null,

@@ -381,13 +381,13 @@ function EditorTools({
 function EditorView({
   exercise,
   onBack,
+  onExerciseChange,
 }: {
   exercise: Exercise
   onBack: () => void
+  onExerciseChange: (exercise: Exercise) => void
 }) {
-  const [title, setTitle] = useState(
-    "Guía PISA: Análisis de Estructuras Civiles",
-  )
+  const [title, setTitle] = useState(`Guía PISA: ${exercise.topic}`)
 
   const [fileName, setFileName] = useState("")
 
@@ -405,20 +405,19 @@ function EditorView({
     try {
       const res = await generateExerciseAI(label, exercise)
 
-      const etiqueta = label.includes("fácil")
-        ? "Versión A"
-        : label.includes("difícil")
-          ? "Versión B"
-          : "Iteración 2"
+      // createEjercicio toma la siguiente etiqueta libre si esta ya existe para el mismo padre
+      const etiqueta = /versi[oó]n/i.test(label) ? "Versión B" : "Iteración 2"
 
-      // Guarda la variante, espera su UUID real y la deja como ejercicio activo
-      await ejerciciosController.guardarComoActivo(res.data.exercise, {
+      // Guarda la variante, espera su UUID real y actualiza el documento
+      const activo = await ejerciciosController.guardarComoActivo(res.data.exercise, {
         ejercicioPadreId: exercise.id,
 
         etiquetaVersion: etiqueta,
       })
 
-      setNotice(`Listo: ${res.data.exercise.topic}. Ya está guardado.`)
+      onExerciseChange(activo)
+
+      setNotice(`Listo: ${activo.topic}. Ya está guardado.`)
     } catch {
       setNotice("No pudimos aplicar el cambio. Inténtalo otra vez.")
     }
@@ -570,6 +569,7 @@ function EditorView({
           </div>
 
           <article
+            key={exercise.id ?? exercise.version}
             id="guide-document"
             className="relative mx-auto min-h-[70rem] max-w-4xl bg-white px-6 py-10 shadow-2xl shadow-sand-900/10 sm:px-12 sm:py-14 md:px-16"
             onMouseUp={checkSelection}
@@ -640,10 +640,11 @@ function EditorView({
                 onInput={() => setNotice("Guardando cambios...")}
                 onBlur={() => setNotice("Todos los cambios guardados")}
               >
-                Análisis de estructuras civiles
+                {exercise.topic}
               </h1>
               <p className="mt-3 text-sm text-sand-500">
-                Actividad contextualizada tipo PISA · Dificultad intermedia
+                Actividad contextualizada tipo PISA · Dificultad{" "}
+                {String(exercise.difficulty).toLowerCase()}
               </p>
             </div>
 
@@ -658,37 +659,10 @@ function EditorView({
                 <p className="text-xs font-bold uppercase tracking-widest text-ink-700">
                   Situación
                 </p>
-                <h2 className="mt-2 text-xl font-bold text-sand-950">
-                  Un centro comunitario seguro y sostenible
-                </h2>
-                <p className="mt-3">
-                  El municipio construirá un centro comunitario en una zona de
-                  alta actividad sísmica. Un equipo de estudiantes analiza dos
-                  propuestas estructurales que utilizan módulos triangulares de
-                  4 metros de base y 3 metros de altura. La meta es elegir una
-                  solución que distribuya adecuadamente las cargas y use los
-                  materiales de forma responsable.
+                <p className="mt-3 whitespace-pre-line">
+                  {exercise.situation ||
+                    "Escribe aquí la situación del problema o pídele al asistente que la genere."}
                 </p>
-              </section>
-
-              <section className="rounded-2xl border border-sand-200 bg-sand-50 p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-sand-500">
-                  Datos para el análisis
-                </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl bg-white p-4">
-                    <p className="font-bold text-ink-950">Propuesta A</p>
-                    <p className="mt-1 text-sm">
-                      12 módulos · 28 kg de acero por módulo
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-white p-4">
-                    <p className="font-bold text-ink-950">Propuesta B</p>
-                    <p className="mt-1 text-sm">
-                      10 módulos · 34 kg de acero por módulo
-                    </p>
-                  </div>
-                </div>
               </section>
 
               <section>
@@ -696,24 +670,13 @@ function EditorView({
                   Preguntas de desarrollo
                 </p>
                 <ol className="mt-4 space-y-5">
-                  <li>
-                    <strong className="text-sand-950">1. Comprender.</strong>{" "}
-                    Calcula el área de uno de los módulos triangulares. Explica
-                    el procedimiento utilizado.
-                    <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
-                  </li>
-                  <li>
-                    <strong className="text-sand-950">2. Analizar.</strong>{" "}
-                    Compara la cantidad total de acero requerida por cada
-                    propuesta. ¿Cuál utiliza menos material?
-                    <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
-                  </li>
-                  <li>
-                    <strong className="text-sand-950">3. Reflexionar.</strong>{" "}
-                    ¿Qué propuesta recomendarías al municipio? Sustenta tu
-                    decisión usando los datos y un criterio de seguridad.
-                    <div className="mt-4 h-20 border-b border-dashed border-sand-300" />
-                  </li>
+                  {(exercise.questionList ?? []).map((pregunta, index) => (
+                    <li key={`${index}-${pregunta.slice(0, 12)}`}>
+                      <strong className="text-sand-950">{index + 1}.</strong>{" "}
+                      {pregunta.replace(/^\s*\d+[.)]\s*/, "")}
+                      <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
+                    </li>
+                  ))}
                 </ol>
               </section>
             </div>
@@ -940,7 +903,10 @@ function App() {
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
 
-  const [exercise, setExercise] = useState<Exercise>(initialExercise)
+  // Retoma el último ejercicio trabajado (chat, editor o planificador), también tras recargar
+  const [exercise, setExercise] = useState<Exercise>(
+    () => ejerciciosController.getEjercicioActivo() ?? initialExercise,
+  )
 
   const [versions, setVersions] = useState<Exercise[]>([])
 
@@ -1016,8 +982,17 @@ function App() {
         setHasExercise(true)
 
         // Guarda en ejercicios_pisa y reemplaza el id local por el UUID real
+        // Mismo tema = versión del ejercicio actual; tema nuevo = ejercicio original
+        const esVersion = hasExercise && newEx.topic === exercise.topic
+
         const guardado = await ejerciciosController.guardarComoActivo(updatedExercise, {
-          ejercicioPadreId: exercise.id,
+          ejercicioPadreId: esVersion ? exercise.id : undefined,
+
+          etiquetaVersion: !esVersion
+            ? "Original"
+            : /versi[oó]n/i.test(prompt)
+              ? "Versión B"
+              : "Iteración 2",
 
           tiempoCreacionSegundos: 8,
         })
@@ -1238,7 +1213,15 @@ function App() {
     return (
       <>
         <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <EditorView exercise={exercise} onBack={() => setView("chat")} />
+        <EditorView
+          exercise={exercise}
+          onBack={() => setView("chat")}
+          onExerciseChange={(nuevo) => {
+            setVersions((current) => [...current, exercise])
+
+            setExercise(nuevo)
+          }}
+        />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
     )

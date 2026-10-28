@@ -1,5 +1,6 @@
 import { DragEvent, FormEvent, ReactNode, useEffect, useState } from "react";
-import { generateExerciseAI, reviewExamAI } from "./services/aiService";
+import { generateExerciseAI, planErcaAI, reviewExamAI } from "./services/aiService";
+import type { Exercise } from "./models/types";
 import { ejerciciosController, planificacionesController } from "./services/dbService";
 
 type AdvancedIconName =
@@ -143,7 +144,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const [pisaModalOpen, setPisaModalOpen] = useState(false);
   const [pisaContext, setPisaContext] = useState("");
-  const [pisaInserted, setPisaInserted] = useState(false);
+  const [ejercicioInsertado, setEjercicioInsertado] = useState<Exercise | null>(null);
+  const [curso, setCurso] = useState<"1ro BGU" | "2do BGU" | "3ro BGU">("2do BGU");
+  const [fases, setFases] = useState(planningPhases);
+  const [estructurando, setEstructurando] = useState(false);
   const [isGeneratingPisa, setIsGeneratingPisa] = useState(false);
 
   const acceptFile = (name: string) => {
@@ -159,42 +163,61 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
     acceptFile(event.dataTransfer.files?.[0]?.name ?? "");
   };
 
-  const applyAI = (action: string) => {
-    setNotice(`Aplicando «${action}»…`);
-    window.setTimeout(() => setNotice("Listo, ya está guardado"), 600);
+  const estructurarPlan = async () => {
+    if (!objective.trim()) {
+      setNotice("Escribe primero el objetivo de aprendizaje.");
+      return;
+    }
+    setEstructurando(true);
+    setNotice("Estructurando tu plan de clase…");
+    const res = await planErcaAI(objective, duration, `${curso}${fileName ? ` · material de apoyo: ${fileName}` : ""}`);
+    setFases((actuales) =>
+      actuales.map((fase) => {
+        const nueva = res.data.find((f) => f.id === fase.key);
+        return nueva ? { ...fase, time: nueva.duration || fase.time, title: nueva.title, body: nueva.body } : fase;
+      })
+    );
+    setEstructurando(false);
+    setNotice(
+      res.isOfflineFallback
+        ? "La IA no respondió: te dejamos un plan de ejemplo que puedes editar."
+        : "Plan listo. Puedes editar cada fase."
+    );
   };
 
   const generatePisa = async () => {
     if (!pisaContext.trim()) return;
     setIsGeneratingPisa(true);
     try {
-      const res = await generateExerciseAI(pisaContext);
-      setIsGeneratingPisa(false);
-      setPisaInserted(true);
+      const res = await generateExerciseAI(
+        `Crea un ejercicio tipo PISA para ${curso} sobre: ${pisaContext}. Objetivo de la clase: ${objective}`
+      );
+      // Queda como ejercicio activo: se puede publicar en un aula desde el panel o el chat
+      const activo = await ejerciciosController.guardarComoActivo(res.data.exercise);
+      setEjercicioInsertado(activo);
       setPisaModalOpen(false);
-      setNotice(`Agregamos «${res.data.exercise.topic}» a la fase de Aplicación.`);
-      localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
+      setNotice(
+        res.isOfflineFallback
+          ? `La IA no respondió: agregamos un ejercicio de ejemplo sobre «${activo.topic}».`
+          : `Agregamos «${activo.topic}» a la fase de Aplicación.`
+      );
 
-      // Persistir ejercicio en tabla ejercicios_pisa
-      const savedEx = await ejerciciosController.createEjercicio(res.data.exercise);
-
-      // Persistir planificación ERCA completa vinculada al ejercicio
+      const textoFase = (clave: string) => fases.find((f) => f.key === clave)?.body ?? "";
       await planificacionesController.savePlanificacion({
-        titulo: `Planificación ERCA: ${res.data.exercise.topic}`,
-        curso: "2do BGU",
+        titulo: `Planificación ERCA: ${activo.topic}`,
+        curso,
         destreza: "M.5.2.3 Resolver problemas en contextos reales justificando procedimientos con modelos matemáticos.",
         duracionMinutos: parseInt(duration) || 45,
-        experiencia: "Observar estructuras y registros fotográficos e identificar elementos geométricos y cuantitativos.",
-        reflexion: "¿Qué datos son indispensables para asegurar la estabilidad o proporcionalidad de la situación?",
-        conceptualizacion: "Formalización analítica del modelo matemático y deducción de relaciones.",
-        aplicacion: `Resolución del reto PISA: ${res.data.exercise.situation}`,
-        ejercicioPisaId: savedEx.data.id,
+        experiencia: textoFase("experience"),
+        reflexion: textoFase("reflection"),
+        conceptualizacion: textoFase("conceptualization"),
+        aplicacion: `Resolución del reto PISA: ${activo.situation || activo.topic}`,
+        ejercicioPisaId: activo.id,
       });
     } catch {
+      setNotice("No pudimos generar el ejercicio. Inténtalo otra vez.");
+    } finally {
       setIsGeneratingPisa(false);
-      setPisaInserted(true);
-      setPisaModalOpen(false);
-      setNotice("Agregamos el ejercicio a la fase de Aplicación");
     }
   };
 
@@ -294,6 +317,20 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               <option>90 min</option>
             </select>
 
+            <label htmlFor="class-course" className="mt-5 block text-sm font-bold text-sand-800">
+              Curso
+            </label>
+            <select
+              id="class-course"
+              value={curso}
+              onChange={(event) => setCurso(event.target.value as "1ro BGU" | "2do BGU" | "3ro BGU")}
+              className="mt-2 min-h-12 w-full rounded-xl border border-sand-300 bg-white px-4 text-sm font-semibold outline-none focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
+            >
+              <option>1ro BGU</option>
+              <option>2do BGU</option>
+              <option>3ro BGU</option>
+            </select>
+
             <label htmlFor="learning-objective" className="mt-5 block text-sm font-bold text-sand-800">
               Objetivo de aprendizaje
             </label>
@@ -307,11 +344,12 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
 
             <button
               type="button"
-              onClick={() => applyAI("Estructurar plan de clase")}
-              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200"
+              onClick={estructurarPlan}
+              disabled={estructurando}
+              className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-ink-800 px-5 text-sm font-bold text-white hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:opacity-70"
             >
               <AdvancedIcon name="magic" className="size-5" />
-              Estructurar Plan de Clase
+              {estructurando ? "Estructurando…" : "Estructurar plan de clase"}
             </button>
           </div>
         </aside>
@@ -347,7 +385,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 </div>
                 <div className="border-b border-sand-200 p-4 sm:border-b-0">
                   <p className="text-xs font-bold uppercase tracking-wide text-sand-500">Curso</p>
-                  <p className="mt-1 text-sm font-bold text-ink-950">2do BGU</p>
+                  <p className="mt-1 text-sm font-bold text-ink-950">{curso}</p>
                 </div>
                 <div className="border-t border-sand-200 p-4 sm:col-span-2">
                   <p className="text-xs font-bold uppercase tracking-wide text-sand-500">
@@ -376,7 +414,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
               </div>
 
               <div className="mt-7 space-y-4">
-                {planningPhases.map((phase, index) => (
+                {fases.map((phase, index) => (
                   <section
                     key={phase.key}
                     className={`group relative rounded-2xl border p-5 transition sm:p-6 ${
@@ -434,7 +472,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                           </p>
                         )}
 
-                        {phase.key === "application" && !pisaInserted && (
+                        {phase.key === "application" && !ejercicioInsertado && (
                           <div className="mt-4 rounded-xl border border-dashed border-sand-300 bg-white/80 p-4">
                             <p className="text-xs font-bold uppercase tracking-wide text-sand-400">Actividad actual</p>
                             <p
@@ -442,41 +480,28 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                               suppressContentEditableWarning
                               className="mt-2 text-sm leading-7 text-sand-600 outline-none"
                             >
-                              Calcular el área de cinco triángulos usando los datos indicados en la ficha y copiar el
-                              procedimiento.
+                              {phase.body}
                             </p>
                           </div>
                         )}
 
-                        {phase.key === "application" && pisaInserted && (
+                        {phase.key === "application" && ejercicioInsertado && (
                           <div className="mt-4">
                             <div className="rounded-2xl border-2 border-ink-300 bg-white p-5 shadow-sm">
                               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-700">
                                 <AdvancedIcon name="sparkles" className="size-4" />
-                                Ejercicio PISA · {pisaContext}
+                                Ejercicio PISA · {ejercicioInsertado.context}
                               </div>
                               <div className="mt-4 space-y-4 text-sm leading-7 text-sand-700">
-                                <div>
-                                  <p className="font-bold text-ink-950">Contexto</p>
-                                  <p className="mt-1">
-                                    El Municipio de Quito planea construir un puente peatonal cerca de una zona escolar. El
-                                    diseño utiliza módulos triangulares para distribuir el peso de forma segura.
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="font-bold text-ink-950">Problema</p>
-                                  <p className="mt-1">
-                                    Cada módulo tiene 4 m de base y 3 m de altura. La propuesta emplea 12 módulos y cada
-                                    metro cuadrado admite una carga máxima definida por la norma técnica.
-                                  </p>
-                                </div>
-                                <div className="rounded-xl bg-ink-50 p-4">
-                                  <p className="font-bold text-ink-950">Pregunta de reflexión</p>
-                                  <p className="mt-1 text-ink-950">
-                                    Justifica con tu procedimiento si el puente soportará el peso previsto según la norma
-                                    de seguridad. ¿Qué dato adicional necesitarías para confirmar tu decisión?
-                                  </p>
-                                </div>
+                                <p className="text-base font-bold text-ink-950">{ejercicioInsertado.topic}</p>
+                                <p className="whitespace-pre-line">{ejercicioInsertado.situation}</p>
+                                {ejercicioInsertado.questionList && ejercicioInsertado.questionList.length > 0 && (
+                                  <ol className="list-decimal space-y-2 pl-5">
+                                    {ejercicioInsertado.questionList.map((pregunta) => (
+                                      <li key={pregunta}>{pregunta.replace(/^\s*\d+[.)]\s*/, "")}</li>
+                                    ))}
+                                  </ol>
+                                )}
                               </div>
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
