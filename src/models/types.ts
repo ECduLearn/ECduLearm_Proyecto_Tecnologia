@@ -73,7 +73,7 @@ export interface SimQuestion {
 
   prompt: string
 
-  options: { id: string text: string }[]
+  options: { id: string; text: string }[]
 
   correct: string
 
@@ -90,4 +90,6 @@ export interface TeacherUser {
   institution: string
 
   role: "docente" | "coordinador" | "admin"
+
+  isDemo?: boolean
 }
