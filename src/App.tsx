@@ -1,56 +1,48 @@
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { AccessPortal, TeacherDashboard } from "./Portal";
-import AutonomousZone from "./AutonomousZone";
-import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules";
-import { LandingPage } from "./LandingPage";
-import { AppView, useAppRouter } from "./router";
-export type { AppView } from "./router";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react"
+
+import { AccessPortal, TeacherDashboard } from "./Portal"
+
+import AutonomousZone from "./AutonomousZone"
+
+import { AdmissionSimulator, PlanningWorkspace } from "./AdvancedModules"
+
+import { LandingPage } from "./LandingPage"
+
+import { AdminDashboard } from "./AdminDashboard"
+
+import { AppView, useAppRouter } from "./router"
+
+export type { AppView } from "./router"
+
 import {
   generateExerciseAI,
   getGeminiApiKey,
   setGeminiApiKey,
   testGeminiConnection,
-} from "./services/aiService";
+} from "./services/aiService"
+
 import {
   getSupabaseConfig,
   setSupabaseConfig,
   isSupabaseConnected,
   getSupabaseClient,
-} from "./services/supabaseClient";
-import { ejerciciosController, aulasController } from "./services/dbService";
-import type { Exercise } from "./models/types";
+} from "./services/supabaseClient"
 
-type IconName =
-  | "arrow-left"
-  | "bold"
-  | "book"
-  | "check"
-  | "chevron"
-  | "clock"
-  | "download"
-  | "file"
-  | "info"
-  | "italic"
-  | "magic"
-  | "menu"
-  | "paperclip"
-  | "plus"
-  | "printer"
-  | "redo"
-  | "send"
-  | "share"
-  | "sparkles"
-  | "undo"
-  | "upload"
-  | "user"
-  | "x";
+import { ejerciciosController, aulasController } from "./services/dbService"
+
+import type { Exercise } from "./models/types"
+
+type IconName = "arrow-left" | "bold" | "book" | "check" | "chevron" | "clock" | "download" | "file" | "info" | "italic" | "magic" | "menu" | "paperclip" | "plus" | "printer" | "redo" | "send" | "share" | "sparkles" | "undo" | "upload" | "user" | "x"
 
 type Message = {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-  exercise?: Exercise;
-};
+  id: number
+
+  role: "user" | "assistant"
+
+  text: string
+
+  exercise?: Exercise
+}
 
 const iconPaths: Record<IconName, ReactNode> = {
   "arrow-left": (
@@ -59,12 +51,14 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M9 12h11" />
     </>
   ),
+
   bold: (
     <>
       <path d="M7 5h6a4 4 0 0 1 0 8H7z" />
       <path d="M7 13h7a4 4 0 0 1 0 8H7z" />
     </>
   ),
+
   book: (
     <>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -72,60 +66,77 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M8 7h8M8 11h6" />
     </>
   ),
+
   check: <path d="m5 12 4 4L19 6" />,
+
   chevron: <path d="m9 18 6-6-6-6" />,
+
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
     </>
   ),
+
   download: (
     <>
       <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
       <path d="M5 20h14" />
     </>
   ),
+
   file: (
     <>
       <path d="M6 2h8l4 4v16H6z" />
       <path d="M14 2v5h5M9 12h6M9 16h6" />
     </>
   ),
+
   info: (
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5M12 8h.01" />
     </>
   ),
+
   italic: <path d="M10 4h8M6 20h8M14 4 10 20" />,
+
   magic: (
     <>
       <path d="m15 4 5 5L8 21l-5-5Z" />
       <path d="m6 14 5 5M14 4l1-2M20 10l2 1M19 3l2-1M4 10 2-1" />
     </>
   ),
+
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
-  paperclip: <path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />,
+
+  paperclip: (
+    <path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+  ),
+
   plus: <path d="M12 5v14M5 12h14" />,
+
   printer: (
     <>
       <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
       <path d="M6 14h12v8H6z" />
     </>
   ),
+
   redo: (
     <>
       <path d="m15 7 5 5-5 5" />
       <path d="M4 17a7 7 0 0 1 7-7h9" />
     </>
   ),
+
   send: (
     <>
       <path d="m22 2-7 20-4-9-9-4Z" />
       <path d="M22 2 11 13" />
     </>
   ),
+
   share: (
     <>
       <circle cx="18" cy="5" r="3" />
@@ -134,73 +145,114 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
     </>
   ),
+
   sparkles: (
     <>
       <path d="m12 3-1.1 3.1A4.3 4.3 0 0 1 8.3 8.7L5 10l3.3 1.3a4.3 4.3 0 0 1 2.6 2.6L12 17l1.1-3.1a4.3 4.3 0 0 1 2.6-2.6L19 10l-3.3-1.3a4.3 4.3 0 0 1-2.6-2.6L12 3Z" />
       <path d="m5 3-.4 1.1a1.6 1.6 0 0 1-1 1L2.5 5.5l1.1.4a1.6 1.6 0 0 1 1 1L5 8l.4-1.1a1.6 1.6 0 0 1 1-1l1.1-.4-1.1-.4a1.6 1.6 0 0 1-1-1L5 3Z" />
     </>
   ),
+
   undo: (
     <>
       <path d="m9 7-5 5 5 5" />
       <path d="M20 17a7 7 0 0 0-7-7H4" />
     </>
   ),
+
   upload: (
     <>
       <path d="M12 16V4m0 0L7 9m5-5 5 5" />
       <path d="M4 15v5h16v-5" />
     </>
   ),
+
   user: (
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
     </>
   ),
+
   x: <path d="m6 6 12 12M18 6 6 18" />,
-};
+}
 
 const initialExercise: Exercise = {
   topic: "Estabilidad de estructuras",
+
   context: "Ingeniería civil",
+
   level: "2do BGU",
+
   difficulty: "Intermedia",
+
   questions: 3,
+
   version: 1,
+
   situation:
     "Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario. El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir, deben comparar alternativas y justificar cuál distribuye mejor las cargas.",
+
   questionList: [
     "Calcula el área de uno de los módulos triangulares utilizados en la estructura.",
+
     "Si el diseño requiere 12 módulos, ¿qué superficie total representan?",
+
     "Explica qué alternativa elegirías y sustenta tu decisión con los datos.",
   ],
-};
+}
 
 const initialMessages: Message[] = [
   {
     id: 1,
+
     role: "assistant",
+
     text: "¡Hola, colega docente! Soy tu asistente pedagógico en ECduLearm, potenciado en tiempo real con Google Gemini Flash (con balanceo multimodelo y ahorro de cuota).\n\nHe preparado esta guía de razonamiento inicial con enfoque PISA para bachillerato. ¿Deseas adaptarla (ej: «más fácil», «agrega una pregunta»), crear una nueva sobre otro tema («Metro de Quito», «Galápagos», «Finanzas»), o hacerme una consulta metodológica?",
+
     exercise: initialExercise,
   },
-];
+]
 
 const recentItems = [
-  { title: "Análisis estructural", meta: "Ingeniería Civil · Ahora", context: "Ingeniería civil" },
-  { title: "Funciones cuadráticas", meta: "Arquitectura · Ayer", context: "Arquitectura" },
-  { title: "Interés compuesto", meta: "Finanzas · 12 jun", context: "Economía" },
-];
+  {
+    title: "Análisis estructural",
+    meta: "Ingeniería Civil · Ahora",
+    context: "Ingeniería civil",
+  },
+
+  {
+    title: "Funciones cuadráticas",
+    meta: "Arquitectura · Ayer",
+    context: "Arquitectura",
+  },
+
+  {
+    title: "Interés compuesto",
+    meta: "Finanzas · 12 jun",
+    context: "Economía",
+  },
+]
 
 const quickActions = [
   "✨ Orientación PISA",
-  "🔄 Convertir mecánico a razonamiento",
-  "⚖️ Ajustar dificultad",
-  "📑 Crear Versión B/C",
-  "🔍 Generar solución paso a paso",
-];
 
-function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
+  "🔄 Convertir mecánico a razonamiento",
+
+  "⚖️ Ajustar dificultad",
+
+  "📑 Crear Versión B/C",
+
+  "🔍 Generar solución paso a paso",
+]
+
+function Icon({
+  name,
+  className = "size-5",
+}: {
+  name: IconName
+  className?: string
+}) {
   return (
     <svg
       aria-hidden="true"
@@ -214,7 +266,7 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
     >
       {iconPaths[name]}
     </svg>
-  );
+  )
 }
 
 function Logo() {
@@ -227,25 +279,40 @@ function Logo() {
         EC<span className="text-hint-600">du</span>Learm
       </span>
     </div>
-  );
+  )
 }
 
-const editorActions = ["Hacer más fácil", "Hacer más difícil", "Cambiar contexto", "Regenerar"];
+const editorActions = [
+  "Hacer más fácil",
+  "Hacer más difícil",
+  "Cambiar contexto",
+  "Regenerar",
+]
 
 function EditorTools({
   fileName,
+
   command,
+
   onCommandChange,
+
   onFileChange,
+
   onApply,
+
   onQuickAction,
 }: {
-  fileName: string;
-  command: string;
-  onCommandChange: (value: string) => void;
-  onFileChange: (name: string) => void;
-  onApply: () => void;
-  onQuickAction: (action: string) => void;
+  fileName: string
+
+  command: string
+
+  onCommandChange: (value: string) => void
+
+  onFileChange: (name: string) => void
+
+  onApply: () => void
+
+  onQuickAction: (action: string) => void
 }) {
   return (
     <div className="space-y-7">
@@ -262,7 +329,9 @@ function EditorTools({
             type="file"
             className="sr-only"
             accept=".pdf,.doc,.docx,.txt"
-            onChange={(event) => onFileChange(event.target.files?.[0]?.name ?? "")}
+            onChange={(event) =>
+              onFileChange(event.target.files?.[0]?.name ?? "")
+            }
           />
           <span className="grid size-10 place-items-center rounded-xl bg-white text-ink-900 shadow-sm">
             <Icon name="upload" className="size-5" />
@@ -270,7 +339,9 @@ function EditorTools({
           <span className="mt-3 text-sm font-semibold text-sand-700">
             {fileName || "Subir archivo"}
           </span>
-          <span className="mt-1 text-xs text-sand-500">PDF, Word o TXT · máx. 10 MB</span>
+          <span className="mt-1 text-xs text-sand-500">
+            PDF, Word o TXT · máx. 10 MB
+          </span>
         </label>
       </section>
 
@@ -302,7 +373,7 @@ function EditorTools({
           rows={4}
           value={command}
           onChange={(event) => onCommandChange(event.target.value)}
-          placeholder='Ej: “Reescribe el problema 2 para que hable de economía local”'
+          placeholder="Ej: “Reescribe el problema 2 para que hable de economía local”"
           className="mt-3 w-full resize-none rounded-xl border border-sand-300 bg-white p-3 text-sm leading-relaxed text-sand-800 outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
         />
         <button
@@ -316,55 +387,82 @@ function EditorTools({
         </button>
       </section>
     </div>
-  );
+  )
 }
 
-function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => void }) {
-  const [title, setTitle] = useState("Guía PISA: Análisis de Estructuras Civiles");
-  const [fileName, setFileName] = useState("");
-  const [command, setCommand] = useState("");
-  const [notice, setNotice] = useState("Todos los cambios guardados");
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [selectionOpen, setSelectionOpen] = useState(false);
+function EditorView({
+  exercise,
+  onBack,
+}: {
+  exercise: Exercise
+  onBack: () => void
+}) {
+  const [title, setTitle] = useState(
+    "Guía PISA: Análisis de Estructuras Civiles",
+  )
+
+  const [fileName, setFileName] = useState("")
+
+  const [command, setCommand] = useState("")
+
+  const [notice, setNotice] = useState("Todos los cambios guardados")
+
+  const [toolsOpen, setToolsOpen] = useState(false)
+
+  const [selectionOpen, setSelectionOpen] = useState(false)
 
   const applyAI = async (label: string) => {
-    setNotice(`Aplicando “${label}” con IA...`);
+    setNotice(`Aplicando “${label}” con IA...`)
+
     try {
-      const res = await generateExerciseAI(label, exercise);
-      setNotice(`Cambios aplicados: ${res.data.exercise.topic} (Guardado en BD)`);
-      localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(res.data.exercise));
+      const res = await generateExerciseAI(label, exercise)
+
+      setNotice(
+        `Cambios aplicados: ${res.data.exercise.topic} (Guardado en BD)`,
+      )
+
+      localStorage.setItem(
+        "ecdulearm_active_exercise",
+        JSON.stringify(res.data.exercise),
+      )
 
       // Guardar iteración o variante A/B/C en base de datos
+
       const etiqueta = label.includes("fácil")
         ? "Versión A"
         : label.includes("difícil")
           ? "Versión B"
-          : "Iteración 2";
+          : "Iteración 2"
 
       ejerciciosController.createEjercicio(res.data.exercise, {
         ejercicioPadreId: exercise.id,
+
         etiquetaVersion: etiqueta,
-      });
+      })
     } catch {
-      setNotice("Cambios de IA aplicados y guardados");
+      setNotice("Cambios de IA aplicados y guardados")
     }
-    setCommand("");
-  };
+
+    setCommand("")
+  }
 
   const checkSelection = () => {
-    setSelectionOpen(Boolean(window.getSelection()?.toString().trim()));
-  };
+    setSelectionOpen(Boolean(window.getSelection()?.toString().trim()))
+  }
 
   const formatSelection = (commandName: string) => {
-    document.execCommand(commandName);
-    setNotice("Formato actualizado");
-    setSelectionOpen(false);
-  };
+    document.execCommand(commandName)
+
+    setNotice("Formato actualizado")
+
+    setSelectionOpen(false)
+  }
 
   const shareDocument = async () => {
-    await navigator.clipboard?.writeText(window.location.href);
-    setNotice("Enlace de la guía copiado");
-  };
+    await navigator.clipboard?.writeText(window.location.href)
+
+    setNotice("Enlace de la guía copiado")
+  }
 
   return (
     <div className="min-h-screen bg-sand-200 text-sand-950">
@@ -387,13 +485,17 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               id="document-title"
               value={title}
               onChange={(event) => {
-                setTitle(event.target.value);
-                setNotice("Guardando cambios...");
+                setTitle(event.target.value)
+
+                setNotice("Guardando cambios...")
               }}
               onBlur={() => setNotice("Todos los cambios guardados")}
               className="w-full truncate rounded-lg bg-transparent px-2 py-1 text-center text-sm font-bold text-sand-950 outline-none hover:bg-sand-100 focus:bg-sand-100 focus:ring-4 focus:ring-ink-100 sm:text-base"
             />
-            <p className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-sand-500" aria-live="polite">
+            <p
+              className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-sand-500"
+              aria-live="polite"
+            >
               <Icon name="check" className="size-3.5 text-ink-600" />
               {notice}
             </p>
@@ -436,8 +538,9 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
             command={command}
             onCommandChange={setCommand}
             onFileChange={(name) => {
-              setFileName(name);
-              if (name) setNotice(`${name} añadido como contexto`);
+              setFileName(name)
+
+              if (name) setNotice(`${name} añadido como contexto`)
             }}
             onApply={() => applyAI(command)}
             onQuickAction={applyAI}
@@ -539,7 +642,9 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
                   <span className="grid size-10 place-items-center rounded-xl bg-ink-950 text-white">
                     <Icon name="book" className="size-5" />
                   </span>
-                  <span className="text-lg font-bold tracking-tight text-ink-950">ECduLearm</span>
+                  <span className="text-lg font-bold tracking-tight text-ink-950">
+                    ECduLearm
+                  </span>
                 </div>
                 <span className="rounded-full bg-ink-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-900">
                   Guía docente · {exercise.level}
@@ -557,7 +662,9 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               >
                 Análisis de estructuras civiles
               </h1>
-              <p className="mt-3 text-sm text-sand-500">Actividad contextualizada tipo PISA · Dificultad intermedia</p>
+              <p className="mt-3 text-sm text-sand-500">
+                Actividad contextualizada tipo PISA · Dificultad intermedia
+              </p>
             </div>
 
             <div
@@ -568,46 +675,63 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               onBlur={() => setNotice("Todos los cambios guardados")}
             >
               <section>
-                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">Situación</p>
-                <h2 className="mt-2 text-xl font-bold text-sand-950">Un centro comunitario seguro y sostenible</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">
+                  Situación
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-sand-950">
+                  Un centro comunitario seguro y sostenible
+                </h2>
                 <p className="mt-3">
-                  El municipio construirá un centro comunitario en una zona de alta actividad sísmica. Un equipo de
-                  estudiantes analiza dos propuestas estructurales que utilizan módulos triangulares de 4 metros de base y
-                  3 metros de altura. La meta es elegir una solución que distribuya adecuadamente las cargas y use los
+                  El municipio construirá un centro comunitario en una zona de
+                  alta actividad sísmica. Un equipo de estudiantes analiza dos
+                  propuestas estructurales que utilizan módulos triangulares de
+                  4 metros de base y 3 metros de altura. La meta es elegir una
+                  solución que distribuya adecuadamente las cargas y use los
                   materiales de forma responsable.
                 </p>
               </section>
 
               <section className="rounded-2xl border border-sand-200 bg-sand-50 p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-sand-500">Datos para el análisis</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-sand-500">
+                  Datos para el análisis
+                </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-white p-4">
                     <p className="font-bold text-ink-950">Propuesta A</p>
-                    <p className="mt-1 text-sm">12 módulos · 28 kg de acero por módulo</p>
+                    <p className="mt-1 text-sm">
+                      12 módulos · 28 kg de acero por módulo
+                    </p>
                   </div>
                   <div className="rounded-xl bg-white p-4">
                     <p className="font-bold text-ink-950">Propuesta B</p>
-                    <p className="mt-1 text-sm">10 módulos · 34 kg de acero por módulo</p>
+                    <p className="mt-1 text-sm">
+                      10 módulos · 34 kg de acero por módulo
+                    </p>
                   </div>
                 </div>
               </section>
 
               <section>
-                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">Preguntas de desarrollo</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-700">
+                  Preguntas de desarrollo
+                </p>
                 <ol className="mt-4 space-y-5">
                   <li>
-                    <strong className="text-sand-950">1. Comprender.</strong> Calcula el área de uno de los módulos
-                    triangulares. Explica el procedimiento utilizado.
+                    <strong className="text-sand-950">1. Comprender.</strong>{" "}
+                    Calcula el área de uno de los módulos triangulares. Explica
+                    el procedimiento utilizado.
                     <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
                   </li>
                   <li>
-                    <strong className="text-sand-950">2. Analizar.</strong> Compara la cantidad total de acero requerida
-                    por cada propuesta. ¿Cuál utiliza menos material?
+                    <strong className="text-sand-950">2. Analizar.</strong>{" "}
+                    Compara la cantidad total de acero requerida por cada
+                    propuesta. ¿Cuál utiliza menos material?
                     <div className="mt-4 h-16 border-b border-dashed border-sand-300" />
                   </li>
                   <li>
-                    <strong className="text-sand-950">3. Reflexionar.</strong> ¿Qué propuesta recomendarías al municipio?
-                    Sustenta tu decisión usando los datos y un criterio de seguridad.
+                    <strong className="text-sand-950">3. Reflexionar.</strong>{" "}
+                    ¿Qué propuesta recomendarías al municipio? Sustenta tu
+                    decisión usando los datos y un criterio de seguridad.
                     <div className="mt-4 h-20 border-b border-dashed border-sand-300" />
                   </li>
                 </ol>
@@ -616,7 +740,9 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
 
             <div className="mt-12 flex flex-wrap justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-400">
               <span>ECduLearm · Material para uso educativo</span>
-              <span>Generado con asistencia de IA · Revisión docente recomendada</span>
+              <span>
+                Generado con asistencia de IA · Revisión docente recomendada
+              </span>
             </div>
           </article>
         </main>
@@ -671,19 +797,21 @@ function EditorView({ exercise, onBack }: { exercise: Exercise; onBack: () => vo
               onCommandChange={setCommand}
               onFileChange={setFileName}
               onApply={() => {
-                applyAI(command);
-                setToolsOpen(false);
+                applyAI(command)
+
+                setToolsOpen(false)
               }}
               onQuickAction={(action) => {
-                applyAI(action);
-                setToolsOpen(false);
+                applyAI(action)
+
+                setToolsOpen(false)
               }}
             />
           </aside>
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function ExerciseCard({ exercise }: { exercise: Exercise }) {
@@ -695,14 +823,16 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
       <div className="border-b border-sand-200 bg-sand-50 px-5 py-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {[exercise.context, exercise.level, "Razonamiento lógico"].map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink-900"
-              >
-                {tag}
-              </span>
-            ))}
+            {[exercise.context, exercise.level, "Razonamiento lógico"].map(
+              (tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-ink-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-ink-900"
+                >
+                  {tag}
+                </span>
+              ),
+            )}
           </div>
           <span className="flex items-center gap-1.5 text-xs font-semibold text-sand-500">
             <Icon name="check" className="size-4 text-ink-600" />
@@ -717,12 +847,15 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
             <Icon name="file" className="size-5" />
           </span>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-ink-700">Desafío aplicado PISA</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
+              Desafío aplicado PISA
+            </p>
             <h2 className="mt-1 text-xl font-bold leading-tight text-ink-950 sm:text-2xl">
               {exercise.topic}
             </h2>
             <p className="mt-2 text-sm text-sand-500">
-              Dificultad {exercise.difficulty.toLowerCase()} · {exercise.questions} preguntas
+              Dificultad {exercise.difficulty.toLowerCase()} ·{" "}
+              {exercise.questions} preguntas
             </p>
           </div>
         </div>
@@ -743,30 +876,35 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold leading-6 text-sand-800">{q}</p>
-                    <div className="mt-3 h-8 border-b border-dashed border-sand-300" />
-                  </div>
-                </div>
-              ))
-            : Array.from({ length: Math.min(exercise.questions, 4) }, (_, index) => (
-                <div key={index} className="flex gap-4">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-100 text-sm font-bold text-ink-950">
-                    {index + 1}
-                  </span>
-                  <div>
                     <p className="text-sm font-semibold leading-6 text-sand-800">
-                      {index === 0
-                        ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
-                        : index === 1
-                          ? "Si el diseño requiere 12 módulos, ¿qué superficie total representan?"
-                          : index === 2
-                            ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
-                            : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
+                      {q}
                     </p>
                     <div className="mt-3 h-8 border-b border-dashed border-sand-300" />
                   </div>
                 </div>
-              ))}
+              ))
+            : Array.from(
+                { length: Math.min(exercise.questions, 4) },
+                (_, index) => (
+                  <div key={index} className="flex gap-4">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-100 text-sm font-bold text-ink-950">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold leading-6 text-sand-800">
+                        {index === 0
+                          ? "Calcula el área de uno de los módulos triangulares utilizados en la estructura."
+                          : index === 1
+                            ? "Si el diseño requiere 12 módulos, ¿qué superficie total representan?"
+                            : index === 2
+                              ? "Explica qué alternativa elegirías y sustenta tu decisión con los datos."
+                              : "Propón un cambio al diseño que reduzca material sin comprometer la estabilidad."}
+                      </p>
+                      <div className="mt-3 h-8 border-b border-dashed border-sand-300" />
+                    </div>
+                  </div>
+                ),
+              )}
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5 text-xs text-sand-500">
@@ -775,153 +913,218 @@ function ExerciseCard({ exercise }: { exercise: Exercise }) {
         </div>
       </div>
     </article>
-  );
+  )
 }
 
 function App() {
-  const { view, setView } = useAppRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [exercise, setExercise] = useState<Exercise>(initialExercise);
-  const [versions, setVersions] = useState<Exercise[]>([]);
-  const [hasExercise, setHasExercise] = useState(true);
-  const [input, setInput] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const timerRef = useRef<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const exerciseCardRef = useRef<HTMLDivElement>(null);
+  const { view, setView } = useAppRouter()
+
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+
+  const [exercise, setExercise] = useState<Exercise>(initialExercise)
+
+  const [versions, setVersions] = useState<Exercise[]>([])
+
+  const [hasExercise, setHasExercise] = useState(true)
+
+  const [input, setInput] = useState("")
+
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const timerRef = useRef<number | null>(null)
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const exerciseCardRef = useRef<HTMLDivElement>(null)
 
   useEffect(
     () => () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
+      if (timerRef.current) window.clearTimeout(timerRef.current)
     },
+
     [],
-  );
+  )
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [messages, isGenerating]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    })
+  }, [messages, isGenerating])
 
   const processPrompt = async (prompt: string) => {
-    if (!prompt.trim() || isGenerating) return;
+    if (!prompt.trim() || isGenerating) return
 
     setMessages((current) => [
       ...current,
+
       { id: Date.now(), role: "user", text: prompt.trim() },
-    ]);
-    setInput("");
-    setIsGenerating(true);
+    ])
+
+    setInput("")
+
+    setIsGenerating(true)
 
     try {
-      const res = await generateExerciseAI(prompt, hasExercise ? exercise : undefined);
-      
-      const newEx = res.data.exercise;
+      const res = await generateExerciseAI(
+        prompt,
+        hasExercise ? exercise : undefined,
+      )
+
+      const newEx = res.data.exercise
+
       const hasMeaningfulChange =
         newEx &&
         newEx.topic &&
         (newEx.topic !== exercise.topic ||
           newEx.difficulty !== exercise.difficulty ||
           newEx.questions !== exercise.questions ||
-          newEx.version > exercise.version);
+          newEx.version > exercise.version)
 
-      let updatedExercise: Exercise | undefined = undefined;
+      let updatedExercise: Exercise | undefined = undefined
 
       if (hasMeaningfulChange) {
-        if (hasExercise) setVersions((current) => [...current, exercise]);
+        if (hasExercise) setVersions((current) => [...current, exercise])
+
         updatedExercise = {
           ...newEx,
+
           version: exercise.version + 1,
-        };
-        setExercise(updatedExercise);
-        setHasExercise(true);
-        localStorage.setItem("ecdulearm_active_exercise", JSON.stringify(updatedExercise));
+        }
+
+        setExercise(updatedExercise)
+
+        setHasExercise(true)
+
+        localStorage.setItem(
+          "ecdulearm_active_exercise",
+          JSON.stringify(updatedExercise),
+        )
 
         // Persistir en base de datos PostgreSQL real (ejercicios_pisa)
+
         ejerciciosController.createEjercicio(updatedExercise, {
           ejercicioPadreId: exercise.id,
+
           tiempoCreacionSegundos: 8,
-        });
+        })
       }
 
       setMessages((current) => [
         ...current,
+
         {
           id: Date.now() + 1,
+
           role: "assistant",
+
           text: res.data.reply,
+
           exercise: updatedExercise,
         },
-      ]);
+      ])
     } catch {
       setMessages((current) => [
         ...current,
+
         {
           id: Date.now() + 1,
+
           role: "assistant",
+
           text: "¡Hola! Tu mensaje ha sido recibido. Puedes pedirme crear una actividad contextualizada tipo PISA para Ecuador (ej: «Crea un ejercicio sobre el Metro de Quito para 2do BGU») o ajustar este ejercicio.",
         },
-      ]);
+      ])
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false)
     }
-  };
+  }
 
   const submitPrompt = (event: FormEvent) => {
-    event.preventDefault();
-    processPrompt(input);
-  };
+    event.preventDefault()
+
+    processPrompt(input)
+  }
 
   const startNewExercise = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+
     setMessages([
       {
         id: Date.now(),
+
         role: "assistant",
+
         text: "¡Nuevo espacio iniciado! ¿Qué tema o destreza deseas trabajar hoy? Escribe tu idea (ej: «Crea un ejercicio de funciones cuadráticas sobre el Metro de Quito para 2do BGU») o haz una consulta metodológica.",
       },
-    ]);
-    setHasExercise(false);
-    setVersions([]);
-    setInput("");
-    setIsGenerating(false);
-    setSidebarOpen(false);
-  };
+    ])
+
+    setHasExercise(false)
+
+    setVersions([])
+
+    setInput("")
+
+    setIsGenerating(false)
+
+    setSidebarOpen(false)
+  }
 
   const undoVersion = () => {
-    const previous = versions.at(-1);
-    if (!previous) return;
-    setExercise(previous);
-    setVersions((current) => current.slice(0, -1));
+    const previous = versions.at(-1)
+
+    if (!previous) return
+
+    setExercise(previous)
+
+    setVersions((current) => current.slice(0, -1))
+
     setMessages((current) => [
       ...current,
+
       {
         id: Date.now(),
+
         role: "assistant",
+
         text: `Restauré la versión ${previous.version}. Puedes seguir iterando sin perder tu trabajo.`,
+
         exercise: previous,
       },
-    ]);
-  };
+    ])
+  }
 
-  const openRecent = (item: (typeof recentItems)[number]) => {
+  const openRecent = (item: typeof recentItems[number]) => {
     const recentExercise = {
       ...initialExercise,
+
       topic: item.title,
+
       context: item.context,
-    };
-    setExercise(recentExercise);
-    setHasExercise(true);
-    setVersions([]);
+    }
+
+    setExercise(recentExercise)
+
+    setHasExercise(true)
+
+    setVersions([])
+
     setMessages([
       {
         id: Date.now(),
+
         role: "assistant",
+
         text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio con el asistente Gemini.`,
+
         exercise: recentExercise,
       },
-    ]);
-    setSidebarOpen(false);
-  };
+    ])
+
+    setSidebarOpen(false)
+  }
 
   if (view === "landing") {
     return (
@@ -929,11 +1132,12 @@ function App() {
         onEnterApp={() => setView("portal")}
         onNavigate={(target) => setView(target as AppView)}
         onStudentEnter={(pin) => {
-          if (pin) localStorage.setItem("ecdulearm_active_pin", pin);
-          setView("student");
+          if (pin) localStorage.setItem("ecdulearm_active_pin", pin)
+
+          setView("student")
         }}
       />
-    );
+    )
   }
 
   if (view === "portal") {
@@ -943,11 +1147,12 @@ function App() {
         <AccessPortal
           onStudentEnter={() => setView("student")}
           onTeacherEnter={() => setView("dashboard")}
+          onAdminEnter={() => setView("admin")}
           onBackToLanding={() => setView("landing")}
         />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
   }
 
   if (view === "student") {
@@ -960,7 +1165,7 @@ function App() {
         />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
   }
 
   if (view === "dashboard") {
@@ -971,10 +1176,25 @@ function App() {
           onExit={() => setView("portal")}
           onCreateContent={() => setView("chat")}
           onOpenPlanner={() => setView("planner")}
+          onOpenAdmin={() => setView("admin")}
         />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
+  }
+
+  if (view === "admin") {
+    return (
+      <>
+        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+        <AdminDashboard
+          onExit={() => setView("portal")}
+          onNavigateTeacher={() => setView("dashboard")}
+          onNavigateLanding={() => setView("landing")}
+        />
+        <EvaluatorPill currentView={view} onViewChange={setView} />
+      </>
+    )
   }
 
   if (view === "planner") {
@@ -984,7 +1204,7 @@ function App() {
         <PlanningWorkspace onBack={() => setView("dashboard")} />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
   }
 
   if (view === "simulator") {
@@ -994,7 +1214,7 @@ function App() {
         <AdmissionSimulator onBack={() => setView("student")} />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
   }
 
   if (view === "editor") {
@@ -1004,7 +1224,7 @@ function App() {
         <EditorView exercise={exercise} onBack={() => setView("chat")} />
         <EvaluatorPill currentView={view} onViewChange={setView} />
       </>
-    );
+    )
   }
 
   return (
@@ -1056,8 +1276,13 @@ function App() {
           Nuevo ejercicio
         </button>
 
-        <nav className="mt-8 min-h-0 flex-1 overflow-y-auto" aria-label="Ejercicios recientes">
-          <p className="px-2 text-xs font-bold uppercase tracking-widest text-sand-600">Recientes</p>
+        <nav
+          className="mt-8 min-h-0 flex-1 overflow-y-auto"
+          aria-label="Ejercicios recientes"
+        >
+          <p className="px-2 text-xs font-bold uppercase tracking-widest text-sand-600">
+            Recientes
+          </p>
           <div className="mt-3 space-y-1">
             {recentItems.map((item, index) => (
               <button
@@ -1065,11 +1290,17 @@ function App() {
                 type="button"
                 onClick={() => openRecent(item)}
                 className={`min-h-16 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200 ${
-                  index === 0 && hasExercise ? "bg-white ring-1 ring-sand-200" : ""
+                  index === 0 && hasExercise
+                    ? "bg-white ring-1 ring-sand-200"
+                    : ""
                 }`}
               >
-                <span className="block truncate text-sm font-semibold text-sand-900">{item.title}</span>
-                <span className="mt-1 block truncate text-xs text-sand-600">{item.meta}</span>
+                <span className="block truncate text-sm font-semibold text-sand-900">
+                  {item.title}
+                </span>
+                <span className="mt-1 block truncate text-xs text-sand-600">
+                  {item.meta}
+                </span>
               </button>
             ))}
           </div>
@@ -1094,7 +1325,9 @@ function App() {
           </span>
           <span>
             <span className="block text-sm font-semibold">María Andrade</span>
-            <span className="block text-xs text-sand-600">Docente · 2do BGU</span>
+            <span className="block text-xs text-sand-600">
+              Docente · 2do BGU
+            </span>
           </span>
         </button>
       </aside>
@@ -1156,7 +1389,11 @@ function App() {
               Hoy
             </div>
 
-            <div className="space-y-6 print:hidden" aria-live="polite" aria-busy={isGenerating}>
+            <div
+              className="space-y-6 print:hidden"
+              aria-live="polite"
+              aria-busy={isGenerating}
+            >
               {messages.map((message) =>
                 message.role === "user" ? (
                   <div key={message.id} className="flex justify-end">
@@ -1212,10 +1449,15 @@ function App() {
                   ¿Qué vamos a crear hoy?
                 </h1>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-sand-600">
-                  Describe un tema, curso o contexto. ECduLearm lo convertirá en una actividad de razonamiento lista para usar.
+                  Describe un tema, curso o contexto. ECduLearm lo convertirá en
+                  una actividad de razonamiento lista para usar.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  {["Funciones cuadráticas para 1ro BGU", "Probabilidad con fútbol", "Finanzas personales"].map(
+                  {[
+                    "Funciones cuadráticas para 1ro BGU",
+                    "Probabilidad con fútbol",
+                    "Finanzas personales",
+                  ].map(
                     (suggestion) => (
                       <button
                         key={suggestion}
@@ -1237,7 +1479,9 @@ function App() {
         <footer className="sticky bottom-0 z-20 border-t border-sand-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
           <form onSubmit={submitPrompt} className="mx-auto max-w-4xl">
             <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-              <span className="shrink-0 font-bold text-sand-400">Atajos rápidos:</span>
+              <span className="shrink-0 font-bold text-sand-400">
+                Atajos rápidos:
+              </span>
               {quickActions.map((action) => (
                 <button
                   key={action}
@@ -1262,11 +1506,12 @@ function App() {
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    processPrompt(input);
+                    event.preventDefault()
+
+                    processPrompt(input)
                   }
                 }}
-                placeholder='Ej: “más fácil”, “contexto de arquitectura”, “agrega una pregunta”...'
+                placeholder="Ej: “más fácil”, “contexto de arquitectura”, “agrega una pregunta”..."
                 className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-sand-900 outline-none placeholder:text-sand-400 disabled:cursor-wait"
               />
               <button
@@ -1279,142 +1524,217 @@ function App() {
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-sand-400">
-              ECduLearm puede equivocarse. Revisa los resultados antes de usarlos en clase.
+              ECduLearm puede equivocarse. Revisa los resultados antes de
+              usarlos en clase.
             </p>
           </form>
         </footer>
       </div>
       <EvaluatorPill currentView={view} onViewChange={setView} />
     </div>
-  );
+  )
 }
 
 function EvaluatorTopBar({
   currentView,
+
   onViewChange,
 }: {
-  currentView: AppView;
-  onViewChange: (v: AppView) => void;
+  currentView: AppView
+
+  onViewChange: (v: AppView) => void
 }) {
-  const [copied, setCopied] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [keyModalOpen, setKeyModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<"ai" | "database">("ai");
+  const [copied, setCopied] = useState(false)
+
+  const [collapsed, setCollapsed] = useState(false)
+
+  const [keyModalOpen, setKeyModalOpen] = useState(false)
+
+  const [modalTab, setModalTab] = useState<"ai" | "database">("ai")
 
   // Gemini state
-  const [currentKey, setCurrentKey] = useState("");
-  const [inputKey, setInputKey] = useState("");
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
+
+  const [currentKey, setCurrentKey] = useState("")
+
+  const [inputKey, setInputKey] = useState("")
+
+  const [testResult, setTestResult] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isTesting, setIsTesting] = useState(false)
 
   // Supabase state
-  const [supabaseUrl, setSupabaseUrl] = useState("");
-  const [supabaseKey, setSupabaseKey] = useState("");
-  const [isDbConnected, setIsDbConnected] = useState(false);
-  const [dbTestResult, setDbTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isDbTesting, setIsDbTesting] = useState(false);
+
+  const [supabaseUrl, setSupabaseUrl] = useState("")
+
+  const [supabaseKey, setSupabaseKey] = useState("")
+
+  const [isDbConnected, setIsDbConnected] = useState(false)
+
+  const [dbTestResult, setDbTestResult] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isDbTesting, setIsDbTesting] = useState(false)
 
   useEffect(() => {
-    const key = getGeminiApiKey();
-    setCurrentKey(key);
-    setInputKey(key);
+    const key = getGeminiApiKey()
 
-    const dbConfig = getSupabaseConfig();
-    setSupabaseUrl(dbConfig.url);
-    setSupabaseKey(dbConfig.anonKey);
-    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey));
-  }, [keyModalOpen]);
+    setCurrentKey(key)
+
+    setInputKey(key)
+
+    const dbConfig = getSupabaseConfig()
+
+    setSupabaseUrl(dbConfig.url)
+
+    setSupabaseKey(dbConfig.anonKey)
+
+    setIsDbConnected(Boolean(dbConfig.url && dbConfig.anonKey))
+  }, [keyModalOpen])
 
   const handleSaveAndTest = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    setGeminiApiKey(inputKey);
-    setCurrentKey(inputKey);
-    const result = await testGeminiConnection(inputKey);
-    setTestResult(result);
-    setIsTesting(false);
-  };
+    setIsTesting(true)
+
+    setTestResult(null)
+
+    setGeminiApiKey(inputKey)
+
+    setCurrentKey(inputKey)
+
+    const result = await testGeminiConnection(inputKey)
+
+    setTestResult(result)
+
+    setIsTesting(false)
+  }
 
   const handleClearKey = () => {
-    setGeminiApiKey("");
-    setCurrentKey("");
-    setInputKey("");
+    setGeminiApiKey("")
+
+    setCurrentKey("")
+
+    setInputKey("")
+
     setTestResult({
       success: true,
-      message: "Clave eliminada. El sistema operará con el motor de Fallback Offline Inteligente.",
-    });
-  };
+
+      message:
+        "Clave eliminada. El sistema operará con el motor de Fallback Offline Inteligente.",
+    })
+  }
 
   const handleSaveAndTestDb = async () => {
-    setIsDbTesting(true);
-    setDbTestResult(null);
-    setSupabaseConfig(supabaseUrl, supabaseKey);
-    setIsDbConnected(Boolean(supabaseUrl.trim() && supabaseKey.trim()));
+    setIsDbTesting(true)
 
-    const client = getSupabaseClient();
+    setDbTestResult(null)
+
+    setSupabaseConfig(supabaseUrl, supabaseKey)
+
+    setIsDbConnected(Boolean(supabaseUrl.trim() && supabaseKey.trim()))
+
+    const client = getSupabaseClient()
+
     if (!client) {
       setDbTestResult({
         success: false,
-        message: "Por favor proporciona la URL y la Anon Key de tu proyecto de Supabase.",
-      });
-      setIsDbTesting(false);
-      return;
+
+        message:
+          "Por favor proporciona la URL y la Anon Key de tu proyecto de Supabase.",
+      })
+
+      setIsDbTesting(false)
+
+      return
     }
 
     try {
       // Probar conexión contra esquema v2 (aulas_virtuales) o v1 (pin_sessions)
-      let tableName = "aulas_virtuales";
-      let testQuery = await client.from("aulas_virtuales").select("pin_acceso, activa").limit(5);
 
-      if (testQuery.error && (testQuery.error.code === "42P01" || testQuery.error.message?.includes("does not exist"))) {
-        tableName = "pin_sessions";
-        testQuery = await client.from("pin_sessions").select("pin, active").limit(5);
+      let tableName = "aulas_virtuales"
+
+      let testQuery = await client
+        .from("aulas_virtuales")
+        .select("pin_acceso, activa")
+        .limit(5)
+
+      if (
+        testQuery.error &&
+        (testQuery.error.code === "42P01" ||
+          testQuery.error.message?.includes("does not exist"))
+      ) {
+        tableName = "pin_sessions"
+
+        testQuery = await client
+          .from("pin_sessions")
+          .select("pin, active")
+          .limit(5)
       }
 
-      const { data, error } = testQuery;
+      const { data, error } = testQuery
+
       if (error) {
         setDbTestResult({
           success: false,
+
           message: `Error al consultar Supabase (${error.code}): ${error.message}. Recuerda ejecutar el script 'supabase/schema.sql' en el SQL Editor de Supabase.`,
-        });
+        })
       } else {
-        const pinList = (data as any[])?.map((d) => d.pin_acceso || d.pin).filter(Boolean).join(", ");
+        const pinList = (data as any[])
+          ?.map((d) => d.pin_acceso || d.pin)
+          .filter(Boolean)
+          .join(", ")
+
         setDbTestResult({
           success: true,
+
           message: `¡Conexión exitosa a Supabase PostgreSQL! Tabla '${tableName}' activa con ${data?.length || 0} aulas registradas (${pinList || "lista vacía"}).`,
-        });
+        })
       }
     } catch (err) {
       setDbTestResult({
         success: false,
+
         message: `Fallo de conexión: ${(err as Error).message}`,
-      });
+      })
     } finally {
-      setIsDbTesting(false);
+      setIsDbTesting(false)
     }
-  };
+  }
 
   const handleClearDb = () => {
-    setSupabaseConfig("", "");
-    setSupabaseUrl("");
-    setSupabaseKey("");
-    setIsDbConnected(false);
+    setSupabaseConfig("", "")
+
+    setSupabaseUrl("")
+
+    setSupabaseKey("")
+
+    setIsDbConnected(false)
+
     setDbTestResult({
       success: true,
-      message: "Configuración de Supabase eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
-    });
-  };
+
+      message:
+        "Configuración de Supabase eliminada. La persistencia opera ahora con LocalStorage en el navegador.",
+    })
+  }
 
   const copyPin = async () => {
     try {
-      await navigator.clipboard.writeText("PISA26");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText("PISA26")
+
+      setCopied(true)
+
+      setTimeout(() => setCopied(false), 2000)
     } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(true)
+
+      setTimeout(() => setCopied(false), 2000)
     }
-  };
+  }
 
   if (collapsed) {
     return (
@@ -1428,7 +1748,7 @@ function EvaluatorTopBar({
           <span>⚖️ Barra Evaluador</span>
         </button>
       </div>
-    );
+    )
   }
 
   return (
@@ -1443,7 +1763,9 @@ function EvaluatorTopBar({
               <span className="inline-block size-2 rounded-full bg-ink-400 animate-pulse" />
               ⚖️ Modo Demo Evaluador
             </span>
-            <span className="hidden sm:inline text-sand-400 text-[11px]">| Control 1</span>
+            <span className="hidden sm:inline text-sand-400 text-[11px]">
+              | Control 1
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1483,8 +1805,9 @@ function EvaluatorTopBar({
             <button
               type="button"
               onClick={() => {
-                localStorage.setItem("ecdulearm_active_pin", "PISA26");
-                onViewChange("student");
+                localStorage.setItem("ecdulearm_active_pin", "PISA26")
+
+                onViewChange("student")
               }}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 currentView === "student"
@@ -1527,14 +1850,27 @@ function EvaluatorTopBar({
             >
               🎯 Simulador Admisión
             </button>
+            <button
+              type="button"
+              onClick={() => onViewChange("admin")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                currentView === "admin"
+                  ? "bg-hint-600 text-white shadow-sm ring-1 ring-hint-300"
+                  : "bg-hint-950/70 text-hint-300 border border-hint-700/50 hover:bg-hint-900/80"
+              }`}
+              title="Panel de Administración y Control de Usuarios"
+            >
+              🛡️ Admin / Usuarios
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
-                setModalTab("ai");
-                setKeyModalOpen(true);
+                setModalTab("ai")
+
+                setKeyModalOpen(true)
               }}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
                 currentKey
@@ -1543,7 +1879,11 @@ function EvaluatorTopBar({
               }`}
               title="Configurar o probar API Key de Google Gemini"
             >
-              <span className={`inline-block size-1.5 rounded-full ${currentKey ? "bg-ink-400" : "bg-hint-400"}`} />
+              <span
+                className={`inline-block size-1.5 rounded-full ${
+                  currentKey ? "bg-ink-400" : "bg-hint-400"
+                }`}
+              />
               <span>{currentKey ? "Gemini Online" : "Motor Offline"}</span>
               <span className="text-[10px]">⚙️</span>
             </button>
@@ -1551,8 +1891,9 @@ function EvaluatorTopBar({
             <button
               type="button"
               onClick={() => {
-                setModalTab("database");
-                setKeyModalOpen(true);
+                setModalTab("database")
+
+                setKeyModalOpen(true)
               }}
               className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[11px] font-semibold transition ${
                 isDbConnected
@@ -1561,7 +1902,11 @@ function EvaluatorTopBar({
               }`}
               title="Configurar o probar persistencia en base de datos Supabase PostgreSQL"
             >
-              <span className={`inline-block size-1.5 rounded-full ${isDbConnected ? "bg-teal-400" : "bg-amber-400"}`} />
+              <span
+                className={`inline-block size-1.5 rounded-full ${
+                  isDbConnected ? "bg-teal-400" : "bg-amber-400"
+                }`}
+              />
               <span>{isDbConnected ? "Supabase Cloud" : "DB Local"}</span>
               <span className="text-[10px]">🗄️</span>
             </button>
@@ -1572,8 +1917,12 @@ function EvaluatorTopBar({
               className="flex items-center gap-1 rounded bg-ink-950/80 border border-ink-500/40 px-2 py-0.5 text-[11px] font-mono text-ink-300 hover:bg-ink-900/80 transition"
               title="Copiar PIN PISA26 al portapapeles"
             >
-              <span>PIN: <strong>PISA26</strong></span>
-              <span className="text-[10px] text-ink-400">{copied ? "✓ Copiado" : "📋"}</span>
+              <span>
+                PIN: <strong>PISA26</strong>
+              </span>
+              <span className="text-[10px] text-ink-400">
+                {copied ? "✓ Copiado" : "📋"}
+              </span>
             </button>
             <button
               type="button"
@@ -1597,7 +1946,8 @@ function EvaluatorTopBar({
                   <span>⚙️ Configuración de Conectividad & Servicios</span>
                 </h3>
                 <p className="mt-1 text-xs text-sand-400">
-                  Gestión para el jurado / evaluador: Inteligencia Artificial y Base de Datos
+                  Gestión para el jurado / evaluador: Inteligencia Artificial y
+                  Base de Datos
                 </p>
               </div>
               <button
@@ -1638,22 +1988,31 @@ function EvaluatorTopBar({
             {modalTab === "ai" ? (
               <div className="mt-4 space-y-4 text-xs">
                 <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
-                  <p className="text-sand-300 font-semibold mb-1">Estado de la IA en este momento:</p>
+                  <p className="text-sand-300 font-semibold mb-1">
+                    Estado de la IA en este momento:
+                  </p>
                   {currentKey ? (
                     <p className="text-ink-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-ink-400" />
-                      <strong>Modo Online Activo:</strong> Se envían peticiones optimizadas con balanceo multimodelo (Flash-Lite / Flash) para máximo ahorro de tokens y alta disponibilidad.
+                      <strong>Modo Online Activo:</strong> Se envían peticiones
+                      optimizadas con balanceo multimodelo (Flash-Lite / Flash)
+                      para máximo ahorro de tokens y alta disponibilidad.
                     </p>
                   ) : (
                     <p className="text-hint-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-hint-400" />
-                      <strong>Modo Offline Inteligente:</strong> Respuestas automáticas dinámicas adaptadas al currículo ecuatoriano (sin necesidad de API Key).
+                      <strong>Modo Offline Inteligente:</strong> Respuestas
+                      automáticas dinámicas adaptadas al currículo ecuatoriano
+                      (sin necesidad de API Key).
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="gemini-key-input" className="block font-semibold text-sand-200 mb-1">
+                  <label
+                    htmlFor="gemini-key-input"
+                    className="block font-semibold text-sand-200 mb-1"
+                  >
                     API Key de Google Gemini (opcional):
                   </label>
                   <input
@@ -1686,8 +2045,12 @@ function EvaluatorTopBar({
                         : "border-rose-500/50 bg-rose-950/50 text-rose-200"
                     }`}
                   >
-                    <p className="font-semibold">{testResult.success ? "✅ Éxito" : "⚠️ Aviso"}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed">{testResult.message}</p>
+                    <p className="font-semibold">
+                      {testResult.success ? "✅ Éxito" : "⚠️ Aviso"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed">
+                      {testResult.message}
+                    </p>
                   </div>
                 )}
 
@@ -1714,22 +2077,30 @@ function EvaluatorTopBar({
             ) : (
               <div className="mt-4 space-y-4 text-xs">
                 <div className="rounded-xl border border-sand-800 bg-sand-950/80 p-3">
-                  <p className="text-sand-300 font-semibold mb-1">Estado de la Base de Datos:</p>
+                  <p className="text-sand-300 font-semibold mb-1">
+                    Estado de la Base de Datos:
+                  </p>
                   {isDbConnected ? (
                     <p className="text-hint-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-hint-400" />
-                      <strong>Supabase Cloud Activo:</strong> Sincronización en tiempo real de PINs y ejercicios entre diferentes computadoras y teléfonos.
+                      <strong>Supabase Cloud Activo:</strong> Sincronización en
+                      tiempo real de PINs y ejercicios entre diferentes
+                      computadoras y teléfonos.
                     </p>
                   ) : (
                     <p className="text-amber-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-amber-400" />
-                      <strong>Modo LocalStorage:</strong> Las aulas y PINs se almacenan localmente en el navegador de este dispositivo.
+                      <strong>Modo LocalStorage:</strong> Las aulas y PINs se
+                      almacenan localmente en el navegador de este dispositivo.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="supabase-url-input" className="block font-semibold text-sand-200 mb-1">
+                  <label
+                    htmlFor="supabase-url-input"
+                    className="block font-semibold text-sand-200 mb-1"
+                  >
                     Project URL de Supabase:
                   </label>
                   <input
@@ -1743,7 +2114,10 @@ function EvaluatorTopBar({
                 </div>
 
                 <div>
-                  <label htmlFor="supabase-key-input" className="block font-semibold text-sand-200 mb-1">
+                  <label
+                    htmlFor="supabase-key-input"
+                    className="block font-semibold text-sand-200 mb-1"
+                  >
                     Anon Public Key (Clave Pública Anónima):
                   </label>
                   <input
@@ -1764,7 +2138,11 @@ function EvaluatorTopBar({
                     >
                       supabase.com
                     </a>{" "}
-                    y ejecuta el script disponible en <span className="font-mono text-amber-300">supabase/schema.sql</span>.
+                    y ejecuta el script disponible en{" "}
+                    <span className="font-mono text-amber-300">
+                      supabase/schema.sql
+                    </span>
+                    .
                   </p>
                 </div>
 
@@ -1776,8 +2154,14 @@ function EvaluatorTopBar({
                         : "border-rose-500/50 bg-rose-950/50 text-rose-200"
                     }`}
                   >
-                    <p className="font-semibold">{dbTestResult.success ? "✅ Conexión Exitosa" : "⚠️ Aviso de Base de Datos"}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed">{dbTestResult.message}</p>
+                    <p className="font-semibold">
+                      {dbTestResult.success
+                        ? "✅ Conexión Exitosa"
+                        : "⚠️ Aviso de Base de Datos"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed">
+                      {dbTestResult.message}
+                    </p>
                   </div>
                 )}
 
@@ -1788,7 +2172,9 @@ function EvaluatorTopBar({
                     onClick={handleSaveAndTestDb}
                     className="flex-1 rounded-xl bg-hint-500 px-4 py-2.5 font-bold text-sand-950 transition hover:bg-hint-400 disabled:opacity-50"
                   >
-                    {isDbTesting ? "Comprobando..." : "Guardar y Probar Conexión BD"}
+                    {isDbTesting
+                      ? "Comprobando..."
+                      : "Guardar y Probar Conexión BD"}
                   </button>
                   {isDbConnected && (
                     <button
@@ -1806,37 +2192,67 @@ function EvaluatorTopBar({
         </div>
       )}
     </>
-  );
+  )
 }
 
-function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; onViewChange: (v: AppView) => void }) {
-  const [open, setOpen] = useState(false);
+function EvaluatorPill({
+  currentView,
+  onViewChange,
+}: {
+  currentView: AppView
+  onViewChange: (v: AppView) => void
+}) {
+  const [open, setOpen] = useState(false)
+
   const viewsList: [AppView, string][] = [
     ["landing", "🏠 Inicio / Landing"],
+
     ["portal", "Portal Acceso"],
+
     ["dashboard", "Panel Docente"],
+
     ["chat", "Chat IA Docente"],
+
     ["editor", "Editor de Guía"],
+
     ["planner", "Planificador ERCA"],
+
     ["student", "Zona Estudiante"],
+
     ["simulator", "Simulador Admisión"],
-  ];
+
+    ["admin", "🛡️ Administración"],
+  ]
+
   return (
     <div className="fixed bottom-3 right-3 z-50 print:hidden font-sans">
       {open ? (
         <div className="rounded-2xl border border-sand-700 bg-sand-950/95 p-3 text-white shadow-2xl backdrop-blur-md text-xs">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2 mb-2">
-            <span className="font-bold text-hint-300">⚖️ Modo Jurado / Evaluador</span>
-            <button type="button" onClick={() => setOpen(false)} className="text-sand-400 hover:text-white px-1">✕</button>
+            <span className="font-bold text-hint-300">
+              ⚖️ Modo Jurado / Evaluador
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-sand-400 hover:text-white px-1"
+            >
+              ✕
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             {viewsList.map(([v, label]) => (
               <button
                 key={v}
                 type="button"
-                onClick={() => { onViewChange(v); setOpen(false); }}
+                onClick={() => {
+                  onViewChange(v)
+                  setOpen(false)
+                }}
                 className={`rounded-lg px-2.5 py-1.5 text-left font-medium transition ${
-                  currentView === v ? "bg-ink-500 text-sand-950 font-bold" : "hover:bg-white/10 text-sand-200"
+                  currentView === v
+                    ? "bg-ink-500 text-sand-950 font-bold"
+                    : "hover:bg-white/10 text-sand-200"
                 }`}
               >
                 {label}
@@ -1855,7 +2271,7 @@ function EvaluatorPill({ currentView, onViewChange }: { currentView: AppView; on
         </button>
       )}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

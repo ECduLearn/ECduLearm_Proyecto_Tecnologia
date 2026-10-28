@@ -176,6 +176,9 @@ const STORAGE_KEYS = {
   LOCAL_AULAS: "ecdulearn_db_aulas",
   LOCAL_SESIONES: "ecdulearn_db_sesiones_anonimas",
   LOCAL_INTENTOS: "ecdulearn_db_intentos",
+  LOCAL_USUARIOS: "ecdulearn_db_usuarios_institucionales",
+  LOCAL_INSTITUCIONES: "ecdulearn_db_instituciones",
+  LOCAL_AUDITORIA: "ecdulearn_db_auditoria_admin",
 };
 
 // Usuario semilla pre-aprobado para el Evaluador/Jurado
@@ -195,8 +198,8 @@ export const DEMO_DOCENTE_USER: DbUsuarioInstitucional = {
 
 export const authController = {
   /**
-   * Inicia sesión como docente o coordinador institucional.
-   * Soporta credenciales demo ('docente@puce.edu.ec' / 'demo123') y consulta real en Supabase.
+   * Inicia sesión como docente, coordinador o administrador institucional.
+   * Soporta credenciales demo ('admin@ecdulearn.edu.ec', 'docente@puce.edu.ec' / 'demo123') y consulta real en Supabase.
    */
   async loginDocente(
     email: string,
@@ -214,12 +217,19 @@ export const authController = {
 
         if (!error && data) {
           if (data.success) {
+            const normalizedRole: "docente" | "coordinador" | "admin" =
+              data.role === "ADMIN" || data.role === "admin"
+                ? "admin"
+                : data.role === "coordinador_rector" || data.role === "COORDINADOR_RECTOR"
+                ? "coordinador"
+                : "docente";
+
             const teacherUser: TeacherUser = {
               id: data.id,
               name: data.name,
               email: data.email,
               institution: data.institution || "Unidad Educativa Demo ECduLearn",
-              role: data.role === "coordinador_rector" ? "coordinador" : "docente",
+              role: normalizedRole,
             };
             if (typeof window !== "undefined") {
               localStorage.setItem(STORAGE_KEYS.USER_SESSION, JSON.stringify(teacherUser));
@@ -245,27 +255,40 @@ export const authController = {
     }
 
     // 2. Modo contingencia offline (solo si no hay internet o Supabase no responde)
-    // Únicamente se admiten las cuentas institucionales oficiales precargadas
-    const OFFLINE_WHITELIST: Record<string, { id: string; name: string; role: "docente" | "coordinador" }> = {
+    // Cuentas institucionales oficiales precargadas con roles definidos
+    const OFFLINE_WHITELIST: Record<
+      string,
+      { id: string; name: string; role: "docente" | "coordinador" | "admin"; institution: string }
+    > = {
+      "admin@ecdulearn.edu.ec": {
+        id: "99999999-9999-4999-8999-999999999999",
+        name: "Administrador Central ECduLearn",
+        role: "admin",
+        institution: "ECduLearn HQ · Administración Central",
+      },
+      "joan.santacruz@ecdulearn.edu.ec": {
+        id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        name: "Joan Sebastian Santacruz (Fundador & Admin)",
+        role: "admin",
+        institution: "ECduLearn HQ · Administración Central",
+      },
+      "ariel.chacha@ecdulearn.edu.ec": {
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        name: "Ariel Fabricio Chacha (Tech Lead & Admin)",
+        role: "admin",
+        institution: "ECduLearn HQ · Administración Central",
+      },
       "docente@puce.edu.ec": {
         id: DEMO_DOCENTE_USER.id,
         name: DEMO_DOCENTE_USER.nombre_completo,
         role: "docente",
-      },
-      "ariel.chacha@ecdulearn.edu.ec": {
-        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        name: "Ariel Fabricio Chacha (Tech Lead)",
-        role: "docente",
-      },
-      "joan.santacruz@ecdulearn.edu.ec": {
-        id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-        name: "Joan Sebastian Santacruz (Backend)",
-        role: "docente",
+        institution: "Unidad Educativa Demo ECduLearn (PUCE)",
       },
       "rector@puce.edu.ec": {
         id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-        name: "Rectorado PUCE Demo",
+        name: "Mgs. Roberto Paredes (Rectorado PUCE)",
         role: "coordinador",
+        institution: "Unidad Educativa Demo ECduLearn (PUCE)",
       },
     };
 
@@ -275,7 +298,7 @@ export const authController = {
         id: match.id,
         name: match.name,
         email: cleanEmail,
-        institution: "Unidad Educativa Demo ECduLearn (PUCE)",
+        institution: match.institution,
         role: match.role,
       };
       if (typeof window !== "undefined") {
@@ -1035,3 +1058,722 @@ export const metricasController = {
     };
   },
 };
+
+// ==============================================================================
+// 10. CONTROLADOR DE ADMINISTRACIÓN B2B Y GESTIÓN DE USUARIOS (adminController)
+// ==============================================================================
+
+export interface DbAuditLog {
+  id: string;
+  timestamp: string;
+  autor: string;
+  accion:
+    | "CREACION_USUARIO"
+    | "MODIFICACION_PERMISOS"
+    | "CAMBIO_ROL"
+    | "DESACTIVACION_USUARIO"
+    | "ACTIVACION_USUARIO"
+    | "ELIMINACION_USUARIO"
+    | "CREACION_COLEGIO"
+    | "RESET_PASSWORD";
+  detalle: string;
+  target_email?: string;
+}
+
+export const CATALOGO_ASIGNATURAS: { id: number; nombre: string }[] = [
+  { id: 1, nombre: "Matemáticas" },
+  { id: 2, nombre: "Física" },
+  { id: 3, nombre: "Química" },
+  { id: 4, nombre: "Biología" },
+  { id: 5, nombre: "Razonamiento Lógico y Verbal" },
+];
+
+export const SEED_INSTITUCIONES: DbInstitucion[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000000",
+    nombre: "ECduLearn HQ · Administración Central",
+    codigo_amie: "17H99999",
+    tipo_institucion: "PARTICULAR",
+    plan_suscripcion: "ACTIVA",
+    pin_grado_autonomo: "ADM001",
+    limite_docentes: 50,
+    ciudad: "Quito",
+    provincia: "Pichincha",
+  },
+  {
+    id: "11111111-1111-4111-8111-111111111111",
+    nombre: "Unidad Educativa Demo ECduLearn (PUCE)",
+    codigo_amie: "17H00000",
+    tipo_institucion: "PARTICULAR",
+    plan_suscripcion: "PILOTO",
+    pin_grado_autonomo: "GRADO1",
+    limite_docentes: 15,
+    ciudad: "Quito",
+    provincia: "Pichincha",
+  },
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    nombre: "Colegio Experimental 24 de Mayo",
+    codigo_amie: "17H00024",
+    tipo_institucion: "FISCAL",
+    plan_suscripcion: "CONVENIO",
+    pin_grado_autonomo: "24MAYO",
+    limite_docentes: 25,
+    ciudad: "Quito",
+    provincia: "Pichincha",
+  },
+  {
+    id: "33333333-3333-4333-8333-333333333333",
+    nombre: "Unidad Educativa Manuela Cañizares",
+    codigo_amie: "17H00035",
+    tipo_institucion: "FISCAL",
+    plan_suscripcion: "ACTIVA",
+    pin_grado_autonomo: "MANUEL",
+    limite_docentes: 20,
+    ciudad: "Quito",
+    provincia: "Pichincha",
+  },
+  {
+    id: "44444444-4444-4444-8444-444444444444",
+    nombre: "Colegio San Gabriel de Quito",
+    codigo_amie: "17H00048",
+    tipo_institucion: "FISCOMISIONAL",
+    plan_suscripcion: "ACTIVA",
+    pin_grado_autonomo: "SANGAB",
+    limite_docentes: 30,
+    ciudad: "Quito",
+    provincia: "Pichincha",
+  },
+];
+
+export interface UsuarioConDetalles extends DbUsuarioInstitucional {
+  institucion_nombre?: string;
+  codigo_amie?: string;
+  asignatura_nombre?: string;
+  created_at?: string;
+  ultimo_acceso_en?: string;
+}
+
+export const SEED_USUARIOS_INSTITUCIONALES: UsuarioConDetalles[] = [
+  {
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    institucion_id: "00000000-0000-4000-8000-000000000000",
+    nombre_completo: "Joan Sebastian Santacruz",
+    email_institucional: "joan.santacruz@ecdulearn.edu.ec",
+    rol: "ADMIN",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "ECduLearn HQ · Administración Central",
+    codigo_amie: "17H99999",
+    asignatura_nombre: "Matemáticas y Algoritmos",
+    created_at: "2026-09-01T08:00:00Z",
+    ultimo_acceso_en: "Hace 5 minutos",
+  },
+  {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    institucion_id: "00000000-0000-4000-8000-000000000000",
+    nombre_completo: "Ariel Fabricio Chacha",
+    email_institucional: "ariel.chacha@ecdulearn.edu.ec",
+    rol: "ADMIN",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "ECduLearn HQ · Administración Central",
+    codigo_amie: "17H99999",
+    asignatura_nombre: "Matemáticas y Arquitectura",
+    created_at: "2026-09-01T08:00:00Z",
+    ultimo_acceso_en: "Hace 12 minutos",
+  },
+  {
+    id: "99999999-9999-4999-8999-999999999999",
+    institucion_id: "00000000-0000-4000-8000-000000000000",
+    nombre_completo: "Super Administrador ECduLearn",
+    email_institucional: "admin@ecdulearn.edu.ec",
+    rol: "ADMIN",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "ECduLearn HQ · Administración Central",
+    codigo_amie: "17H99999",
+    asignatura_nombre: "Administración General",
+    created_at: "2026-08-15T08:00:00Z",
+    ultimo_acceso_en: "Activo ahora",
+  },
+  {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    institucion_id: "11111111-1111-4111-8111-111111111111",
+    nombre_completo: "Docente Demo PUCE",
+    email_institucional: "docente@puce.edu.ec",
+    rol: "DOCENTE",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "Unidad Educativa Demo ECduLearn (PUCE)",
+    codigo_amie: "17H00000",
+    asignatura_nombre: "Matemáticas",
+    created_at: "2026-10-01T08:00:00Z",
+    ultimo_acceso_en: "Hace 1 hora",
+  },
+  {
+    id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    institucion_id: "11111111-1111-4111-8111-111111111111",
+    nombre_completo: "Mgs. Roberto Paredes (Rectorado PUCE)",
+    email_institucional: "rector@puce.edu.ec",
+    rol: "COORDINADOR_RECTOR",
+    asignatura_principal_id: null,
+    activo: true,
+    institucion_nombre: "Unidad Educativa Demo ECduLearn (PUCE)",
+    codigo_amie: "17H00000",
+    asignatura_nombre: "Coordinación Pedagógica",
+    created_at: "2026-10-01T08:00:00Z",
+    ultimo_acceso_en: "Ayer",
+  },
+  {
+    id: "55555555-5555-4555-8555-555555555555",
+    institucion_id: "22222222-2222-4222-8222-222222222222",
+    nombre_completo: "Prof. Marco Andrade",
+    email_institucional: "marco.andrade@24demayo.edu.ec",
+    rol: "DOCENTE",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "Colegio Experimental 24 de Mayo",
+    codigo_amie: "17H00024",
+    asignatura_nombre: "Matemáticas",
+    created_at: "2026-10-05T08:00:00Z",
+    ultimo_acceso_en: "Hace 3 horas",
+  },
+  {
+    id: "66666666-6666-4666-8666-666666666666",
+    institucion_id: "33333333-3333-4333-8333-333333333333",
+    nombre_completo: "Lcda. Patricia Morales",
+    email_institucional: "patricia.morales@manuela.edu.ec",
+    rol: "DOCENTE",
+    asignatura_principal_id: 2,
+    activo: true,
+    institucion_nombre: "Unidad Educativa Manuela Cañizares",
+    codigo_amie: "17H00035",
+    asignatura_nombre: "Física",
+    created_at: "2026-10-08T08:00:00Z",
+    ultimo_acceso_en: "Hace 2 días",
+  },
+  {
+    id: "77777777-7777-4777-8777-777777777777",
+    institucion_id: "44444444-4444-4444-8444-444444444444",
+    nombre_completo: "Lic. Carlos Mendoza",
+    email_institucional: "carlos.mendoza@sangabriel.edu.ec",
+    rol: "DOCENTE",
+    asignatura_principal_id: 1,
+    activo: true,
+    institucion_nombre: "Colegio San Gabriel de Quito",
+    codigo_amie: "17H00048",
+    asignatura_nombre: "Matemáticas",
+    created_at: "2026-10-10T08:00:00Z",
+    ultimo_acceso_en: "Hace 4 horas",
+  },
+  {
+    id: "88888888-8888-4888-8888-888888888888",
+    institucion_id: "44444444-4444-4444-8444-444444444444",
+    nombre_completo: "Dra. Carmen Salazar",
+    email_institucional: "carmen.salazar@sangabriel.edu.ec",
+    rol: "COORDINADOR_RECTOR",
+    asignatura_principal_id: null,
+    activo: false,
+    institucion_nombre: "Colegio San Gabriel de Quito",
+    codigo_amie: "17H00048",
+    asignatura_nombre: "Vicerrectorado Académico",
+    created_at: "2026-10-10T08:00:00Z",
+    ultimo_acceso_en: "Hace 5 días",
+  },
+];
+
+function recordAuditLog(
+  accion: DbAuditLog["accion"],
+  detalle: string,
+  targetEmail?: string
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AUDITORIA);
+    const logs: DbAuditLog[] = raw ? JSON.parse(raw) : [];
+    const currentUser = authController.getCurrentUser();
+    const newEntry: DbAuditLog = {
+      id: "log-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      timestamp:
+        new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
+        " · " +
+        new Date().toLocaleDateString("es-EC"),
+      autor: currentUser?.name || "Administrador Central",
+      accion,
+      detalle,
+      target_email: targetEmail,
+    };
+    logs.unshift(newEntry);
+    localStorage.setItem(STORAGE_KEYS.LOCAL_AUDITORIA, JSON.stringify(logs.slice(0, 100)));
+  } catch (err) {
+    console.warn("[adminController] Error guardando log de auditoría:", err);
+  }
+}
+
+export const adminController = {
+  /**
+   * Obtiene la lista de usuarios institucionales (con nombres de colegio y asignatura).
+   */
+  async getUsuarios(): Promise<UsuarioConDetalles[]> {
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from("usuarios_institucionales")
+          .select("*, instituciones(nombre, codigo_amie), asignaturas(nombre)")
+          .order("created_at", { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          return data.map((u: any) => ({
+            id: u.id,
+            institucion_id: u.institucion_id,
+            nombre_completo: u.nombre_completo,
+            email_institucional: u.email_institucional,
+            rol: u.rol,
+            asignatura_principal_id: u.asignatura_principal_id,
+            activo: u.activo,
+            institucion_nombre: u.instituciones?.nombre || "Institución Educativa",
+            codigo_amie: u.instituciones?.codigo_amie || "N/A",
+            asignatura_nombre: u.asignaturas?.nombre || "Sin Asignar",
+            created_at: u.created_at,
+            ultimo_acceso_en: u.ultimo_acceso_en || "No registrado",
+          }));
+        }
+      } catch (err) {
+        console.warn("[adminController] Consulta a Supabase no disponible, usando fallback local:", err);
+      }
+    }
+
+    // Fallback LocalStorage
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_USUARIOS);
+        if (raw) return JSON.parse(raw);
+        localStorage.setItem(STORAGE_KEYS.LOCAL_USUARIOS, JSON.stringify(SEED_USUARIOS_INSTITUCIONALES));
+      } catch {}
+    }
+    return SEED_USUARIOS_INSTITUCIONALES;
+  },
+
+  /**
+   * Crea un nuevo usuario institucional (docente, directivo o admin).
+   * Valida unicidad de correo y respeta límite de docentes contratado por la institución.
+   */
+  async createUsuario(data: {
+    nombre_completo: string;
+    email_institucional: string;
+    rol: "DOCENTE" | "COORDINADOR_RECTOR" | "ADMIN";
+    institucion_id: string;
+    asignatura_principal_id?: number | null;
+    activo?: boolean;
+  }): Promise<{ success: boolean; usuario?: UsuarioConDetalles; message: string }> {
+    const cleanEmail = sanitizeInput(data.email_institucional).toLowerCase();
+    const cleanNombre = sanitizeInput(data.nombre_completo);
+
+    if (!cleanNombre || cleanNombre.length < 3) {
+      return { success: false, message: "El nombre completo debe tener al menos 3 caracteres." };
+    }
+
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return { success: false, message: "El correo electrónico institucional no tiene un formato válido." };
+    }
+
+    const currentUsers = await this.getUsuarios();
+    if (currentUsers.some((u) => u.email_institucional.toLowerCase() === cleanEmail)) {
+      return { success: false, message: `Ya existe un usuario registrado con el correo "${cleanEmail}".` };
+    }
+
+    // Validar límite de docentes de la institución (regla de negocio SQL fn_validar_limite_docentes)
+    const instituciones = await this.getInstituciones();
+    const inst = instituciones.find((i) => i.id === data.institucion_id);
+    if (inst && data.rol === "DOCENTE") {
+      const docentesInst = currentUsers.filter((u) => u.institucion_id === inst.id && u.rol === "DOCENTE" && u.activo);
+      if (docentesInst.length >= inst.limite_docentes) {
+        return {
+          success: false,
+          message: `La institución "${inst.nombre}" ha alcanzado su límite de ${inst.limite_docentes} docentes contratados. Por favor amplía la suscripción del colegio.`,
+        };
+      }
+    }
+
+    const newId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : "usr-" + Date.now() + "-" + Math.random().toString(36).substring(2, 8);
+
+    const asig = CATALOGO_ASIGNATURAS.find((a) => a.id === data.asignatura_principal_id);
+
+    const newUser: UsuarioConDetalles = {
+      id: newId,
+      institucion_id: data.institucion_id,
+      nombre_completo: cleanNombre,
+      email_institucional: cleanEmail,
+      rol: data.rol,
+      asignatura_principal_id: data.asignatura_principal_id || null,
+      activo: data.activo !== undefined ? data.activo : true,
+      institucion_nombre: inst?.nombre || "Institución Educativa",
+      codigo_amie: inst?.codigo_amie || "N/A",
+      asignatura_nombre: asig?.nombre || (data.rol === "COORDINADOR_RECTOR" ? "Directivo Institucional" : "Sin Asignar"),
+      created_at: new Date().toISOString(),
+      ultimo_acceso_en: "Pendiente de primer ingreso",
+    };
+
+    // Intentar inserción en Supabase
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from("usuarios_institucionales").insert({
+          id: newUser.id,
+          institucion_id: newUser.institucion_id,
+          nombre_completo: newUser.nombre_completo,
+          email_institucional: newUser.email_institucional,
+          rol: newUser.rol,
+          asignatura_principal_id: newUser.asignatura_principal_id,
+          activo: newUser.activo,
+        });
+      } catch (err) {
+        console.warn("[adminController] No se pudo guardar en Supabase directamente:", err);
+      }
+    }
+
+    // Persistir localmente
+    const updatedList = [newUser, ...currentUsers];
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_USUARIOS, JSON.stringify(updatedList));
+    }
+
+    recordAuditLog(
+      "CREACION_USUARIO",
+      `Se creó el usuario "${cleanNombre}" con rol ${data.rol} en "${newUser.institucion_nombre}".`,
+      cleanEmail
+    );
+
+    return {
+      success: true,
+      usuario: newUser,
+      message: `Usuario "${cleanNombre}" creado con éxito. Cuenta autorizada para ingresar a ECduLearm.`,
+    };
+  },
+
+  /**
+   * Modifica un usuario institucional y sus permisos/roles.
+   */
+  async updateUsuario(
+    id: string,
+    updates: Partial<UsuarioConDetalles>
+  ): Promise<{ success: boolean; usuario?: UsuarioConDetalles; message: string }> {
+    const list = await this.getUsuarios();
+    const index = list.findIndex((u) => u.id === id);
+    if (index === -1) {
+      return { success: false, message: "El usuario no fue encontrado en la base de datos." };
+    }
+
+    const previous = list[index];
+    const cleanNombre = updates.nombre_completo ? sanitizeInput(updates.nombre_completo) : previous.nombre_completo;
+    const cleanEmail = updates.email_institucional ? sanitizeInput(updates.email_institucional).toLowerCase() : previous.email_institucional;
+
+    let instNombre = previous.institucion_nombre;
+    let amie = previous.codigo_amie;
+    if (updates.institucion_id && updates.institucion_id !== previous.institucion_id) {
+      const instituciones = await this.getInstituciones();
+      const inst = instituciones.find((i) => i.id === updates.institucion_id);
+      if (inst) {
+        instNombre = inst.nombre;
+        amie = inst.codigo_amie || "N/A";
+      }
+    }
+
+    let asigNombre = previous.asignatura_nombre;
+    if (updates.asignatura_principal_id !== undefined) {
+      const asig = CATALOGO_ASIGNATURAS.find((a) => a.id === updates.asignatura_principal_id);
+      asigNombre = asig ? asig.nombre : "Sin Asignar";
+    }
+
+    const updatedUser: UsuarioConDetalles = {
+      ...previous,
+      ...updates,
+      nombre_completo: cleanNombre,
+      email_institucional: cleanEmail,
+      institucion_nombre: instNombre,
+      codigo_amie: amie,
+      asignatura_nombre: asigNombre,
+    };
+
+    list[index] = updatedUser;
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from("usuarios_institucionales")
+          .update({
+            nombre_completo: updatedUser.nombre_completo,
+            email_institucional: updatedUser.email_institucional,
+            rol: updatedUser.rol,
+            institucion_id: updatedUser.institucion_id,
+            asignatura_principal_id: updatedUser.asignatura_principal_id,
+            activo: updatedUser.activo,
+          })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("[adminController] Error actualizando en Supabase:", err);
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_USUARIOS, JSON.stringify(list));
+    }
+
+    const rolCambio = previous.rol !== updatedUser.rol;
+    recordAuditLog(
+      rolCambio ? "CAMBIO_ROL" : "MODIFICACION_PERMISOS",
+      `Se actualizaron datos del usuario "${updatedUser.nombre_completo}". Rol anterior: ${previous.rol} -> Nuevo rol: ${updatedUser.rol}.`,
+      updatedUser.email_institucional
+    );
+
+    return {
+      success: true,
+      usuario: updatedUser,
+      message: `Usuario "${updatedUser.nombre_completo}" actualizado correctamente.`,
+    };
+  },
+
+  /**
+   * Concede o revoca permisos de acceso de un usuario con un clic (toggle activo).
+   */
+  async toggleUsuarioActivo(id: string, activo: boolean): Promise<{ success: boolean; message: string }> {
+    const list = await this.getUsuarios();
+    const user = list.find((u) => u.id === id);
+    if (!user) return { success: false, message: "Usuario no encontrado." };
+
+    user.activo = activo;
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from("usuarios_institucionales").update({ activo }).eq("id", id);
+      } catch (err) {
+        console.warn("[adminController] Error toggle en Supabase:", err);
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_USUARIOS, JSON.stringify(list));
+    }
+
+    recordAuditLog(
+      activo ? "ACTIVACION_USUARIO" : "DESACTIVACION_USUARIO",
+      activo
+        ? `Se reactivaron los permisos y acceso de "${user.nombre_completo}".`
+        : `Se suspendieron los permisos y revocó el acceso de "${user.nombre_completo}".`,
+      user.email_institucional
+    );
+
+    return {
+      success: true,
+      message: activo
+        ? `Permisos activados: "${user.nombre_completo}" ahora puede ingresar.`
+        : `Permisos revocados: "${user.nombre_completo}" no podrá acceder a la plataforma.`,
+    };
+  },
+
+  /**
+   * Elimina un usuario de la lista de gestión institucional.
+   */
+  async deleteUsuario(id: string): Promise<{ success: boolean; message: string }> {
+    const list = await this.getUsuarios();
+    const user = list.find((u) => u.id === id);
+    if (!user) return { success: false, message: "Usuario no encontrado." };
+
+    const remaining = list.filter((u) => u.id !== id);
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from("usuarios_institucionales").delete().eq("id", id);
+      } catch (err) {
+        console.warn("[adminController] Error eliminando en Supabase:", err);
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_USUARIOS, JSON.stringify(remaining));
+    }
+
+    recordAuditLog(
+      "ELIMINACION_USUARIO",
+      `Se eliminó permanentemente el usuario "${user.nombre_completo}" (${user.email_institucional}).`,
+      user.email_institucional
+    );
+
+    return {
+      success: true,
+      message: `Usuario "${user.nombre_completo}" eliminado del sistema.`,
+    };
+  },
+
+  /**
+   * Genera una clave provisional / PIN de bienvenida para el docente.
+   */
+  async resetPassword(id: string): Promise<{ success: boolean; pinProvisional: string; message: string }> {
+    const list = await this.getUsuarios();
+    const user = list.find((u) => u.id === id);
+    if (!user) return { success: false, pinProvisional: "", message: "Usuario no encontrado." };
+
+    const pinProvisional = "ECU" + Math.floor(1000 + Math.random() * 9000);
+
+    recordAuditLog(
+      "RESET_PASSWORD",
+      `Se generó una clave de acceso provisional (${pinProvisional}) para "${user.nombre_completo}".`,
+      user.email_institucional
+    );
+
+    return {
+      success: true,
+      pinProvisional,
+      message: `Clave provisional generada con éxito para ${user.email_institucional}: ${pinProvisional}`,
+    };
+  },
+
+  /**
+   * Obtiene la lista de instituciones educativas / colegios B2B.
+   */
+  async getInstituciones(): Promise<DbInstitucion[]> {
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from("instituciones")
+          .select("*")
+          .order("nombre", { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn("[adminController] Supabase instituciones no disponible:", err);
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_INSTITUCIONES);
+        if (raw) return JSON.parse(raw);
+        localStorage.setItem(STORAGE_KEYS.LOCAL_INSTITUCIONES, JSON.stringify(SEED_INSTITUCIONES));
+      } catch {}
+    }
+    return SEED_INSTITUCIONES;
+  },
+
+  /**
+   * Registra una nueva institución educativa asociada.
+   */
+  async createInstitucion(
+    data: Omit<DbInstitucion, "id">
+  ): Promise<{ success: boolean; institucion?: DbInstitucion; message: string }> {
+    const cleanNombre = sanitizeInput(data.nombre);
+    const cleanAmie = sanitizeInput(data.codigo_amie || "").toUpperCase();
+
+    const newInst: DbInstitucion = {
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "inst-" + Date.now(),
+      nombre: cleanNombre,
+      codigo_amie: cleanAmie || null,
+      tipo_institucion: data.tipo_institucion,
+      plan_suscripcion: data.plan_suscripcion,
+      pin_grado_autonomo: data.pin_grado_autonomo || null,
+      limite_docentes: Number(data.limite_docentes) || 15,
+      ciudad: data.ciudad || "Quito",
+      provincia: data.provincia || "Pichincha",
+    };
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from("instituciones").insert(newInst);
+      } catch (err) {
+        console.warn("[adminController] Error insertando colegio en Supabase:", err);
+      }
+    }
+
+    const list = await this.getInstituciones();
+    const updated = [...list, newInst];
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_INSTITUCIONES, JSON.stringify(updated));
+    }
+
+    recordAuditLog(
+      "CREACION_COLEGIO",
+      `Se registró la nueva institución educativa "${newInst.nombre}" con cupo para ${newInst.limite_docentes} docentes.`
+    );
+
+    return {
+      success: true,
+      institucion: newInst,
+      message: `Institución "${newInst.nombre}" registrada exitosamente.`,
+    };
+  },
+
+  /**
+   * Obtiene los registros de auditoría de acciones administrativas.
+   */
+  getAuditLogs(): DbAuditLog[] {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AUDITORIA);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [
+      {
+        id: "log-seed-1",
+        timestamp: "2026-10-27 19:30:00 · Hoy",
+        autor: "Joan Sebastian Santacruz (Fundador)",
+        accion: "CREACION_USUARIO",
+        detalle: "Se dio de alta al Docente Demo PUCE con asignación a Matemáticas.",
+        target_email: "docente@puce.edu.ec",
+      },
+      {
+        id: "log-seed-2",
+        timestamp: "2026-10-27 18:45:00 · Hoy",
+        autor: "Ariel Fabricio Chacha (Tech Lead)",
+        accion: "MODIFICACION_PERMISOS",
+        detalle: "Se activaron políticas de aislamiento relacional Cero-PII para colegios de Quito.",
+      },
+    ];
+  },
+
+  /**
+   * Obtiene métricas globales del tenant para el dashboard de administración.
+   */
+  async getAdminStats() {
+    const usuarios = await this.getUsuarios();
+    const instituciones = await this.getInstituciones();
+
+    const totalUsuarios = usuarios.length;
+    const docentesActivos = usuarios.filter((u) => u.rol === "DOCENTE" && u.activo).length;
+    const coordinadores = usuarios.filter((u) => u.rol === "COORDINADOR_RECTOR").length;
+    const administradores = usuarios.filter((u) => u.rol === "ADMIN").length;
+    const usuariosInactivos = usuarios.filter((u) => !u.activo).length;
+
+    const totalCupos = instituciones.reduce((acc, curr) => acc + (curr.limite_docentes || 0), 0);
+    const cuposUtilizados = usuarios.filter((u) => u.rol === "DOCENTE").length;
+    const pctUtilizacion = totalCupos > 0 ? Math.round((cuposUtilizados / totalCupos) * 100) : 0;
+
+    return {
+      totalUsuarios,
+      docentesActivos,
+      coordinadores,
+      administradores,
+      usuariosInactivos,
+      totalInstituciones: instituciones.length,
+      totalCupos,
+      cuposUtilizados,
+      pctUtilizacion,
+    };
+  },
+};
+
