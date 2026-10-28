@@ -28,8 +28,8 @@ const DEFAULT_MODELS = [
   "gemini-3.5-flash",
 ];
 
-const PER_MODEL_TIMEOUT_MS = 8_000;
-const TOTAL_BUDGET_MS = 15_000;
+const PER_MODEL_TIMEOUT_MS = 10_000;
+const TOTAL_BUDGET_MS = 16_000;
 const MAX_BODY_BYTES = 32_000;
 const MAX_TEXT = 2_000;
 const MAX_HISTORY = 12;
@@ -62,9 +62,19 @@ Si tu respuesta genera o modifica un ejercicio, incluye OBLIGATORIAMENTE un bloq
   "questions": 3,
   "situation": "Párrafo completo con la situación problemática contextualizada en Ecuador",
   "questionList": ["Pregunta 1", "Pregunta 2", "Pregunta 3"],
+  "solucionDocente": "1. Comprensión: ...\\n2. Variables: ...\\n3. Modelo: ...\\n4. Cálculo: ...\\n5. Interpretación: ...",
+  "respuestaCorrecta": "Resultado final verificado de cada pregunta, en una o dos frases",
+  "pistasSocraticas": ["Pregunta guía 1", "Pregunta guía 2", "Pregunta guía 3"],
   "reply": "Mensaje conversacional explicando la propuesta o los cambios aplicados"
 }
 \`\`\`
+
+Reglas del JSON:
+- "situation" incluye todos los datos numéricos necesarios para resolver las preguntas.
+- "solucionDocente" es solo para el docente: resuelve el problema en esos 5 pasos con los cálculos reales, sin omitir operaciones. Verifica cada resultado antes de escribirlo.
+- "pistasSocraticas" son 3 preguntas cortas y graduales para el estudiante; ninguna revela un resultado numérico ni la operación final.
+- Si adaptas un ejercicio, vuelve a escribir la solución y las pistas para la nueva versión.
+- Escribe fórmulas en texto plano con símbolos legibles (×, ÷, ², √, π, ≈); nunca uses LaTeX ni signos $ para fórmulas.
 
 Si es solo un saludo o conversación, responde con texto directo sin bloque JSON.`,
 
@@ -132,8 +142,8 @@ function buildPlan(task: Task, input: Record<string, unknown>): PromptPlan {
       return {
         system: SYSTEM_PROMPTS.exercise,
         user: `Ejercicio actual en pantalla: ${currentJson}\nMensaje del docente: ${text(input.message, "message")}`,
-        temperature: 0.7,
-        maxOutputTokens: 1_200,
+        temperature: 0.5,
+        maxOutputTokens: 2_200,
       };
     }
 

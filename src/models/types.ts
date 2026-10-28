@@ -18,6 +18,13 @@ export interface Exercise {
   questionList?: string[]
 
   rubric?: string
+
+  // Solo para el docente: nunca se envían al estudiante (fn_contenido_sesion los omite)
+  solucionDocente?: string
+
+  respuestaCorrecta?: string
+
+  pistasSocraticas?: string[]
 }
 
 export interface ChatMessage {

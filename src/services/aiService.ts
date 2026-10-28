@@ -67,12 +67,31 @@ export async function testAIConnection(): Promise<{ success: boolean; message: s
   }
 }
 
+function textoValido(valor: unknown): string | undefined {
+  return typeof valor === "string" && valor.trim() ? valor.trim().slice(0, 4000) : undefined;
+}
+
+// El modelo a veces escribe los 5 pasos en una sola línea: cada "N. Paso:" empieza una línea nueva
+function pasosEnLineas(texto: string | undefined): string | undefined {
+  return texto?.replace(/\s+(?=[2-9]\.\s+[A-ZÁÉÍÓÚ])/g, "\n");
+}
+
+function listaValida(valor: unknown): string[] | undefined {
+  if (!Array.isArray(valor)) return undefined;
+  const lista = valor.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim());
+  return lista.length ? lista.slice(0, 5) : undefined;
+}
+
 export async function generateExerciseAI(
   prompt: string,
   currentExercise?: Exercise
 ): Promise<AIResult<{ exercise: Exercise; reply: string }>> {
   try {
-    const raw = await requestAI("exercise", { message: prompt, currentExercise: currentExercise ?? null });
+    // La solución anterior no se reenvía: el modelo la vuelve a escribir para el ejercicio ajustado
+    const actual = currentExercise
+      ? { ...currentExercise, solucionDocente: undefined, respuestaCorrecta: undefined, pistasSocraticas: undefined }
+      : null;
+    const raw = await requestAI("exercise", { message: prompt, currentExercise: actual });
 
     // Check if Gemini returned a JSON block (for exercises)
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -91,6 +110,9 @@ export async function generateExerciseAI(
             situation: parsed.situation || currentExercise?.situation || "",
             questionList: parsed.questionList || currentExercise?.questionList || [],
             rubric: "Estándar PISA: Modelado de situaciones reales y razonamiento cuantitativo.",
+            solucionDocente: pasosEnLineas(textoValido(parsed.solucionDocente)),
+            respuestaCorrecta: textoValido(parsed.respuestaCorrecta),
+            pistasSocraticas: listaValida(parsed.pistasSocraticas),
           };
 
           return {
@@ -126,6 +148,10 @@ export async function generateExerciseAI(
   }
 }
 
+function pasos(lista: string[]): string {
+  return lista.map((paso, i) => `${i + 1}. ${paso}`).join("\n");
+}
+
 function defaultInitialExercise(): Exercise {
   return {
     id: "ex-default",
@@ -143,6 +169,19 @@ function defaultInitialExercise(): Exercise {
       "Explica qué alternativa elegirías y sustenta tu decisión con los datos.",
     ],
     rubric: "Criterios PISA: Razonamiento cuantitativo y formulación de modelos.",
+    solucionDocente: pasos([
+      "Comprensión: cada módulo es un triángulo de 4 m de base y 3 m de altura.",
+      "Variables: b = 4 m; h = 3 m; número de módulos = 12.",
+      "Modelo: área del triángulo A = b · h / 2.",
+      "Cálculo: A = 4 · 3 / 2 = 6 m² por módulo; 12 módulos = 72 m².",
+      "Interpretación: la tercera pregunta es abierta; valora que el estudiante use los 72 m² para justificar su elección.",
+    ]),
+    respuestaCorrecta: "6 m² por módulo y 72 m² en total.",
+    pistasSocraticas: [
+      "¿Qué figura forma cada módulo y qué datos tienes de ella?",
+      "¿Cómo se calcula el área de esa figura?",
+      "Si ya sabes el área de uno, ¿cómo obtienes la de 12?",
+    ],
   };
 }
 
@@ -219,6 +258,9 @@ function generateFallbackExercise(
   let situation = "";
   let questionList: string[] = [];
   let reply = "";
+  let solucionDocente = "";
+  let respuestaCorrecta = "";
+  let pistasSocraticas: string[] = [];
 
   if (norm.includes("metro") || norm.includes("quito") || norm.includes("tren") || norm.includes("transporte") || norm.includes("velocidad")) {
     topic = "Cinemática y Frecuencias en el Metro de Quito";
@@ -233,6 +275,9 @@ function generateFallbackExercise(
       "Evalúa matemáticamente si un incremento del 10% en la velocidad máxima reduce de forma significativa el tiempo total frente a la optimización de los tiempos de embarque.",
     ];
     reply = "He generado un nuevo desafío PISA contextualizado en el Metro de Quito, analizando cinemática, frecuencias y optimización de transporte público.";
+    solucionDocente = pasos(["Comprensión: el tren recorre 22 km en 34 min, pero 15 paradas de 30 s suman 7,5 min detenido.","Variables: distancia d = 22 km; tiempo en movimiento t = 34 − 7,5 = 26,5 min = 0,4417 h.","Modelo: v = d / t.","Cálculo: v = 22 / 0,4417 ≈ 49,8 km/h. Para la flota: una vuelta completa dura 2 × 34 = 68 min; con un tren cada 5 min se necesitan 68 / 5 = 13,6 → 14 trenes.","Interpretación: subir 10 % la velocidad máxima solo acorta el tramo en movimiento (≈ 2,4 min por sentido); reducir el tiempo en andenes ahorra en proporción parecida sin exigir más a los trenes."]);
+    respuestaCorrecta = "Velocidad media en movimiento ≈ 49,8 km/h; flota mínima de 14 trenes.";
+    pistasSocraticas = ["¿Cuánto tiempo pasa el tren detenido en las 15 paradas?","Si quitas ese tiempo, ¿cuánto dura realmente el recorrido en movimiento?","¿Cuántos trenes caben en una vuelta completa si sale uno cada 5 minutos?"];
   } else if (norm.includes("galapagos") || norm.includes("galápagos") || norm.includes("tortuga") || norm.includes("biodiversidad") || norm.includes("ecolog")) {
     topic = "Modelado Exponencial de Poblaciones en Galápagos";
     context = "Biología y Conservación Ambiental";
@@ -246,6 +291,9 @@ function generateFallbackExercise(
       "Argumenta con base en el modelo el impacto ecológico si eventos climáticos de El Niño reducen la tasa de natalidad al 3% anual.",
     ];
     reply = "He creado una situación PISA interdisciplinaria sobre conservación de tortugas gigantes en Galápagos con modelos exponenciales.";
+    solucionDocente = pasos(["Comprensión: la colonia empieza con 120 tortugas y crece 6,5 % cada año.","Variables: P₀ = 120; tasa r = 0,065; t en años.","Modelo: P(t) = 120 · 1,065^t.","Cálculo: 120 · 1,065^t > 300 → 1,065^t > 2,5 → t > ln 2,5 / ln 1,065 ≈ 14,6; la colonia supera 300 en el año 15.","Interpretación: con una tasa del 3 %, t > ln 2,5 / ln 1,03 ≈ 31 años; el crecimiento se demora más del doble."]);
+    respuestaCorrecta = "P(t) = 120 · 1,065^t; supera los 300 individuos en el año 15 (≈ 31 años si la tasa baja al 3 %).";
+    pistasSocraticas = ["¿Qué significa que crezca 6,5 % cada año: se suma lo mismo o se multiplica?","¿Por qué número multiplicas la población cada año?","¿Cómo despejarías un exponente desconocido?"];
   } else if (norm.includes("canasta") || norm.includes("inflacion") || norm.includes("inflación") || norm.includes("salario") || norm.includes("econom") || norm.includes("finanz")) {
     topic = "Variación de la Canasta Básica Familiar en Ecuador";
     context = "Economía Doméstica y Estadística";
@@ -259,6 +307,9 @@ function generateFallbackExercise(
       "Elabora una propuesta de presupuesto familiar equilibrado justificando la reducción del 15% en gastos no esenciales.",
     ];
     reply = "Diseñé una actividad aplicada sobre economía familiar en Ecuador, integrando porcentajes, proporciones y toma de decisiones.";
+    solucionDocente = pasos(["Comprensión: hay que comparar el ingreso del hogar con el costo de la canasta ($795).","Variables: ingreso = 1,6 × SBU vigente (completa el valor oficial del año); alimentos 34 %; vivienda 26 %.","Modelo: cobertura = ingreso / 795 × 100; gasto por rubro = 795 × porcentaje.","Cálculo: alimentos = 795 × 0,34 = $270,30; vivienda = 795 × 0,26 = $206,70. La cobertura depende del SBU que uses.","Interpretación: el presupuesto debe justificar qué gastos no esenciales bajan 15 % y cuánto dinero libera."]);
+    respuestaCorrecta = "Alimentos $270,30 y vivienda $206,70; la cobertura = 1,6 × SBU / 795 × 100 con el SBU vigente.";
+    pistasSocraticas = ["¿Qué dos cantidades necesitas comparar para saber si el ingreso alcanza?","¿Cómo calculas el 34 % de una cantidad?","¿Qué gasto reducirías primero y por qué?"];
   } else if (norm.includes("volcan") || norm.includes("volcán") || norm.includes("cotopaxi") || norm.includes("sismo") || norm.includes("ceniza") || norm.includes("geolog")) {
     topic = "Dispersión de Ceniza del Volcán Cotopaxi";
     context = "Geofísica y Gestión de Riesgos";
@@ -272,6 +323,9 @@ function generateFallbackExercise(
       "Evalúa qué medidas de evacuación son prioritarias según la velocidad de avance de la nube y la densidad poblacional.",
     ];
     reply = "Estructuré una situación de modelado geométrico y cinemático aplicada a la prevención de riesgos ante actividad volcánica.";
+    solucionDocente = pasos(["Comprensión: el viento lleva la ceniza a 32 km/h y se analiza lo que ocurre en 45 min.","Variables: v = 32 km/h; t = 45 min = 0,75 h; radio de alerta r = 12 km.","Modelo: d = v · t; área del círculo A = π r².","Cálculo: d = 32 × 0,75 = 24 km; A = π × 12² ≈ 452,4 km².","Interpretación: a los 45 minutos la nube ya pasó el radio de 12 km, así que la evacuación debe empezar antes en las zonas a favor del viento."]);
+    respuestaCorrecta = "La nube avanza 24 km en 45 min; el área de alerta es ≈ 452,4 km².";
+    pistasSocraticas = ["¿En qué unidades está la velocidad y en cuáles el tiempo?","¿Qué fracción de hora son 45 minutos?","¿Qué fórmula da el área de un círculo?"];
   } else if (norm.includes("parabola") || norm.includes("parábola") || norm.includes("cuadratica") || norm.includes("cuadrática") || norm.includes("funcion") || norm.includes("función")) {
     topic = "Modelado Parabólico en Puentes Colgantes";
     context = "Ingeniería Estructural";
@@ -285,6 +339,9 @@ function generateFallbackExercise(
       "Explica la razón física por la cual la tensión en el cable varía a lo largo de la parábola y en qué punto es máxima.",
     ];
     reply = "Diseñé un ejercicio de funciones cuadráticas aplicadas al diseño estructural de puentes en la Amazonía ecuatoriana.";
+    solucionDocente = pasos(["Comprensión: el cable forma una parábola con su punto más bajo en el centro, a 4 m de la calzada.","Variables: vértice (0, 4); torres en x = ±30 m con altura 19 m.","Modelo: y = a·x² + 4; con (30, 19): 19 = 900a + 4 → a = 1/60.","Cálculo: y = x²/60 + 4; en x = 15: y = 225/60 + 4 = 7,75 m.","Interpretación: la tensión es mínima en el vértice y máxima en las torres, donde el cable soporta el peso de todo el tramo."]);
+    respuestaCorrecta = "y = x²/60 + 4; el tensor a 15 m del centro mide 7,75 m.";
+    pistasSocraticas = ["¿Dónde conviene ubicar el origen para que la ecuación sea sencilla?","¿Qué punto conocido de la parábola te permite encontrar a?","¿Qué valor de x corresponde a 15 m del centro?"];
   } else if (norm.includes("futbol") || norm.includes("fútbol") || norm.includes("tiro") || norm.includes("deporte")) {
     topic = "Cinemática del Tiro Libre en la Liga Pro";
     context = "Física y Deportes";
@@ -298,6 +355,9 @@ function generateFallbackExercise(
       "Concluye si el disparo ingresará en el arco de 2.44 metros de altura o pasará por encima del travesaño.",
     ];
     reply = "He adaptado la física cinemática y trigonometría a una jugada clásica de tiro libre en la altura de Quito.";
+    solucionDocente = pasos(["Comprensión: el balón sale a 24 m/s con 30°; hay barrera a 9,15 m y arco a 26 m.","Variables: vx = 24 cos 30° ≈ 20,78 m/s; vy = 24 sen 30° = 12 m/s; g = 9,8 m/s².","Modelo: x = vx·t; y = vy·t − 4,9 t².","Cálculo: en la barrera t = 9,15 / 20,78 ≈ 0,44 s → y ≈ 4,3 m. En el arco t = 26 / 20,78 ≈ 1,25 s → y ≈ 15,0 − 7,7 ≈ 7,3 m.","Interpretación: a 7,3 m de altura el balón pasa muy por encima del travesaño (2,44 m); hay que bajar el ángulo o la velocidad."]);
+    respuestaCorrecta = "Supera la barrera (≈ 4,3 m) pero pasa a ≈ 7,3 m sobre el arco: no es gol.";
+    pistasSocraticas = ["¿Cómo separas la velocidad inicial en una parte horizontal y otra vertical?","¿Cuánto tarda el balón en llegar a la barrera?","Con ese tiempo, ¿a qué altura está el balón?"];
   } else {
     // Extractor semántico dinámico universal
     const cleanedTopic = prompt
@@ -320,6 +380,19 @@ function generateFallbackExercise(
       `Con base en los resultados, elabora una justificación técnica comparando dos alternativas de solución al problema planteado.`,
     ];
     reply = `He generado una situación ERCA completamente nueva sobre “${displayTopic}” contextualizada para ${level} con enfoque PISA.`;
+    solucionDocente = pasos([
+      `Comprensión: identifica la situación real sobre ${displayTopic} y qué decisión hay que tomar.`,
+      "Variables: lista las magnitudes con sus unidades y marca la incógnita.",
+      "Modelo: elige la relación matemática que conecta las variables.",
+      "Cálculo: completa los datos numéricos del enunciado y resuelve.",
+      "Interpretación: compara las dos alternativas y justifica con los resultados.",
+    ]);
+    respuestaCorrecta = "Depende de los datos que fijes en el enunciado; completa la solución antes de publicar.";
+    pistasSocraticas = [
+      "¿Qué te pide decidir o calcular el problema?",
+      "¿Qué datos del texto tienen unidades y cuál es la incógnita?",
+      "¿Qué relación entre esas magnitudes conoces?",
+    ];
   }
 
   return {
@@ -334,6 +407,9 @@ function generateFallbackExercise(
       situation,
       questionList,
       rubric: "Criterios PISA: Formulación, Empleo de conceptos e Interpretación de resultados.",
+      solucionDocente,
+      respuestaCorrecta,
+      pistasSocraticas,
     },
     reply,
   };
