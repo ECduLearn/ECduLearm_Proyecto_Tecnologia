@@ -1,5 +1,4 @@
 import { FormEvent, useState } from "react"
-import { estudianteSocraticoController } from "@/services/dbService"
 
 export interface LandingPageProps {
   onEnterApp: () => void
@@ -107,6 +106,8 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
     }
     setPinError("")
     setBuscandoClase(true)
+    // El cliente de base de datos se descarga recién al enviar el PIN, no con la landing
+    const { estudianteSocraticoController } = await import("@/services/dbService")
     const resultado = await estudianteSocraticoController.ingresarConPin(limpio)
     setBuscandoClase(false)
     if (resultado.estado === "no_encontrada") {
