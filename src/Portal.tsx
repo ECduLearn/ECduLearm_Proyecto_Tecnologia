@@ -712,7 +712,7 @@ export function TeacherDashboard({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-ink-950 p-4 text-white transition-transform lg:translate-x-0 ${
+        className={`fixed top-[var(--barra-evaluador,0px)] bottom-0 left-0 z-50 flex w-72 flex-col bg-ink-950 p-4 text-white transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

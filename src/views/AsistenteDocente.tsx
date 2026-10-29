@@ -286,7 +286,7 @@ export default function AsistenteDocente({
 
       <aside
         id="app-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-sand-200 bg-sand-100 p-4 text-sand-900 transition-transform duration-300 print:hidden lg:translate-x-0 ${
+        className={`fixed top-[var(--barra-evaluador,0px)] bottom-0 left-0 z-50 flex w-72 flex-col border-r border-sand-200 bg-sand-100 p-4 text-sand-900 transition-transform duration-300 print:hidden lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Navegación e historial"

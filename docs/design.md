@@ -73,3 +73,18 @@ Tinta azul, papel blanco y un único acento cálido para las pistas. Los valores
   - `/planificador` &rarr; Planificador Curricular ERCA
   - `/simulador` &rarr; Simulador de Admisión
   - `/editor` &rarr; Edición de Ejercicios
+
+---
+
+## 5. Declaración de uso de IA en este documento y en la interfaz
+
+**Herramienta:** Claude Code (modelo Claude Opus 5.5, de Anthropic), usado como asistente de programación el 28 de octubre de 2026. Cada cambio fue revisado, probado en local (`pnpm dev` y `pnpm typecheck`) y aprobado por el equipo antes de hacer el commit. La IA no hizo commits ni subió cambios por su cuenta.
+
+**Lo que hizo la IA:**
+- **Paleta (sección 2):** comparó este documento con `src/index.css` y actualizó los tokens `ink`, `hint` y `sand` a la paleta azul y blanco vigente. También reemplazó la antigua sección «Dark Mode» por las superficies que existen en la app.
+- **Enlaces:** corrigió las referencias a este archivo en `docs/AUDITORIA.md` y `docs/BITACORA_DESARROLLO_Y_METRICAS.md` tras moverlo a `docs/`.
+- **Textos de la interfaz:** revisó y ajustó el aviso de acceso restringido, el simulador de admisión y los mensajes de error (redacción, mayúsculas, comillas «» y lenguaje sin género).
+- **Barra del evaluador:** hizo que las barras laterales del panel docente y del asistente empiecen debajo de la barra del evaluador, en lugar de taparla.
+- **Scroll:** desactivó el rebote y el gesto de «estirar para recargar» al llegar al borde de la página (`overscroll-behavior: none`).
+
+Las decisiones de diseño (paleta, tipografía y estructura) son del equipo. La IA solo documentó y aplicó lo que el equipo ya había definido. Ver también [`USO_IA.md`](../USO_IA.md).
