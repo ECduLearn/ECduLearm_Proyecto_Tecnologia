@@ -3,7 +3,7 @@
 - **Proyecto:** ECduLearn — Plataforma EdTech SaaS B2B (1ro a 3ro BGU · Ecuador)
 - **Rama auditada:** `feat/rediseno-landing` (commit `f9f95f1` — tras completar las 6 fases de subsanación y RBAC)
 - **Esquema de Base de Datos de referencia:** [`supabase/schema.sql`](file:///c:/ECduLearn_Software/supabase/schema.sql) (v2.0.0 — 3FN + RLS + RPC `SECURITY DEFINER`)
-- **Fuente de verdad visual:** [`design.md`](file:///c:/ECduLearn_Software/design.md)
+- **Fuente de verdad visual:** [`docs/design.md`](design.md)
 - **Metodología y Normativa Aplicada:** ISO/IEC 9126-1, ISO/IEC 14598-1, NTE INEN-ISO/IEC TR 9126-3, Estándar SQL ISO/IEC 9075 (3FN), OWASP Top 10 / OWASP API Security Top 10, Heurísticas de Nielsen & Molich y WCAG 2.2 Nivel AA.
 
 ---

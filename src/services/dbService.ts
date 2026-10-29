@@ -312,7 +312,7 @@ export const authController = {
             };
           }
           saveCurrentUser(profile);
-          return { success: true, user: profile, message: `Bienvenido, ${profile.name}.` };
+          return { success: true, user: profile, message: `Te damos la bienvenida, ${profile.name}.` };
         }
 
         if (error && !isAuthRetryableFetchError(error)) {
@@ -335,7 +335,7 @@ export const authController = {
 
     if (isDemoCredentials) return demoLogin(cleanEmail);
     let message = "La base de datos no está configurada: solo están disponibles las cuentas demo.";
-    if (client) message = "No pudimos conectar con el servidor. Revisa tu internet e inténtalo de nuevo.";
+    if (client) message = "No pudimos conectar con el servidor. Revisa tu internet y vuelve a intentarlo.";
     else if (DEMO_ACCOUNTS[cleanEmail]) message = "Correo o contraseña incorrectos.";
     return { success: false, user: null, message };
   },
@@ -376,7 +376,7 @@ export const authController = {
       console.warn(`[auth] No se pudo actualizar la contraseña (${error.code}): ${error.message}`);
       return {
         success: false,
-        message: error.code === "weak_password" ? "Esa contraseña es muy débil. Usa al menos 8 caracteres." : "No pudimos guardar la contraseña. Inténtalo otra vez.",
+        message: error.code === "weak_password" ? "Esa contraseña es muy débil. Usa al menos 8 caracteres." : "No pudimos guardar la contraseña. Vuelve a intentarlo.",
       };
     }
     await client.auth.signOut();
@@ -1713,7 +1713,7 @@ function mensajeErrorAdmin(error: { code?: string; message: string }, accion: st
     return "La base de datos no permite esta acción para tu cuenta. Revisa que tengas rol de administrador y que el SQL de administración esté aplicado.";
   }
   if (error.code === "23505") return "Ya existe un registro con esos datos (por ejemplo, el mismo correo).";
-  return "No pudimos guardar el cambio en la base de datos. Inténtalo otra vez.";
+  return "No pudimos guardar el cambio en la base de datos. Vuelve a intentarlo.";
 }
 
 export const adminController = {
@@ -1788,7 +1788,7 @@ export const adminController = {
 
     const currentUsers = await this.getUsuarios();
     if (currentUsers.some((u) => u.email_institucional.toLowerCase() === cleanEmail)) {
-      return { success: false, message: `Ya existe un usuario registrado con el correo "${cleanEmail}".` };
+      return { success: false, message: `Ya existe un usuario registrado con el correo «${cleanEmail}».` };
     }
 
     // Validar límite de docentes de la institución (regla de negocio SQL fn_validar_limite_docentes)
@@ -1799,7 +1799,7 @@ export const adminController = {
       if (docentesInst.length >= inst.limite_docentes) {
         return {
           success: false,
-          message: `La institución "${inst.nombre}" ha alcanzado su límite de ${inst.limite_docentes} docentes contratados. Por favor amplía la suscripción del colegio.`,
+          message: `La institución «${inst.nombre}» ha alcanzado su límite de ${inst.limite_docentes} docentes contratados. Por favor amplía la suscripción del colegio.`,
         };
       }
     }
@@ -1849,7 +1849,7 @@ export const adminController = {
 
     recordAuditLog(
       "CREACION_USUARIO",
-      `Se creó el usuario "${cleanNombre}" con rol ${data.rol} en "${newUser.institucion_nombre}".`,
+      `Se creó el usuario «${cleanNombre}» con rol ${data.rol} en «${newUser.institucion_nombre}».`,
       cleanEmail
     );
 
@@ -1930,7 +1930,7 @@ export const adminController = {
     const rolCambio = previous.rol !== updatedUser.rol;
     recordAuditLog(
       rolCambio ? "CAMBIO_ROL" : "MODIFICACION_PERMISOS",
-      `Se actualizaron datos del usuario "${updatedUser.nombre_completo}". Rol anterior: ${previous.rol} -> Nuevo rol: ${updatedUser.rol}.`,
+      `Se actualizaron datos del usuario «${updatedUser.nombre_completo}». Rol anterior: ${previous.rol} -> Nuevo rol: ${updatedUser.rol}.`,
       updatedUser.email_institucional
     );
 
@@ -1965,16 +1965,16 @@ export const adminController = {
     recordAuditLog(
       activo ? "ACTIVACION_USUARIO" : "DESACTIVACION_USUARIO",
       activo
-        ? `Se reactivaron los permisos y acceso de "${user.nombre_completo}".`
-        : `Se suspendieron los permisos y revocó el acceso de "${user.nombre_completo}".`,
+        ? `Se reactivaron los permisos y acceso de «${user.nombre_completo}».`
+        : `Se suspendieron los permisos y revocó el acceso de «${user.nombre_completo}».`,
       user.email_institucional
     );
 
     return {
       success: true,
       message: activo
-        ? `Permisos activados: "${user.nombre_completo}" ahora puede ingresar.`
-        : `Permisos revocados: "${user.nombre_completo}" no podrá acceder a la plataforma.`,
+        ? `Permisos activados: «${user.nombre_completo}» ahora puede ingresar.`
+        : `Permisos revocados: «${user.nombre_completo}» no podrá acceder a la plataforma.`,
     };
   },
 
@@ -2001,7 +2001,7 @@ export const adminController = {
 
     recordAuditLog(
       "ELIMINACION_USUARIO",
-      `Se eliminó permanentemente el usuario "${user.nombre_completo}" (${user.email_institucional}).`,
+      `Se eliminó permanentemente el usuario «${user.nombre_completo}» (${user.email_institucional}).`,
       user.email_institucional
     );
 
@@ -2036,12 +2036,12 @@ export const adminController = {
     });
     if (error) {
       console.warn(`[adminController] Envío de restablecimiento rechazado (${error.code}): ${error.message}`);
-      return { success: false, message: "No pudimos enviar el correo. Inténtalo de nuevo en unos minutos." };
+      return { success: false, message: "No pudimos enviar el correo. Vuelve a intentarlo en unos minutos." };
     }
 
     recordAuditLog(
       "RESET_PASSWORD",
-      `Se envió un enlace para restablecer la contraseña de "${user.nombre_completo}".`,
+      `Se envió un enlace para restablecer la contraseña de «${user.nombre_completo}».`,
       user.email_institucional
     );
     return { success: true, message: `Enviamos a ${user.email_institucional} un enlace para crear una contraseña nueva.` };
@@ -2116,7 +2116,7 @@ export const adminController = {
 
     recordAuditLog(
       "CREACION_COLEGIO",
-      `Se registró la nueva institución educativa "${newInst.nombre}" con cupo para ${newInst.limite_docentes} docentes.`
+      `Se registró la nueva institución educativa «${newInst.nombre}» con cupo para ${newInst.limite_docentes} docentes.`
     );
 
     return {

@@ -55,6 +55,12 @@
     color-scheme: light;
   }
 
+  /* Sin rebote ni "estirar para recargar" al llegar al borde: es una web, no una app nativa */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
   body {
     @apply m-0 min-w-80 bg-sand-50 font-sans text-sand-900;
   }

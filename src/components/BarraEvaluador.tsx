@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { AppView } from "@/router"
 import { getAIStatus, testAIConnection } from "@/services/aiService"
 import { getSupabaseClient, getSupabaseConfig, getSupabaseOverride, setSupabaseConfig } from "@/services/supabaseClient"
@@ -50,6 +50,25 @@ export function EvaluatorTopBar({
   const [isDbTesting, setIsDbTesting] = useState(false)
 
   const [supabaseOverride, setSupabaseOverride] = useState(getSupabaseOverride())
+
+  // Publica la altura de la barra en --barra-evaluador para que las barras laterales fijas empiecen debajo
+  const barraRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const raiz = document.documentElement
+    const barra = barraRef.current
+    if (collapsed || !barra) {
+      raiz.style.setProperty("--barra-evaluador", "0px")
+      return
+    }
+    const medir = () => raiz.style.setProperty("--barra-evaluador", `${barra.offsetHeight}px`)
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(barra)
+    return () => {
+      observador.disconnect()
+      raiz.style.setProperty("--barra-evaluador", "0px")
+    }
+  }, [collapsed])
 
   useEffect(() => {
     let active = true;
@@ -214,6 +233,7 @@ export function EvaluatorTopBar({
   return (
     <>
       <aside
+        ref={barraRef}
         aria-label="Barra de evaluación rápida para el jurado"
         className="sticky top-0 z-50 w-full bg-sand-950/95 border-b border-sand-800 text-white backdrop-blur-md px-3 py-1.5 text-xs font-sans print:hidden shadow-md"
       >

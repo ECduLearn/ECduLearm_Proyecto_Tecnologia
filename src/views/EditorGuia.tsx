@@ -157,7 +157,7 @@ function EditorView({
 
       setNotice(`Listo: ${activo.topic}. Ya está guardado.`)
     } catch {
-      setNotice("No pudimos aplicar el cambio. Inténtalo otra vez.")
+      setNotice("No pudimos aplicar el cambio. Vuelve a intentarlo.")
     }
 
     setCommand("")
