@@ -353,10 +353,10 @@ export function AdminDashboard({
             </svg>
           </span>
           <h1 id="acceso-admin-titulo" className="mt-5 text-xl font-semibold text-ink-950">
-            Acceso exclusivo para Administración Central
+            Esta sección es solo para administración
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-sand-600">
-            Tu cuenta actual no tiene permisos de administrador (ADMIN). Si necesitas gestionar usuarios o colegios,
+            Tu cuenta actual no tiene permisos de administrador. Si necesitas gestionar usuarios o colegios,
             entra con una cuenta de administración.
           </p>
           <div className="mt-6 flex flex-col gap-3">
@@ -365,14 +365,14 @@ export function AdminDashboard({
               onClick={onNavigateTeacher || onExit}
               className="min-h-11 rounded-xl border border-sand-300 px-4 text-sm font-semibold text-sand-800 hover:bg-sand-100"
             >
-              Volver a mi panel docente
+              Volver a mi panel
             </button>
             <button
               type="button"
               onClick={onExit}
               className="min-h-11 rounded-xl bg-ink-950 px-4 text-sm font-semibold text-sand-50 hover:bg-ink-800"
             >
-              Iniciar sesión como Administrador
+              Iniciar sesión como administrador
             </button>
           </div>
         </section>
@@ -478,7 +478,7 @@ export function AdminDashboard({
             <div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-hint-100 px-2.5 py-0.5 text-[11px] font-bold text-hint-800 uppercase tracking-wider">
-                  Acceso Restringido
+                  Acceso restringido
                 </span>
                 <span className="text-xs text-sand-500 font-mono">
                   Solo administradores
@@ -488,7 +488,7 @@ export function AdminDashboard({
                 Administración de Usuarios y Permisos
               </h1>
               <p className="mt-1 text-sm text-sand-600 max-w-2xl">
-                Los docentes y rectores no pueden autoregistrarse: únicamente
+                Los docentes y rectores no pueden autorregistrarse: únicamente
                 los administradores autorizan credenciales, asignan colegios y
                 configuran los roles del sistema.
               </p>

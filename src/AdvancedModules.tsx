@@ -250,7 +250,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
 
       await guardarPlan(activo);
     } catch {
-      setNotice("No pudimos generar el ejercicio. Inténtalo otra vez.");
+      setNotice("No pudimos generar el ejercicio. Vuelve a intentarlo.");
     } finally {
       setIsGeneratingPisa(false);
     }

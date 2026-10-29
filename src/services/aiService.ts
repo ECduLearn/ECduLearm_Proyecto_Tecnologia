@@ -50,7 +50,7 @@ export async function getAIStatus(): Promise<{ online: boolean }> {
 
 const AI_ERROR_MESSAGES: Record<string, string> = {
   ai_not_configured: "La IA todavía no está configurada en el servidor (falta GEMINI_API_KEY). Mientras tanto, la plataforma usa ejercicios y pistas preparados de antemano.",
-  ai_unavailable: "La IA está tardando demasiado en responder, quizá por exceso de uso. Mientras tanto, la plataforma usa ejercicios y pistas preparados.",
+  ai_unavailable: "La IA no está disponible en este momento. Mientras tanto, la plataforma usa ejercicios y pistas preparados.",
   rate_limited: "Hubo demasiadas pruebas seguidas. Espera un minuto y vuelve a intentarlo.",
 };
 

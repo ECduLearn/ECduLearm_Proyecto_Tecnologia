@@ -237,7 +237,7 @@ export default function SimuladorAdmision({ onBack }: { onBack: () => void }) {
               </p>
               <div className="mt-6 flex gap-3">
                 <button type="button" onClick={() => setConfirmar(false)} className="min-h-12 flex-1 rounded-xl border border-sand-300 text-sm font-semibold text-sand-700 hover:bg-sand-100">
-                  Seguir
+                  Seguir respondiendo
                 </button>
                 <button type="button" onClick={terminar} className="min-h-12 flex-1 rounded-xl bg-ink-950 text-sm font-semibold text-sand-50 hover:bg-ink-800">
                   Terminar
@@ -288,7 +288,7 @@ export default function SimuladorAdmision({ onBack }: { onBack: () => void }) {
               </button>
             </>
           ) : (
-            <p className="mt-8 text-sm font-medium text-ink-900">¡Respondiste todo bien!</p>
+            !pendientesDeNota && <p className="mt-8 text-sm font-medium text-ink-900">¡Respondiste todo bien!</p>
           )}
           <button type="button" onClick={onBack} className="mt-3 min-h-11 px-4 text-sm font-semibold text-sand-600 hover:text-ink-950">
             Volver a la zona de estudio
