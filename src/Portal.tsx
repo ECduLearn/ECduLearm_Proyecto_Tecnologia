@@ -2,14 +2,17 @@ import { FormEvent, ReactNode, useEffect, useState } from "react"
 
 import {
   authController,
+  aulasController,
   estudianteSocraticoController,
   metricasController,
-  DbMetricasDocente,
+  type DbMetricasDocente,
+  type ResumenAula,
 } from "./services/dbService"
 
 import type { TeacherUser } from "./models/types"
 
 import PublicarAulaDialog from "./components/PublicarAulaDialog"
+import DetalleAulaDialog from "./components/DetalleAulaDialog"
 
 type PortalIconName = "arrow" | "book" | "chart" | "check" | "chevron" | "clock" | "copy" | "grid" | "help" | "link" | "lock" | "logout" | "menu" | "plus" | "send" | "shield" | "sparkles" | "users" | "x"
 
@@ -205,8 +208,8 @@ export function AccessPortal({
 
     const cleanPin = pin.trim().replace(/\s+/g, "").toUpperCase()
 
-    if (!cleanPin) {
-      setPinError("Escribe el PIN que te dio tu docente.")
+    if (!/^[A-Z0-9]{6}$/.test(cleanPin)) {
+      setPinError("El PIN tiene 6 letras o números. Revisa el que te dio tu docente.")
 
       return
     }
@@ -220,7 +223,7 @@ export function AccessPortal({
 
       if (resultado.estado === "no_encontrada") {
         setPinError(
-          `No encontramos una clase con el PIN ${cleanPin}. Revísalo con tu docente o prueba con PISA26.`,
+          `No encontramos una clase con el PIN ${cleanPin}. Revísalo con tu docente.`,
         )
       } else if (resultado.estado === "aula_llena") {
         setPinError("Esta clase ya está completa. Avísale a tu docente.")
@@ -263,70 +266,6 @@ export function AccessPortal({
     } catch {
       setLoginError(
         "No pudimos conectarnos para revisar tus datos. Revisa tu internet y vuelve a intentarlo.",
-      )
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
-  const handleAutofillDemo = async () => {
-    setTeacherEmail("docente@puce.edu.ec")
-
-    setTeacherPassword("demo123")
-
-    setLoginLoading(true)
-
-    setLoginError("")
-
-    try {
-      const res = await authController.loginDocente(
-        "docente@puce.edu.ec",
-        "demo123",
-      )
-
-      if (res.success) {
-        setLoginOpen(false)
-
-        onTeacherEnter()
-      } else {
-        setLoginError(res.message)
-      }
-    } catch {
-      setLoginError("No pudimos abrir la cuenta de prueba. Vuelve a intentarlo en unos segundos.")
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
-  const handleAutofillAdmin = async () => {
-    setTeacherEmail("admin@ecdulearn.edu.ec")
-
-    setTeacherPassword("admin123")
-
-    setLoginLoading(true)
-
-    setLoginError("")
-
-    try {
-      const res = await authController.loginDocente(
-        "admin@ecdulearn.edu.ec",
-        "admin123",
-      )
-
-      if (res.success) {
-        setLoginOpen(false)
-
-        if (onAdminEnter) {
-          onAdminEnter()
-        } else {
-          onTeacherEnter()
-        }
-      } else {
-        setLoginError(res.message)
-      }
-    } catch {
-      setLoginError(
-        "No pudimos abrir la cuenta de administración. Vuelve a intentarlo en unos segundos.",
       )
     } finally {
       setLoginLoading(false)
@@ -408,7 +347,10 @@ export function AccessPortal({
 
                   setPinError("")
                 }}
-                placeholder="Ej. PISA26 o RETO26"
+                placeholder="Ej. ABC123"
+                maxLength={7}
+                autoCapitalize="characters"
+                spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-base font-semibold text-sand-900 outline-none placeholder:font-normal placeholder:text-sand-400 uppercase tracking-wider"
                 autoComplete="off"
               />
@@ -521,7 +463,8 @@ export function AccessPortal({
                   required
                   value={teacherEmail}
                   onChange={(e) => setTeacherEmail(e.target.value)}
-                  placeholder="docente@puce.edu.ec"
+                  placeholder="nombre@colegio.edu.ec"
+                  autoComplete="username"
                   className="mt-1.5 min-h-12 w-full rounded-xl border border-sand-300 bg-white px-4 text-sm text-sand-900 outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
                 />
               </div>
@@ -539,6 +482,7 @@ export function AccessPortal({
                   value={teacherPassword}
                   onChange={(e) => setTeacherPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="mt-1.5 min-h-12 w-full rounded-xl border border-sand-300 bg-white px-4 text-sm text-sand-900 outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
                 />
               </div>
@@ -557,25 +501,6 @@ export function AccessPortal({
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={handleAutofillAdmin}
-                disabled={loginLoading}
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-hint-500/60 bg-hint-100 px-4 text-xs font-bold text-hint-950 transition hover:bg-hint-200 focus:outline-none focus:ring-4 focus:ring-hint-100"
-              >
-                <PortalIcon name="shield" className="size-4 text-hint-800" />
-                🛡️ Autocompletar como Administrador (admin@ecdulearn.edu.ec)
-              </button>
-
-              <button
-                type="button"
-                onClick={handleAutofillDemo}
-                disabled={loginLoading}
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-ink-500/50 bg-ink-50 px-4 text-xs font-bold text-ink-900 transition hover:bg-ink-100 focus:outline-none focus:ring-4 focus:ring-ink-100"
-              >
-                <PortalIcon name="sparkles" className="size-4 text-ink-700" />
-                👨‍🏫 Autocompletar como Docente (docente@puce.edu.ec)
-              </button>
             </form>
           </section>
         </div>
@@ -583,44 +508,6 @@ export function AccessPortal({
     </div>
   )
 }
-
-const rooms = [
-  {
-    name: "Admisión · Razonamiento Numérico",
-
-    subject: "Simulador universitario",
-
-    status: "Activa",
-
-    students: 30,
-
-    updated: "Hace 4 min",
-  },
-
-  {
-    name: "Funciones y ecuaciones",
-
-    subject: "Matemática · 2do BGU",
-
-    status: "Programada",
-
-    students: 0,
-
-    updated: "Mañana, 08:00",
-  },
-
-  {
-    name: "Estática aplicada",
-
-    subject: "Ingeniería civil",
-
-    status: "Borrador",
-
-    students: 0,
-
-    updated: "Editada ayer",
-  },
-]
 
 function saludoDelDia(): string {
   const hora = new Date().getHours()
@@ -661,45 +548,51 @@ export function TeacherDashboard({
 
   const [metricas, setMetricas] = useState<DbMetricasDocente | null>(null)
 
-  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null)
+  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(() => authController.getCurrentUser())
 
-  const [roomsList, setRoomsList] = useState<any[]>(rooms)
+  const [aulas, setAulas] = useState<ResumenAula[]>([])
 
-  const loadDashboardData = async () => {
-    setUxState("loading")
+  const [aulaAbierta, setAulaAbierta] = useState<ResumenAula | null>(null)
 
-    try {
-      const user = await authController.restoreSession()
+  const [actualizando, setActualizando] = useState(false)
 
-      setCurrentUser(user)
+  const loadDashboardData = async (silencioso = false) => {
+    if (silencioso) setActualizando(true)
+    else setUxState("loading")
 
-      const data = await metricasController.getMetricasEnVivo()
+    const [user, datos, misAulas] = await Promise.all([
+      authController.restoreSession(),
+      metricasController.getMetricasEnVivo(),
+      aulasController.getMisAulas(),
+    ])
 
-      setMetricas(data)
+    setCurrentUser(user)
+    setMetricas(datos)
+    setAulas(misAulas.aulas)
+    setAulaAbierta((abierta) => (abierta ? misAulas.aulas.find((a) => a.id === abierta.id) ?? abierta : null))
+    setActualizando(false)
 
-      // Si no hay salas registradas, se puede reflejar el estado 'empty'
-
-      if (!roomsList || roomsList.length === 0) {
-        setUxState("empty")
-      } else {
-        setUxState("active")
-      }
-    } catch {
-      setUxState("error")
-    }
+    // La cuenta sin conexión no tiene métricas que leer: no es un error
+    const fallo = misAulas.estado === "error" || (datos.isOffline && Boolean(user) && !user?.isDemo)
+    setUxState(fallo ? "error" : misAulas.aulas.length === 0 ? "empty" : "active")
   }
 
   useEffect(() => {
     loadDashboardData()
   }, [])
 
+  const irA = (id: string) => {
+    setSidebarOpen(false)
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
-  const teacherName = currentUser?.name || "Docente Demo PUCE"
+  const teacherName = currentUser?.name ?? ""
 
-  const isDemoSession = !currentUser || Boolean(currentUser.isDemo)
+  const sinConexion = Boolean(currentUser?.isDemo)
 
-  const institutionName =
-    currentUser?.institution || "Colegio Experimental San Gabriel de Quito"
+  const institutionName = currentUser?.institution ?? ""
+
+  const veReporte = currentUser?.role === "coordinador" || currentUser?.role === "admin"
 
   return (
     <div className="ui-view min-h-screen bg-sand-50 text-sand-950 font-sans">
@@ -730,6 +623,8 @@ export function TeacherDashboard({
         <nav className="mt-8 space-y-1" aria-label="Panel docente">
           <button
             type="button"
+            onClick={() => irA("resumen")}
+            aria-current="page"
             className="flex min-h-12 w-full items-center gap-3 rounded-lg border-l-2 border-hint-300 bg-white/10 px-3 text-left text-sm font-bold"
           >
             <PortalIcon name="grid" className="size-5 text-ink-300" />
@@ -737,10 +632,11 @@ export function TeacherDashboard({
           </button>
           <button
             type="button"
+            onClick={() => irA("mis-clases")}
             className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
           >
             <PortalIcon name="book" className="size-5" />
-            Salas y sesiones
+            Mis clases
           </button>
           <button
             type="button"
@@ -758,14 +654,16 @@ export function TeacherDashboard({
             <PortalIcon name="book" className="size-5" />
             Planificador ERCA
           </button>
-          <button
-            type="button"
-            onClick={onOpenReporte}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
-          >
-            <PortalIcon name="chart" className="size-5" />
-            Reporte institucional
-          </button>
+          {onOpenReporte && veReporte && (
+            <button
+              type="button"
+              onClick={onOpenReporte}
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink-100 hover:bg-white/10"
+            >
+              <PortalIcon name="chart" className="size-5" />
+              Reporte institucional
+            </button>
+          )}
           {onOpenAdmin && currentUser?.role === "admin" && (
             <button
               type="button"
@@ -820,9 +718,9 @@ export function TeacherDashboard({
                 <p className="truncate text-xs text-sand-500">
                   {teacherName} ·{" "}
                   {currentUser?.role === "admin" ? "Administración" : currentUser?.role === "coordinador" ? "Coordinación" : "Docente"}
-                  {isDemoSession && (
-                    <span className="ml-1.5 rounded-full bg-hint-50 px-2 py-0.5 font-bold text-hint-700 ring-1 ring-hint-200">
-                      Modo demo
+                  {sinConexion && (
+                    <span className="ml-1.5 rounded-full bg-hint-50 px-2 py-0.5 font-semibold text-hint-800 ring-1 ring-hint-200">
+                      Sin conexión
                     </span>
                   )}
                 </p>
@@ -843,7 +741,7 @@ export function TeacherDashboard({
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div id="resumen" className="scroll-mt-24 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="flex items-center gap-2">
                 <span className="inline-block size-2 rounded-full bg-ink-600 animate-pulse" />
@@ -852,15 +750,13 @@ export function TeacherDashboard({
                 </p>
               </div>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-sand-950">
-                {saludoDelDia()}, {teacherName.split(" ")[0]}
+                {saludoDelDia()}
+                {teacherName ? `, ${teacherName.split(" ")[0]}` : ""}
               </h1>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-sand-600">
-                Así va tu clase hoy.
-                {metricas?.isOffline && (
-                  <span className="rounded-full bg-hint-50 px-2.5 py-0.5 text-xs font-semibold text-hint-800 ring-1 ring-hint-200">
-                    Datos de ejemplo
-                  </span>
-                )}
+              <p className="mt-2 text-sm text-sand-600">
+                {sinConexion
+                  ? "Estás trabajando sin conexión: lo que crees se guarda en este dispositivo."
+                  : "Así van tus clases hoy."}
               </p>
             </div>
             <button
@@ -883,19 +779,17 @@ export function TeacherDashboard({
                 <span className="text-xl">⚠️</span>
                 <div>
                   <p className="text-sm font-bold">
-                    Aviso de sincronización de métricas
+                    No pudimos actualizar tus datos
                   </p>
                   <p className="text-xs text-hint-800">
-                    No fue posible conectar con las vistas analíticas de la base
-                    de datos remota. Se están mostrando métricas de contingencia
-                    en caché local.
+                    Revisa tu conexión y vuelve a intentarlo.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={loadDashboardData}
-                className="shrink-0 rounded-lg bg-hint-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-hint-900"
+                onClick={() => loadDashboardData()}
+                className="min-h-11 shrink-0 rounded-xl bg-hint-800 px-4 text-sm font-bold text-white hover:bg-hint-900"
               >
                 Reintentar
               </button>
@@ -984,14 +878,14 @@ export function TeacherDashboard({
           </section>
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
-            <div className="overflow-hidden rounded-2xl border border-sand-200 bg-white shadow-sm">
+            <div id="mis-clases" className="scroll-mt-24 overflow-hidden rounded-2xl border border-sand-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 p-5 sm:p-6">
                 <div>
                   <h2 className="text-lg font-semibold text-sand-950">
-                    Aulas Virtuales y Sesiones por PIN
+                    Mis clases
                   </h2>
                   <p className="mt-1 text-sm text-sand-500">
-                    Sesiones vinculadas a ejercicios PISA en base de datos.
+                    Toca una clase para ver cómo avanza y copiar su PIN.
                   </p>
                 </div>
                 <button
@@ -1004,70 +898,63 @@ export function TeacherDashboard({
                 </button>
               </div>
 
-              {uxState === "empty" ? (
+              {uxState === "loading" ? (
+                <div className="space-y-3 p-5 sm:p-6" aria-busy="true">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-14 animate-pulse rounded-xl bg-sand-100" />
+                  ))}
+                </div>
+              ) : aulas.length === 0 ? (
                 <div className="p-8 text-center">
                   <span className="mx-auto grid size-12 place-items-center rounded-full bg-sand-100 text-sand-600">
                     <PortalIcon name="book" className="size-6" />
                   </span>
                   <h3 className="mt-3 text-base font-bold text-sand-950">
-                    No hay aulas activas
+                    Todavía no tienes clases
                   </h3>
                   <p className="mt-1 text-xs text-sand-500 max-w-sm mx-auto">
-                    Crea tu primer reto PISA o asigna una sesión para que tus
-                    alumnos ingresen con su PIN.
+                    Crea un ejercicio y publícalo con un PIN para que tus
+                    estudiantes entren desde su celular.
                   </p>
                   <button
                     type="button"
                     onClick={onCreateContent}
-                    className="mt-4 rounded-xl bg-ink-800 px-4 py-2 text-xs font-bold text-white hover:bg-ink-900"
+                    className="mt-4 min-h-11 rounded-xl bg-ink-800 px-4 text-sm font-bold text-white hover:bg-ink-900"
                   >
-                    Crear primer reto
+                    Crear mi primer ejercicio
                   </button>
                 </div>
               ) : (
-                <div className="ui-stagger divide-y divide-sand-200">
-                  {roomsList.map((room) => (
-                    <button
-                      key={room.name}
-                      type="button"
-                      onClick={() => setPinOpen(true)}
-                      className="grid w-full gap-3 p-5 text-left transition hover:bg-sand-50 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6"
-                    >
-                      <span>
-                        <span className="block text-sm font-bold text-sand-900">
-                          {room.name}
+                <ul className="ui-stagger divide-y divide-sand-200">
+                  {aulas.map((aula) => (
+                    <li key={aula.id}>
+                      <button
+                        type="button"
+                        onClick={() => setAulaAbierta(aula)}
+                        className="grid min-h-16 w-full gap-2 p-5 text-left transition hover:bg-sand-50 focus:outline-none focus-visible:bg-sand-50 focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-ink-100 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-4 sm:px-6"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-sand-900">{aula.titulo}</span>
+                          <span className="mt-1 block font-mono text-xs tracking-widest text-sand-500">PIN {aula.pin}</span>
                         </span>
-                        <span className="mt-1 block text-xs text-sand-500">
-                          {room.subject}
+                        <span className="flex items-center gap-2 text-xs text-sand-600">
+                          <PortalIcon name="users" className="size-4" />
+                          {aula.enServidor ? `${aula.estudiantes} ${aula.estudiantes === 1 ? "estudiante" : "estudiantes"}` : "Solo en este dispositivo"}
                         </span>
-                      </span>
-                      <span className="flex items-center gap-2 text-xs text-sand-500 sm:min-w-24">
-                        <PortalIcon name="users" className="size-4" />
-                        {room.students} alumnos
-                      </span>
-                      <span className="flex items-center justify-between gap-4 sm:min-w-36">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                            room.status === "Activa"
-                              ? "bg-ink-100 text-ink-900"
-                              : room.status === "Programada"
-                                ? "bg-ink-100 text-ink-900"
-                                : "bg-sand-100 text-sand-600"
-                          }`}
-                        >
-                          {room.status}
+                        <span className="flex items-center justify-between gap-3">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                              aula.activa ? "bg-ink-100 text-ink-900" : "bg-sand-100 text-sand-600"
+                            }`}
+                          >
+                            {aula.activa ? "Activa" : "Cerrada"}
+                          </span>
+                          <PortalIcon name="chevron" className="size-4 text-sand-400" />
                         </span>
-                        <PortalIcon
-                          name="chevron"
-                          className="size-4 text-sand-400"
-                        />
-                      </span>
-                      <span className="text-xs text-sand-400 sm:col-start-3">
-                        {room.updated}
-                      </span>
-                    </button>
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
 
@@ -1113,7 +1000,22 @@ export function TeacherDashboard({
       </div>
 
       {pinOpen && (
-        <PublicarAulaDialog onClose={() => setPinOpen(false)} onIrAlAsistente={onCreateContent} />
+        <PublicarAulaDialog
+          onClose={() => {
+            setPinOpen(false)
+            loadDashboardData(true)
+          }}
+          onIrAlAsistente={onCreateContent}
+        />
+      )}
+
+      {aulaAbierta && (
+        <DetalleAulaDialog
+          aula={aulaAbierta}
+          actualizando={actualizando}
+          onActualizar={() => loadDashboardData(true)}
+          onClose={() => setAulaAbierta(null)}
+        />
       )}
     </div>
   )

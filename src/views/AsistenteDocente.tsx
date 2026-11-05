@@ -2,279 +2,233 @@ import { FormEvent, useEffect, useRef, useState } from "react"
 import Icon, { Logo } from "@/components/Icon"
 import ExerciseCard from "@/components/ExerciseCard"
 import PublicarAulaDialog from "@/components/PublicarAulaDialog"
-import { EvaluatorPill, EvaluatorTopBar } from "@/components/BarraEvaluador"
 import { generateExerciseAI } from "@/services/aiService"
-import { ejerciciosController } from "@/services/dbService"
-import { estadoInicialDocente, initialExercise } from "@/models/estadoInicialDocente"
-import { setterSesion, useSesionDocente } from "@/models/sesionDocente"
+import { authController, ejerciciosController, isValidUuid } from "@/services/dbService"
+import { estadoInicialDocente, SALUDO_ASISTENTE } from "@/models/estadoInicialDocente"
+import { actualizarSesionDocente, useSesionDocente, type LetraParalelo, type MensajeChat } from "@/models/sesionDocente"
+import { ACCIONES_EJERCICIO, instruccionVersion } from "@/models/accionesIA"
 import type { Exercise } from "@/models/types"
 import type { AppView } from "@/router"
 
-const recentItems = [
-  {
-    title: "Análisis estructural",
-    meta: "Ingeniería Civil · Ahora",
-    context: "Ingeniería civil",
-  },
-
-  {
-    title: "Funciones cuadráticas",
-    meta: "Arquitectura · Ayer",
-    context: "Arquitectura",
-  },
-
-  {
-    title: "Interés compuesto",
-    meta: "Finanzas · 12 jun",
-    context: "Economía",
-  },
+const CURSOS = ["1ro BGU", "2do BGU", "3ro BGU"] as const
+const DIFICULTADES = ["Básica", "Intermedia", "Avanzada"] as const
+const CONTEXTOS = [
+  "Metro de Quito y movilidad",
+  "Galápagos y biodiversidad",
+  "Economía familiar",
+  "Deportes",
+  "Agricultura y comercio local",
+  "Volcanes y gestión de riesgos",
 ]
 
-const quickActions = [
-  "✨ Orientación PISA",
+const selectClase =
+  "mt-1.5 min-h-11 w-full rounded-xl border border-sand-300 bg-white px-3 text-sm text-sand-900 focus:border-ink-700 focus:outline-none focus:ring-4 focus:ring-ink-100"
 
-  "🔄 Convertir mecánico a razonamiento",
+type Reciente = { ejercicio: Exercise; creadoEn: string | null }
 
-  "⚖️ Ajustar dificultad",
+function cambioReal(nuevo: Exercise, actual: Exercise): boolean {
+  const huella = (e: Exercise) => JSON.stringify([e.topic, e.situation, e.questionList, e.difficulty, e.level, e.solucionDocente])
+  return nuevo.id !== "ex-default" && huella(nuevo) !== huella(actual)
+}
 
-  "📑 Crear Versión B/C",
+function agregarMensaje(mensaje: Omit<MensajeChat, "id">) {
+  actualizarSesionDocente((actual) => ({ mensajes: [...actual.mensajes, { ...mensaje, id: Date.now() + Math.random() }] }))
+}
 
-  "🔍 Generar solución paso a paso",
-]
+function fechaCorta(iso: string | null): string {
+  if (!iso) return "En este dispositivo"
+  return new Date(iso).toLocaleDateString("es-EC", { day: "numeric", month: "short" })
+}
 
-const setMessages = setterSesion("mensajes")
-const setExercise = setterSesion("ejercicio")
-const setVersions = setterSesion("versiones")
-const setHasExercise = setterSesion("tieneEjercicio")
-
-export default function AsistenteDocente({
-  view,
-  setView,
-}: {
-  view: AppView
-  setView: (next: AppView) => void
-}) {
-  const [publicarOpen, setPublicarOpen] = useState(false)
-
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Estado compartido con el editor A4: sobrevive al ir del chat al editor y volver
+export default function AsistenteDocente({ setView }: { setView: (next: AppView) => void }) {
   const sesion = useSesionDocente(estadoInicialDocente)
-  const messages = sesion.mensajes
-  const exercise = sesion.ejercicio
-  const versions = sesion.versiones
-  const hasExercise = sesion.tieneEjercicio
+  const { mensajes, ejercicio, versiones, tieneEjercicio, paralelos, paraleloActivo } = sesion
 
-
-
-
+  const [publicarOpen, setPublicarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [input, setInput] = useState("")
+  const [generando, setGenerando] = useState<string | null>(null)
+  const [recientes, setRecientes] = useState<Reciente[] | null>(null)
+  const [usuario] = useState(() => authController.getCurrentUser())
 
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const timerRef = useRef<number | null>(null)
+  const [modoNuevo, setModoNuevo] = useState<"tema" | "transformar">("tema")
+  const [curso, setCurso] = useState<(typeof CURSOS)[number]>("2do BGU")
+  const [dificultad, setDificultad] = useState<(typeof DIFICULTADES)[number]>("Intermedia")
+  const [tema, setTema] = useState("")
+  const [contexto, setContexto] = useState("")
+  const [mecanico, setMecanico] = useState("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current)
-    },
+  const cargarRecientes = () => {
+    ejerciciosController.getMisEjercicios().then(setRecientes)
+  }
 
-    [],
-  )
+  useEffect(cargarRecientes, [])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    })
-  }, [messages, isGenerating])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [mensajes, generando])
 
-  const processPrompt = async (prompt: string) => {
-    if (!prompt.trim() || isGenerating) return
+  // Ejercicio nuevo: reinicia las versiones de paralelos y lo deja como activo
+  const iniciarEjercicio = (nuevo: Exercise) => {
+    actualizarSesionDocente(() => ({
+      ejercicio: nuevo,
+      tieneEjercicio: true,
+      versiones: [],
+      paralelos: { A: nuevo },
+      paraleloActivo: "A",
+    }))
+  }
 
-    setMessages((current) => [
-      ...current,
+  // Ajuste del ejercicio de la pestaña activa: el anterior queda para «Versión anterior»
+  const reemplazarActivo = (nuevo: Exercise) => {
+    actualizarSesionDocente((actual) => ({
+      versiones: [...actual.versiones, actual.ejercicio],
+      ejercicio: nuevo,
+      paralelos: { ...actual.paralelos, [actual.paraleloActivo]: nuevo },
+    }))
+  }
 
-      { id: Date.now(), role: "user", text: prompt.trim() },
-    ])
-
+  const pedirIA = async (etiqueta: string, instruccion: string, modo: "nuevo" | "ajuste") => {
+    if (generando) return
+    agregarMensaje({ role: "user", text: etiqueta })
     setInput("")
-
-    setIsGenerating(true)
+    setGenerando("Preparando tu ejercicio…")
+    const inicio = Date.now()
 
     try {
-      const res = await generateExerciseAI(
-        prompt,
-        hasExercise ? exercise : undefined,
-      )
+      const base = modo === "ajuste" && tieneEjercicio ? ejercicio : undefined
+      const res = await generateExerciseAI(instruccion, base)
+      const propuesto = res.data.exercise
+      const hayCambio = modo === "nuevo" ? propuesto.id !== "ex-default" : cambioReal(propuesto, ejercicio)
+      let guardado: Exercise | undefined
 
-      const newEx = res.data.exercise
-
-      const hasMeaningfulChange =
-        newEx &&
-        newEx.topic &&
-        (newEx.topic !== exercise.topic ||
-          newEx.difficulty !== exercise.difficulty ||
-          newEx.questions !== exercise.questions ||
-          newEx.version > exercise.version)
-
-      let updatedExercise: Exercise | undefined = undefined
-
-      if (hasMeaningfulChange) {
-        if (hasExercise) setVersions((current) => [...current, exercise])
-
-        updatedExercise = {
-          ...newEx,
-
-          version: exercise.version + 1,
-        }
-
-        setExercise(updatedExercise)
-
-        setHasExercise(true)
-
-        // Guarda en ejercicios_pisa y reemplaza el id local por el UUID real
-        // Mismo tema = versión del ejercicio actual; tema nuevo = ejercicio original
-        const esVersion = hasExercise && newEx.topic === exercise.topic
-
-        const guardado = await ejerciciosController.guardarComoActivo(updatedExercise, {
-          ejercicioPadreId: esVersion ? exercise.id : undefined,
-
-          etiquetaVersion: !esVersion
-            ? "Original"
-            : /versi[oó]n/i.test(prompt)
-              ? "Versión B"
-              : "Iteración 2",
-
-          tiempoCreacionSegundos: 8,
+      if (hayCambio) {
+        const padre = paralelos.A?.id
+        guardado = await ejerciciosController.guardarComoActivo(propuesto, {
+          ejercicioPadreId: modo === "ajuste" && isValidUuid(padre) ? padre : undefined,
+          etiquetaVersion: modo === "ajuste" ? "Iteración 2" : "Original",
+          tiempoCreacionSegundos: Math.max(1, Math.round((Date.now() - inicio) / 1000)),
         })
-
-        if (guardado.id !== updatedExercise.id) {
-          updatedExercise = guardado
-
-          setExercise(guardado)
+        if (modo === "nuevo") {
+          iniciarEjercicio(guardado)
+          cargarRecientes()
+        } else {
+          reemplazarActivo(guardado)
         }
       }
 
-      setMessages((current) => [
-        ...current,
-
-        {
-          id: Date.now() + 1,
-
-          role: "assistant",
-
-          text: res.data.reply,
-
-          exercise: updatedExercise,
-        },
-      ])
+      agregarMensaje({ role: "assistant", text: res.data.reply, exercise: guardado, sinConexion: res.isOfflineFallback })
     } catch {
-      setMessages((current) => [
-        ...current,
-
-        {
-          id: Date.now() + 1,
-
-          role: "assistant",
-
-          text: "¡Hola! Tu mensaje ha sido recibido. Puedes pedirme crear una actividad contextualizada tipo PISA para Ecuador (ej: «Crea un ejercicio sobre el Metro de Quito para 2do BGU») o ajustar este ejercicio.",
-        },
-      ])
+      agregarMensaje({ role: "assistant", text: "No pude procesar tu pedido. Inténtalo otra vez en unos segundos." })
     } finally {
-      setIsGenerating(false)
+      setGenerando(null)
     }
   }
 
-  const submitPrompt = (event: FormEvent) => {
+  const crearDesdeFormulario = (event: FormEvent) => {
     event.preventDefault()
-
-    processPrompt(input)
+    const ctx = contexto ? `, en el contexto de ${contexto} en Ecuador` : ", con un contexto real de Ecuador"
+    if (modoNuevo === "tema") {
+      if (!tema.trim()) return
+      pedirIA(
+        `${tema.trim()} · ${curso} · ${dificultad}`,
+        `Crea un ejercicio tipo PISA para ${curso}, dificultad ${dificultad}, sobre ${tema.trim()}${ctx}.`,
+        "nuevo",
+      )
+    } else {
+      if (!mecanico.trim()) return
+      pedirIA(
+        `Transformar: ${mecanico.trim().slice(0, 90)}`,
+        `Transforma este ejercicio mecánico en un problema tipo PISA para ${curso}, dificultad ${dificultad}${ctx}: conserva el contenido matemático, agrega una situación real y preguntas que pidan razonar. Ejercicio: ${mecanico.trim()}`,
+        "nuevo",
+      )
+    }
   }
 
-  const startNewExercise = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current)
+  const enviarTexto = (texto: string) => {
+    const limpio = texto.trim()
+    if (!limpio) return
+    // Con un ejercicio abierto, el texto libre lo ajusta; «crea…» o «transforma…» empieza otro
+    const pideNuevo = !tieneEjercicio || /^(crea|genera|diseña|transforma|convierte)\b/i.test(limpio)
+    pedirIA(limpio, limpio, pideNuevo ? "nuevo" : "ajuste")
+  }
 
-    setMessages([
-      {
-        id: Date.now(),
-
+  const crearVersion = async (letra: Exclude<LetraParalelo, "A">) => {
+    const original = paralelos.A
+    if (!original || generando) return
+    setGenerando(`Creando la Versión ${letra}…`)
+    try {
+      const res = await generateExerciseAI(instruccionVersion(letra), original)
+      if (res.isOfflineFallback || !cambioReal(res.data.exercise, original)) {
+        agregarMensaje({
+          role: "assistant",
+          text: `No pude crear la Versión ${letra} ahora porque la IA no respondió a tiempo. Inténtalo de nuevo en unos segundos.`,
+          sinConexion: res.isOfflineFallback,
+        })
+        return
+      }
+      const guardada = await ejerciciosController.guardarComoActivo(res.data.exercise, {
+        ejercicioPadreId: isValidUuid(original.id) ? original.id : undefined,
+        etiquetaVersion: `Versión ${letra}`,
+      })
+      actualizarSesionDocente((actual) => ({
+        paralelos: { ...actual.paralelos, [letra]: guardada },
+        paraleloActivo: letra,
+        ejercicio: guardada,
+        versiones: [],
+      }))
+      agregarMensaje({
         role: "assistant",
+        text: `Listo, la Versión ${letra}: misma estructura matemática con otros datos y otro escenario. Su solución está actualizada.`,
+        exercise: guardada,
+      })
+    } finally {
+      setGenerando(null)
+    }
+  }
 
-        text: "¡Nuevo espacio iniciado! ¿Qué tema o destreza deseas trabajar hoy? Escribe tu idea (ej: «Crea un ejercicio de funciones cuadráticas sobre el Metro de Quito para 2do BGU») o haz una consulta metodológica.",
-      },
-    ])
+  const cambiarParalelo = (letra: LetraParalelo) => {
+    const elegido = paralelos[letra]
+    if (!elegido) return
+    ejerciciosController.guardarActivoLocal(elegido)
+    actualizarSesionDocente(() => ({ paraleloActivo: letra, ejercicio: elegido, versiones: [] }))
+  }
 
-    setHasExercise(false)
+  const versionAnterior = () => {
+    const anterior = versiones.at(-1)
+    if (!anterior) return
+    ejerciciosController.guardarActivoLocal(anterior)
+    actualizarSesionDocente((actual) => ({
+      ejercicio: anterior,
+      versiones: actual.versiones.slice(0, -1),
+      paralelos: { ...actual.paralelos, [actual.paraleloActivo]: anterior },
+    }))
+    agregarMensaje({ role: "assistant", text: "Volví a la versión anterior del ejercicio.", exercise: anterior })
+  }
 
-    setVersions([])
-
+  const nuevoEjercicio = () => {
+    actualizarSesionDocente(() => ({
+      mensajes: [{ id: Date.now(), role: "assistant", text: SALUDO_ASISTENTE }],
+      tieneEjercicio: false,
+      versiones: [],
+      paralelos: {},
+      paraleloActivo: "A",
+    }))
     setInput("")
-
-    setIsGenerating(false)
-
     setSidebarOpen(false)
   }
 
-  const undoVersion = () => {
-    const previous = versions.at(-1)
-
-    if (!previous) return
-
-    setExercise(previous)
-
-    setVersions((current) => current.slice(0, -1))
-
-    setMessages((current) => [
-      ...current,
-
-      {
-        id: Date.now(),
-
-        role: "assistant",
-
-        text: `Restauré la versión ${previous.version}. Puedes seguir iterando sin perder tu trabajo.`,
-
-        exercise: previous,
-      },
-    ])
-  }
-
-  const openRecent = (item: typeof recentItems[number]) => {
-    const recentExercise = {
-      ...initialExercise,
-
-      topic: item.title,
-
-      context: item.context,
-    }
-
-    setExercise(recentExercise)
-
-    setHasExercise(true)
-
-    setVersions([])
-
-    setMessages([
-      {
-        id: Date.now(),
-
-        role: "assistant",
-
-        text: `Abrí “${item.title}”. Puedes continuar desde donde lo dejaste o pedir cualquier cambio con el asistente Gemini.`,
-
-        exercise: recentExercise,
-      },
-    ])
-
+  const abrirReciente = ({ ejercicio: elegido }: Reciente) => {
+    ejerciciosController.guardarActivoLocal(elegido)
+    iniciarEjercicio(elegido)
+    agregarMensaje({ role: "assistant", text: `Abrí «${elegido.topic}». Puedes ajustarlo o publicarlo en una clase.`, exercise: elegido })
     setSidebarOpen(false)
   }
 
   return (
     <div className="ui-view min-h-screen bg-sand-100 text-sand-950">
-      <EvaluatorTopBar currentView={view} onViewChange={setView} />
       {sidebarOpen && (
         <button
           type="button"
@@ -314,67 +268,60 @@ export default function AsistenteDocente({
 
         <button
           type="button"
-          onClick={startNewExercise}
+          onClick={nuevoEjercicio}
           className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 text-sm font-bold text-white transition hover:bg-ink-800 focus:outline-none focus:ring-4 focus:ring-ink-200"
         >
           <Icon name="plus" className="size-5" />
           Nuevo ejercicio
         </button>
 
-        <nav
-          className="mt-8 min-h-0 flex-1 overflow-y-auto"
-          aria-label="Ejercicios recientes"
-        >
-          <p className="px-2 text-xs font-bold uppercase tracking-widest text-sand-600">
-            Recientes
-          </p>
-          <div className="mt-3 space-y-1">
-            {recentItems.map((item, index) => (
-              <button
-                key={item.title}
-                type="button"
-                onClick={() => openRecent(item)}
-                className={`min-h-16 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200 ${
-                  index === 0 && hasExercise
-                    ? "bg-white ring-1 ring-sand-200"
-                    : ""
-                }`}
-              >
-                <span className="block truncate text-sm font-semibold text-sand-900">
-                  {item.title}
-                </span>
-                <span className="mt-1 block truncate text-xs text-sand-600">
-                  {item.meta}
-                </span>
-              </button>
-            ))}
-          </div>
+        <nav className="mt-8 min-h-0 flex-1 overflow-y-auto" aria-label="Tus ejercicios recientes">
+          <p className="px-2 text-xs font-bold uppercase tracking-widest text-sand-600">Tus ejercicios</p>
+          {recientes === null ? (
+            <div className="mt-3 space-y-2" aria-busy="true">
+              <p className="sr-only" role="status">
+                Cargando tus ejercicios…
+              </p>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-14 animate-pulse rounded-xl bg-sand-200/80" />
+              ))}
+            </div>
+          ) : recientes.length === 0 ? (
+            <p className="mt-3 px-2 text-sm leading-relaxed text-sand-600">
+              Aún no has creado ejercicios. El primero que hagas aparecerá aquí.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-1">
+              {recientes.map((item) => (
+                <button
+                  key={item.ejercicio.id}
+                  type="button"
+                  onClick={() => abrirReciente(item)}
+                  className={`min-h-14 w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200 ${
+                    tieneEjercicio && paralelos.A?.id === item.ejercicio.id ? "bg-white ring-1 ring-sand-200" : ""
+                  }`}
+                >
+                  <span className="block truncate text-sm font-semibold text-sand-900">{item.ejercicio.topic}</span>
+                  <span className="mt-1 block truncate text-xs text-sand-600">
+                    {item.ejercicio.level} · {fechaCorta(item.creadoEn)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </nav>
 
-        <div className="rounded-2xl bg-hint-50 p-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-hint-800">
-            <Icon name="info" className="size-4" />
-            Tip para iterar
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-sand-700">
-            Escribe “contexto de arquitectura” para adaptar la guía al instante.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border-t border-sand-200 px-2 text-left hover:bg-sand-200 focus:outline-none focus:ring-4 focus:ring-ink-200"
-        >
-          <span className="grid size-10 place-items-center rounded-full bg-ink-100 text-ink-950">
-            <Icon name="user" className="size-5" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold">María Andrade</span>
-            <span className="block text-xs text-sand-600">
-              Docente · 2do BGU
+        {usuario && (
+          <div className="mt-4 flex min-h-14 items-center gap-3 border-t border-sand-200 px-2 pt-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-100 text-ink-950">
+              <Icon name="user" className="size-5" />
             </span>
-          </span>
-        </button>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">{usuario.name}</span>
+              <span className="block truncate text-xs text-sand-600">{usuario.institution}</span>
+            </span>
+          </div>
+        )}
       </aside>
 
       <div className="flex min-h-screen flex-col lg:pl-72">
@@ -392,9 +339,7 @@ export default function AsistenteDocente({
                 <Icon name="menu" />
               </button>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-sand-950">
-                  {hasExercise ? exercise.topic : "Nuevo ejercicio"}
-                </p>
+                <p className="truncate text-sm font-bold text-sand-950">{tieneEjercicio ? ejercicio.topic : "Nuevo ejercicio"}</p>
                 <p className="flex items-center gap-1.5 text-xs text-sand-500">
                   <span className="size-1.5 rounded-full bg-ink-500" />
                   Asistente pedagógico
@@ -403,17 +348,18 @@ export default function AsistenteDocente({
             </div>
 
             <div className="flex items-center gap-2">
-              {hasExercise && versions.length > 0 && (
+              {tieneEjercicio && versiones.length > 0 && (
                 <button
                   type="button"
-                  onClick={undoVersion}
-                  className="flex min-h-11 items-center gap-2 rounded-xl border border-sand-200 px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
+                  onClick={versionAnterior}
+                  disabled={Boolean(generando)}
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-sand-200 px-3 text-sm font-semibold text-sand-700 transition hover:bg-sand-50 focus:outline-none focus:ring-4 focus:ring-ink-100 disabled:opacity-50"
                 >
                   <Icon name="undo" className="size-4" />
-                  <span className="hidden sm:inline">Deshacer</span>
+                  <span className="hidden sm:inline">Versión anterior</span>
                 </button>
               )}
-              {hasExercise && (
+              {tieneEjercicio && (
                 <button
                   type="button"
                   onClick={() => setView("editor")}
@@ -423,7 +369,7 @@ export default function AsistenteDocente({
                   <span className="hidden sm:inline">Editar guía</span>
                 </button>
               )}
-              {hasExercise && (
+              {tieneEjercicio && (
                 <button
                   type="button"
                   onClick={() => setPublicarOpen(true)}
@@ -433,26 +379,48 @@ export default function AsistenteDocente({
                   <span>Publicar</span>
                 </button>
               )}
-              {publicarOpen && (
-                <PublicarAulaDialog onClose={() => setPublicarOpen(false)} onIrAlAsistente={() => setPublicarOpen(false)} />
-              )}
             </div>
           </div>
+
+          {tieneEjercicio && (
+            <div className="mx-auto flex max-w-5xl items-center gap-2 overflow-x-auto px-4 pb-3 sm:px-6" role="group" aria-label="Versiones para paralelos">
+              <span className="shrink-0 text-xs font-semibold text-sand-500">Paralelos:</span>
+              {(["A", "B", "C"] as const).map((letra) =>
+                paralelos[letra] ? (
+                  <button
+                    key={letra}
+                    type="button"
+                    aria-pressed={paraleloActivo === letra}
+                    onClick={() => cambiarParalelo(letra)}
+                    className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus:outline-none focus:ring-4 focus:ring-ink-100 ${
+                      paraleloActivo === letra ? "bg-ink-950 text-white" : "border border-sand-300 bg-white text-sand-700 hover:bg-sand-50"
+                    }`}
+                  >
+                    Versión {letra}
+                  </button>
+                ) : (
+                  letra !== "A" && (
+                    <button
+                      key={letra}
+                      type="button"
+                      disabled={Boolean(generando) || !paralelos.A}
+                      onClick={() => crearVersion(letra)}
+                      className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-dashed border-sand-400 px-4 text-sm font-semibold text-sand-700 transition-colors duration-150 hover:border-ink-400 hover:bg-ink-50 focus:outline-none focus:ring-4 focus:ring-ink-100 disabled:opacity-50"
+                    >
+                      <Icon name="plus" className="size-4" />
+                      Crear versión {letra}
+                    </button>
+                  )
+                ),
+              )}
+            </div>
+          )}
         </header>
 
         <main className="flex-1">
           <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
-            <div className="mb-8 flex items-center justify-center gap-2 text-xs font-medium text-sand-500 print:hidden">
-              <Icon name="clock" className="size-4" />
-              Hoy
-            </div>
-
-            <div
-              className="space-y-6 print:hidden"
-              aria-live="polite"
-              aria-busy={isGenerating}
-            >
-              {messages.map((message) =>
+            <div className="space-y-6 print:hidden" aria-live="polite" aria-busy={Boolean(generando)}>
+              {mensajes.map((message) =>
                 message.role === "user" ? (
                   <div key={message.id} className="ui-msg flex justify-end">
                     <div className="max-w-xl rounded-2xl rounded-br-md bg-ink-950 px-4 py-3 text-sm leading-relaxed text-white shadow-sm sm:px-5">
@@ -466,23 +434,21 @@ export default function AsistenteDocente({
                         <Icon name="sparkles" className="size-4" />
                       </span>
                       <div className="max-w-2xl rounded-2xl rounded-tl-md border border-sand-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-sand-800 shadow-sm sm:px-5">
-                        <div className="mb-2 border-b border-sand-100 pb-1.5 text-xs font-bold text-ink-700">
-                          Asistente pedagógico
-                        </div>
-                        <div className="whitespace-pre-line text-sand-700 leading-relaxed font-normal">
-                          {message.text}
-                        </div>
+                        <div className="whitespace-pre-line text-sand-700">{message.text}</div>
+                        {message.sinConexion && (
+                          <p className="mt-2 border-t border-sand-100 pt-2 text-xs text-sand-500">
+                            La IA no respondió a tiempo: esta respuesta es una propuesta preparada de antemano.
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {message.exercise && (
-                      <ExerciseCard exercise={message.exercise} />
-                    )}
+                    {message.exercise && <ExerciseCard exercise={message.exercise} />}
                   </div>
                 ),
               )}
 
-              {isGenerating && (
-                <div className="ui-msg flex items-start gap-3" aria-live="polite">
+              {generando && (
+                <div className="ui-msg flex items-start gap-3">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-800">
                     <Icon name="sparkles" className="size-4" />
                   </span>
@@ -495,104 +461,169 @@ export default function AsistenteDocente({
                       <span className="size-1.5 rounded-full bg-ink-600" />
                       <span className="size-1.5 rounded-full bg-ink-600" />
                     </span>
-                    Preparando tu ejercicio…
+                    {generando}
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {!hasExercise && !isGenerating && (
-              <div className="mx-auto mt-10 max-w-2xl text-center print:hidden">
-                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink-950 text-white shadow-lg shadow-ink-950/15">
-                  <Icon name="sparkles" className="size-6" />
-                </span>
-                <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink-950 sm:text-3xl">
-                  ¿Qué vamos a crear hoy?
-                </h1>
-                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-sand-600">
-                  Describe un tema, curso o contexto. ECduLearn lo convertirá en
-                  una actividad de razonamiento lista para usar.
-                </p>
-                <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  {[
-                    "Funciones cuadráticas para 1ro BGU",
-                    "Probabilidad con fútbol",
-                    "Finanzas personales",
-                  ].map(
-                    (suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => processPrompt(suggestion)}
-                        className="min-h-11 rounded-full border border-sand-300 bg-white px-4 text-sm font-semibold text-sand-700 shadow-sm transition hover:border-ink-300 hover:bg-ink-50 focus:outline-none focus:ring-4 focus:ring-ink-100"
-                      >
-                        {suggestion}
-                      </button>
-                    ),
-                  )}
+            {!tieneEjercicio && !generando && (
+              <form onSubmit={crearDesdeFormulario} className="ui-enter mx-auto mt-8 max-w-2xl rounded-2xl border border-sand-200 bg-white p-5 shadow-sm sm:p-7 print:hidden">
+                <h1 className="text-xl font-bold tracking-tight text-ink-950">¿Qué vamos a crear hoy?</h1>
+                <div className="mt-4 flex gap-2" role="tablist" aria-label="Forma de crear el ejercicio">
+                  {(
+                    [
+                      ["tema", "Desde un tema"],
+                      ["transformar", "Transformar un ejercicio"],
+                    ] as const
+                  ).map(([valor, etiqueta]) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      role="tab"
+                      aria-selected={modoNuevo === valor}
+                      onClick={() => setModoNuevo(valor)}
+                      className={`min-h-11 rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus:outline-none focus:ring-4 focus:ring-ink-100 ${
+                        modoNuevo === valor ? "bg-ink-950 text-white" : "border border-sand-300 text-sand-700 hover:bg-sand-50"
+                      }`}
+                    >
+                      {etiqueta}
+                    </button>
+                  ))}
                 </div>
-              </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-semibold text-sand-800">
+                    Curso
+                    <select value={curso} onChange={(e) => setCurso(e.target.value as typeof curso)} className={selectClase}>
+                      {CURSOS.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm font-semibold text-sand-800">
+                    Dificultad
+                    <select value={dificultad} onChange={(e) => setDificultad(e.target.value as typeof dificultad)} className={selectClase}>
+                      {DIFICULTADES.map((d) => (
+                        <option key={d}>{d}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {modoNuevo === "tema" ? (
+                  <label className="mt-4 block text-sm font-semibold text-sand-800">
+                    Tema o destreza
+                    <input
+                      value={tema}
+                      onChange={(e) => setTema(e.target.value)}
+                      required
+                      maxLength={150}
+                      placeholder="Ej. funciones cuadráticas, porcentajes, probabilidad"
+                      className="mt-1.5 min-h-11 w-full rounded-xl border border-sand-300 bg-white px-3 text-sm text-sand-900 placeholder:text-sand-400 focus:border-ink-700 focus:outline-none focus:ring-4 focus:ring-ink-100"
+                    />
+                  </label>
+                ) : (
+                  <label className="mt-4 block text-sm font-semibold text-sand-800">
+                    Ejercicio mecánico
+                    <textarea
+                      value={mecanico}
+                      onChange={(e) => setMecanico(e.target.value)}
+                      required
+                      rows={3}
+                      maxLength={1500}
+                      placeholder="Pega el ejercicio del libro. Ej. Resuelve x² − 5x + 6 = 0"
+                      className="mt-1.5 w-full resize-none rounded-xl border border-sand-300 bg-white p-3 text-sm text-sand-900 placeholder:text-sand-400 focus:border-ink-700 focus:outline-none focus:ring-4 focus:ring-ink-100"
+                    />
+                  </label>
+                )}
+
+                <label className="mt-4 block text-sm font-semibold text-sand-800">
+                  Contexto
+                  <select value={contexto} onChange={(e) => setContexto(e.target.value)} className={selectClase}>
+                    <option value="">Que el asistente proponga uno</option>
+                    {CONTEXTOS.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={modoNuevo === "tema" ? !tema.trim() : !mecanico.trim()}
+                  className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-5 text-sm font-bold text-white transition hover:bg-ink-800 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300"
+                >
+                  <Icon name="sparkles" className="size-4" />
+                  {modoNuevo === "tema" ? "Crear ejercicio" : "Transformar a tipo PISA"}
+                </button>
+              </form>
             )}
             <div className="h-4" />
           </div>
         </main>
 
         <footer className="sticky bottom-0 z-20 border-t border-sand-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden sm:px-6">
-          <form onSubmit={submitPrompt} className="mx-auto max-w-4xl">
-            <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-              <span className="shrink-0 font-bold text-sand-400">
-                Atajos rápidos:
-              </span>
-              {quickActions.map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  disabled={isGenerating}
-                  onClick={() => processPrompt(action)}
-                  className="shrink-0 rounded-full border border-sand-200 bg-sand-50 px-3.5 py-1 text-xs font-semibold text-sand-700 shadow-sm transition hover:border-ink-400 hover:bg-ink-50 focus:outline-none focus:ring-2 focus:ring-ink-200 disabled:opacity-50"
-                >
-                  {action}
-                </button>
-              ))}
-            </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              enviarTexto(input)
+            }}
+            className="mx-auto max-w-4xl"
+          >
+            {tieneEjercicio && (
+              <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1" role="group" aria-label="Ajustes rápidos">
+                {ACCIONES_EJERCICIO.map((accion) => (
+                  <button
+                    key={accion.etiqueta}
+                    type="button"
+                    disabled={Boolean(generando)}
+                    onClick={() => pedirIA(accion.etiqueta, accion.instruccion, "ajuste")}
+                    className="min-h-11 shrink-0 rounded-full border border-sand-200 bg-sand-50 px-4 text-sm font-semibold text-sand-700 transition hover:border-ink-400 hover:bg-ink-50 focus:outline-none focus:ring-4 focus:ring-ink-100 disabled:opacity-50"
+                  >
+                    {accion.etiqueta}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-end gap-2 rounded-2xl border border-sand-300 bg-white p-2 shadow-lg shadow-sand-900/5 transition focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100">
               <label htmlFor="chat-input" className="sr-only">
-                Escribe una instrucción para ECduLearn
+                Escribe una instrucción para el asistente
               </label>
               <textarea
                 id="chat-input"
                 rows={1}
                 value={input}
-                disabled={isGenerating}
+                disabled={Boolean(generando)}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault()
-
-                    processPrompt(input)
+                    enviarTexto(input)
                   }
                 }}
-                placeholder="Ej: “más fácil”, “contexto de arquitectura”, “agrega una pregunta”..."
+                placeholder={tieneEjercicio ? "Ej. «agrega una pregunta sobre el costo total»" : "O escribe directamente lo que necesitas"}
                 className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-sand-900 outline-none placeholder:text-sand-400 disabled:cursor-wait"
               />
               <button
                 type="submit"
-                disabled={!input.trim() || isGenerating}
+                disabled={!input.trim() || Boolean(generando)}
                 className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink-950 text-white transition hover:bg-ink-900 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:cursor-not-allowed disabled:bg-sand-300"
                 aria-label="Enviar instrucción"
               >
                 <Icon name="send" className="size-5" />
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-sand-400">
-              ECduLearn puede equivocarse. Revisa los resultados antes de
-              usarlos en clase.
+            <p className="mt-2 text-center text-xs text-sand-500">
+              ECduLearn puede equivocarse. Revisa los resultados antes de usarlos en clase.
             </p>
           </form>
         </footer>
       </div>
-      <EvaluatorPill currentView={view} onViewChange={setView} />
+
+      {publicarOpen && (
+        <PublicarAulaDialog onClose={() => setPublicarOpen(false)} onIrAlAsistente={() => setPublicarOpen(false)} />
+      )}
     </div>
   )
 }

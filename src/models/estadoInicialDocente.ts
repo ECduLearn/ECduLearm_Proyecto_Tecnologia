@@ -1,50 +1,53 @@
 import { ejerciciosController } from "@/services/dbService"
-import type { EstadoDocente, MensajeChat } from "./sesionDocente"
+import type { EstadoDocente } from "./sesionDocente"
 import type { Exercise } from "./types"
 
+// Marcador mientras el docente no tiene ejercicio: nunca se muestra ni se publica
 export const initialExercise: Exercise = {
-  topic: "Estabilidad de estructuras",
+  topic: "",
 
-  context: "Ingeniería civil",
+  context: "",
 
   level: "2do BGU",
 
   difficulty: "Intermedia",
 
-  questions: 3,
+  questions: 0,
 
   version: 1,
 
-  situation:
-    "Un equipo de estudiantes analiza la estabilidad de una estructura para un nuevo centro comunitario. El diseño utiliza módulos triangulares de 4 metros de base y 3 metros de altura. Antes de construir, deben comparar alternativas y justificar cuál distribuye mejor las cargas.",
-
-  questionList: [
-    "Calcula el área de uno de los módulos triangulares utilizados en la estructura.",
-
-    "Si el diseño requiere 12 módulos, ¿qué superficie total representan?",
-
-    "Explica qué alternativa elegirías y sustenta tu decisión con los datos.",
-  ],
+  questionList: [],
 }
 
-const initialMessages: MensajeChat[] = [
-  {
-    id: 1,
-
-    role: "assistant",
-
-    text: "¡Hola! Soy tu asistente para preparar clases.\n\nTe dejé lista una guía de ejemplo con enfoque PISA. Puedes pedirme que la ajuste («hazla más fácil», «agrega una pregunta»), que cree otra sobre un tema distinto («Metro de Quito», «Galápagos», «finanzas») o consultarme cualquier duda sobre cómo plantear un ejercicio.",
-
-    exercise: initialExercise,
-  },
-]
+export const SALUDO_ASISTENTE =
+  "¡Hola! Soy tu asistente para preparar clases. Elige el curso y el tema, o pega un ejercicio del libro para convertirlo en un problema tipo PISA."
 
 // Retoma el último ejercicio trabajado (chat, editor o planificador), también tras recargar
 export function estadoInicialDocente(): EstadoDocente {
+  const activo = ejerciciosController.getEjercicioActivo()
+  if (!activo) {
+    return {
+      mensajes: [{ id: 1, role: "assistant", text: SALUDO_ASISTENTE }],
+      ejercicio: initialExercise,
+      versiones: [],
+      tieneEjercicio: false,
+      paralelos: {},
+      paraleloActivo: "A",
+    }
+  }
   return {
-    mensajes: initialMessages,
-    ejercicio: ejerciciosController.getEjercicioActivo() ?? initialExercise,
+    mensajes: [
+      {
+        id: 1,
+        role: "assistant",
+        text: `Retomé tu último ejercicio: «${activo.topic}». Puedes ajustarlo con los atajos de abajo, crear versiones para otros paralelos o empezar uno nuevo.`,
+        exercise: activo,
+      },
+    ],
+    ejercicio: activo,
     versiones: [],
     tieneEjercicio: true,
+    paralelos: { A: activo },
+    paraleloActivo: "A",
   }
 }

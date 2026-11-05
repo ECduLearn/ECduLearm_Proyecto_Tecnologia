@@ -3,9 +3,7 @@ import { FormEvent, useState } from "react"
 export interface LandingPageProps {
   onEnterApp: () => void
 
-  onStudentEnter?: (pin?: string) => void
-
-  onNavigate?: (view: string) => void
+  onStudentEnter: (pin: string) => void
 }
 
 const REPO_URL = "https://github.com/ECduLearn/ECduLearm_Proyecto_Tecnologia"
@@ -92,23 +90,18 @@ function Marca() {
   )
 }
 
-export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingPageProps) {
-  const entrarComoAdmin = async () => {
-    if (!onNavigate) return onEnterApp()
-    const { authController } = await import("@/services/dbService")
-    if (authController.getCurrentUser()?.role !== "admin") {
-      await authController.loginDocente("admin@ecdulearn.edu.ec", "admin123")
-    }
-    onNavigate("admin")
-  }
-
+export function LandingPage({ onEnterApp, onStudentEnter }: LandingPageProps) {
   const [pin, setPin] = useState("")
   const [pinError, setPinError] = useState("")
   const [buscandoClase, setBuscandoClase] = useState(false)
 
   const entrarConPin = async (event: FormEvent) => {
     event.preventDefault()
-    const limpio = pin.replace(/\s+/g, "").toUpperCase()
+    await ingresar(pin)
+  }
+
+  const ingresar = async (valor: string) => {
+    const limpio = valor.replace(/\s+/g, "").toUpperCase()
     if (!/^[A-Z0-9]{6}$/.test(limpio)) {
       setPinError("El PIN tiene 6 letras o números. Revisa el que te dio tu docente.")
       return
@@ -127,8 +120,7 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
       setPinError("Esta clase ya está completa. Avísale a tu docente.")
       return
     }
-    if (onStudentEnter) onStudentEnter(limpio)
-    else onEnterApp()
+    onStudentEnter(limpio)
   }
 
   return (
@@ -203,38 +195,15 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
                 </button>
                 <button
                   type="button"
-                  onClick={() => (onStudentEnter ? onStudentEnter("PISA26") : onEnterApp())}
+                  onClick={() => ingresar("PISA26")}
+                  disabled={buscandoClase}
                   className="flex min-h-12 items-center gap-2.5 rounded-full border border-sand-300 bg-sand-50 px-5 text-[0.95rem] font-semibold text-sand-800 transition-colors duration-150 hover:border-ink-700 hover:text-ink-950 active:translate-y-px focus:outline-none focus-visible:ring-4 focus-visible:ring-ink-100"
                 >
-                  Probar como estudiante
+                  {buscandoClase ? "Entrando…" : "Probar como estudiante"}
                   <span className="rounded-md bg-sand-200 px-1.5 py-0.5 font-mono text-xs text-sand-700">PISA26</span>
                 </button>
               </div>
 
-              <details className="reveal group mt-6 max-w-md text-sm text-sand-600" style={{ "--delay": "320ms" } as React.CSSProperties}>
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg font-medium text-sand-600 hover:text-ink-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-ink-100 [&::-webkit-details-marker]:hidden">
-                  <svg className="size-4 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="m9 6 6 6-6 6" />
-                  </svg>
-                  ¿Vienes a evaluar el proyecto? Accesos de prueba
-                </summary>
-                <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-sand-200 bg-sand-100/70 p-4 text-[0.8125rem]">
-                  <dt className="text-sand-500">Docente</dt>
-                  <dd className="font-mono text-sand-800">docente@puce.edu.ec · demo123</dd>
-                  <dt className="text-sand-500">Estudiante</dt>
-                  <dd className="font-mono text-sand-800">PIN PISA26</dd>
-                  <dt className="text-sand-500">Administración</dt>
-                  <dd>
-                    <button
-                      type="button"
-                      onClick={entrarComoAdmin}
-                      className="font-mono text-hint-700 underline decoration-hint-300 underline-offset-2 hover:text-hint-900"
-                    >
-                      admin@ecdulearn.edu.ec
-                    </button>
-                  </dd>
-                </dl>
-              </details>
             </div>
 
             {/* Página del cuaderno: el momento que define al producto */}
@@ -345,10 +314,10 @@ export function LandingPage({ onEnterApp, onStudentEnter, onNavigate }: LandingP
               </p>
               <button
                 type="button"
-                onClick={() => (onNavigate ? onNavigate("dashboard") : onEnterApp())}
+                onClick={onEnterApp}
                 className="mt-8 flex min-h-12 items-center gap-2 rounded-full bg-ink-950 px-6 text-[0.95rem] font-semibold text-sand-50 transition-colors duration-150 hover:bg-ink-800 active:translate-y-px focus:outline-none focus-visible:ring-4 focus-visible:ring-ink-200"
               >
-                Ver el panel docente
+                Entrar como docente
                 <Flecha />
               </button>
             </div>

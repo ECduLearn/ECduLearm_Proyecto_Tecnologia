@@ -185,6 +185,15 @@ function defaultInitialExercise(): Exercise {
   };
 }
 
+const PALABRAS_PLANTILLA = [
+  "metro", "quito", "tren", "transporte", "velocidad",
+  "galapagos", "galápagos", "tortuga", "biodiversidad", "ecolog",
+  "canasta", "inflacion", "inflación", "salario", "econom", "finanz",
+  "volcan", "volcán", "cotopaxi", "sismo", "ceniza", "geolog",
+  "parabola", "parábola", "cuadratica", "cuadrática", "funcion", "función",
+  "futbol", "fútbol", "tiro", "deporte",
+];
+
 function generateFallbackExercise(
   prompt: string,
   currentExercise?: Exercise
@@ -199,58 +208,79 @@ function generateFallbackExercise(
     };
   }
 
-  const isAdjustment = Boolean(
-    currentExercise &&
-      (norm.includes("fácil") ||
-        norm.includes("facil") ||
-        norm.includes("difícil") ||
-        norm.includes("dificil") ||
-        norm.includes("pregunta") ||
-        norm.includes("agrega") ||
-        norm.includes("quita") ||
-        norm.includes("nivel") ||
-        norm.includes("bgu") ||
-        norm.includes("cambia"))
-  );
+  const pideNuevo = /^(crea|crear|genera|generar|diseña|diseñar|transforma|convierte)\b/.test(norm);
 
-  // 1. Si es un ajuste a un ejercicio existente:
-  if (isAdjustment && currentExercise) {
-    let diff = currentExercise.difficulty;
-    let questions = [...(currentExercise.questionList || [])];
-    let level = currentExercise.level;
-    let reply = "He ajustado el ejercicio según tu indicación.";
-
-    if (norm.includes("fácil") || norm.includes("facil") || norm.includes("básica") || norm.includes("basica")) {
-      diff = "Básica";
-      reply = "Simplifiqué los parámetros numéricos y orienté la primera pregunta hacia un cálculo directo paso a paso.";
-    } else if (norm.includes("difícil") || norm.includes("dificil") || norm.includes("avanzad")) {
-      diff = "Avanzada";
-      reply = "Añadí restricciones de optimización y análisis de sensibilidad para elevar la exigencia cognitiva a PISA Nivel 5.";
-    }
-
-    if (norm.includes("pregunta") || norm.includes("agrega")) {
-      questions.push("Formula una conclusión argumentada sobre cómo optimizar la solución ante un escenario de recursos limitados.");
-      reply += " Además, agregué una nueva pregunta de argumentación crítica.";
-    }
-
-    if (norm.includes("1ro") || norm.includes("primero")) level = "1ro BGU";
-    if (norm.includes("2do") || norm.includes("segundo")) level = "2do BGU";
-    if (norm.includes("3ro") || norm.includes("tercero")) level = "3ro BGU";
-
-    return {
+  if (currentExercise && !pideNuevo) {
+    const preguntas = [...(currentExercise.questionList || [])];
+    const ajustado = (cambio: Partial<Exercise>, reply: string) => ({
       exercise: {
         ...currentExercise,
+        ...cambio,
         version: currentExercise.version + 1,
-        difficulty: diff,
-        level,
-        questions: questions.length,
-        questionList: questions,
+        questions: (cambio.questionList ?? preguntas).length,
       },
       reply,
-    };
+    });
+    const sinCambios = (reply: string) => ({ exercise: currentExercise, reply });
+
+    if (norm.includes("versión") || norm.includes("version")) {
+      return sinCambios("No pude crear la versión ahora porque la IA no respondió a tiempo. Inténtalo de nuevo en unos segundos.");
+    }
+    if (norm.includes("más fácil") || norm.includes("mas facil") || norm.includes("básica") || norm.includes("basica")) {
+      return ajustado(
+        { difficulty: "Básica", questionList: ["Antes de calcular, anota los datos numéricos del texto con sus unidades.", ...preguntas] },
+        "Bajé la dificultad: agregué una primera pregunta para ordenar los datos antes de calcular."
+      );
+    }
+    if (norm.includes("más difícil") || norm.includes("mas dificil") || norm.includes("avanzad")) {
+      return ajustado(
+        {
+          difficulty: "Avanzada",
+          questionList: [...preguntas, "Si uno de los datos del problema aumentara un 10 %, ¿cómo cambiaría tu resultado? Justifícalo con cálculos."],
+        },
+        "Subí la dificultad: agregué una pregunta de análisis sobre qué pasa si cambian los datos."
+      );
+    }
+    if (norm.includes("lectura comprensiva")) {
+      return ajustado(
+        { questionList: ["Lee la situación y subraya solo los datos que necesitas. ¿Qué información sobra para responder?", ...preguntas] },
+        "Agregué una primera pregunta de lectura comprensiva para identificar los datos útiles."
+      );
+    }
+    if (norm.includes("cambia el contexto") || norm.includes("contexto")) {
+      return sinCambios("Cambiar el contexto exige reescribir el problema y la IA no respondió a tiempo. Inténtalo de nuevo en unos segundos.");
+    }
+    if (norm.includes("criterios pisa") || norm.includes("orientación") || norm.includes("orientacion")) {
+      return sinCambios(
+        "Para que un ejercicio sea tipo PISA, el estudiante debe pasar por tres procesos: formular (traducir la situación a matemática), emplear (calcular) e interpretar (decidir si el resultado tiene sentido en el contexto). Revisa que al menos una pregunta pida justificar o comparar, no solo calcular."
+      );
+    }
+    if (norm.includes("solución") || norm.includes("solucion")) {
+      return sinCambios(
+        currentExercise.solucionDocente
+          ? "La solución paso a paso está en la tarjeta del ejercicio, en «Solución paso a paso (solo para ti)»."
+          : "No pude escribir la solución ahora porque la IA no respondió a tiempo. Inténtalo de nuevo en unos segundos."
+      );
+    }
+    if (norm.includes("agrega") || norm.includes("pregunta")) {
+      return ajustado(
+        { questionList: [...preguntas, "Escribe una conclusión: ¿qué decisión tomarías con tus resultados y por qué?"] },
+        "Agregué una pregunta de argumentación al final."
+      );
+    }
+    const curso = norm.includes("1ro") || norm.includes("primero") ? "1ro BGU" : norm.includes("2do") || norm.includes("segundo") ? "2do BGU" : norm.includes("3ro") || norm.includes("tercero") ? "3ro BGU" : "";
+    if (curso) return ajustado({ level: curso }, `Cambié el curso a ${curso}.`);
   }
 
   // 2. Generación dinámica de un NUEVO ejercicio basado en el tema solicitado:
+  const temaOriginal = (prompt.includes("Ejercicio:")
+    ? prompt.split("Ejercicio:").pop() ?? ""
+    : /\bsobre\b/i.test(prompt)
+      ? prompt.split(/\bsobre\b/i).pop() ?? ""
+      : ""
+  ).split(",")[0].trim();
+  const temaPedido = temaOriginal.toLowerCase();
+  const busca = temaPedido && PALABRAS_PLANTILLA.some((w) => temaPedido.includes(w)) ? temaPedido : norm;
   let topic = "Modelado Matemático Aplicado";
   let context = "Ciencia y Sociedad";
   let level = "2do BGU";
@@ -262,7 +292,7 @@ function generateFallbackExercise(
   let respuestaCorrecta = "";
   let pistasSocraticas: string[] = [];
 
-  if (norm.includes("metro") || norm.includes("quito") || norm.includes("tren") || norm.includes("transporte") || norm.includes("velocidad")) {
+  if (busca.includes("metro") || busca.includes("quito") || busca.includes("tren") || busca.includes("transporte") || busca.includes("velocidad")) {
     topic = "Cinemática y Frecuencias en el Metro de Quito";
     context = "Transporte y Movilidad Urbana";
     level = "2do BGU";
@@ -278,7 +308,7 @@ function generateFallbackExercise(
     solucionDocente = pasos(["Comprensión: el tren recorre 22 km en 34 min, pero 15 paradas de 30 s suman 7,5 min detenido.","Variables: distancia d = 22 km; tiempo en movimiento t = 34 − 7,5 = 26,5 min = 0,4417 h.","Modelo: v = d / t.","Cálculo: v = 22 / 0,4417 ≈ 49,8 km/h. Para la flota: una vuelta completa dura 2 × 34 = 68 min; con un tren cada 5 min se necesitan 68 / 5 = 13,6 → 14 trenes.","Interpretación: subir 10 % la velocidad máxima solo acorta el tramo en movimiento (≈ 2,4 min por sentido); reducir el tiempo en andenes ahorra en proporción parecida sin exigir más a los trenes."]);
     respuestaCorrecta = "Velocidad media en movimiento ≈ 49,8 km/h; flota mínima de 14 trenes.";
     pistasSocraticas = ["¿Cuánto tiempo pasa el tren detenido en las 15 paradas?","Si quitas ese tiempo, ¿cuánto dura realmente el recorrido en movimiento?","¿Cuántos trenes caben en una vuelta completa si sale uno cada 5 minutos?"];
-  } else if (norm.includes("galapagos") || norm.includes("galápagos") || norm.includes("tortuga") || norm.includes("biodiversidad") || norm.includes("ecolog")) {
+  } else if (busca.includes("galapagos") || busca.includes("galápagos") || busca.includes("tortuga") || busca.includes("biodiversidad") || busca.includes("ecolog")) {
     topic = "Modelado Exponencial de Poblaciones en Galápagos";
     context = "Biología y Conservación Ambiental";
     level = "3ro BGU";
@@ -294,7 +324,7 @@ function generateFallbackExercise(
     solucionDocente = pasos(["Comprensión: la colonia empieza con 120 tortugas y crece 6,5 % cada año.","Variables: P₀ = 120; tasa r = 0,065; t en años.","Modelo: P(t) = 120 · 1,065^t.","Cálculo: 120 · 1,065^t > 300 → 1,065^t > 2,5 → t > ln 2,5 / ln 1,065 ≈ 14,6; la colonia supera 300 en el año 15.","Interpretación: con una tasa del 3 %, t > ln 2,5 / ln 1,03 ≈ 31 años; el crecimiento se demora más del doble."]);
     respuestaCorrecta = "P(t) = 120 · 1,065^t; supera los 300 individuos en el año 15 (≈ 31 años si la tasa baja al 3 %).";
     pistasSocraticas = ["¿Qué significa que crezca 6,5 % cada año: se suma lo mismo o se multiplica?","¿Por qué número multiplicas la población cada año?","¿Cómo despejarías un exponente desconocido?"];
-  } else if (norm.includes("canasta") || norm.includes("inflacion") || norm.includes("inflación") || norm.includes("salario") || norm.includes("econom") || norm.includes("finanz")) {
+  } else if (busca.includes("canasta") || busca.includes("inflacion") || busca.includes("inflación") || busca.includes("salario") || busca.includes("econom") || busca.includes("finanz")) {
     topic = "Variación de la Canasta Básica Familiar en Ecuador";
     context = "Economía Doméstica y Estadística";
     level = "1ro BGU";
@@ -310,7 +340,7 @@ function generateFallbackExercise(
     solucionDocente = pasos(["Comprensión: hay que comparar el ingreso del hogar con el costo de la canasta ($795).","Variables: ingreso = 1,6 × SBU vigente (completa el valor oficial del año); alimentos 34 %; vivienda 26 %.","Modelo: cobertura = ingreso / 795 × 100; gasto por rubro = 795 × porcentaje.","Cálculo: alimentos = 795 × 0,34 = $270,30; vivienda = 795 × 0,26 = $206,70. La cobertura depende del SBU que uses.","Interpretación: el presupuesto debe justificar qué gastos no esenciales bajan 15 % y cuánto dinero libera."]);
     respuestaCorrecta = "Alimentos $270,30 y vivienda $206,70; la cobertura = 1,6 × SBU / 795 × 100 con el SBU vigente.";
     pistasSocraticas = ["¿Qué dos cantidades necesitas comparar para saber si el ingreso alcanza?","¿Cómo calculas el 34 % de una cantidad?","¿Qué gasto reducirías primero y por qué?"];
-  } else if (norm.includes("volcan") || norm.includes("volcán") || norm.includes("cotopaxi") || norm.includes("sismo") || norm.includes("ceniza") || norm.includes("geolog")) {
+  } else if (busca.includes("volcan") || busca.includes("volcán") || busca.includes("cotopaxi") || busca.includes("sismo") || busca.includes("ceniza") || busca.includes("geolog")) {
     topic = "Dispersión de Ceniza del Volcán Cotopaxi";
     context = "Geofísica y Gestión de Riesgos";
     level = "2do BGU";
@@ -326,7 +356,7 @@ function generateFallbackExercise(
     solucionDocente = pasos(["Comprensión: el viento lleva la ceniza a 32 km/h y se analiza lo que ocurre en 45 min.","Variables: v = 32 km/h; t = 45 min = 0,75 h; radio de alerta r = 12 km.","Modelo: d = v · t; área del círculo A = π r².","Cálculo: d = 32 × 0,75 = 24 km; A = π × 12² ≈ 452,4 km².","Interpretación: a los 45 minutos la nube ya pasó el radio de 12 km, así que la evacuación debe empezar antes en las zonas a favor del viento."]);
     respuestaCorrecta = "La nube avanza 24 km en 45 min; el área de alerta es ≈ 452,4 km².";
     pistasSocraticas = ["¿En qué unidades está la velocidad y en cuáles el tiempo?","¿Qué fracción de hora son 45 minutos?","¿Qué fórmula da el área de un círculo?"];
-  } else if (norm.includes("parabola") || norm.includes("parábola") || norm.includes("cuadratica") || norm.includes("cuadrática") || norm.includes("funcion") || norm.includes("función")) {
+  } else if (busca.includes("parabola") || busca.includes("parábola") || busca.includes("cuadratica") || busca.includes("cuadrática") || busca.includes("funcion") || busca.includes("función")) {
     topic = "Modelado Parabólico en Puentes Colgantes";
     context = "Ingeniería Estructural";
     level = "2do BGU";
@@ -342,7 +372,7 @@ function generateFallbackExercise(
     solucionDocente = pasos(["Comprensión: el cable forma una parábola con su punto más bajo en el centro, a 4 m de la calzada.","Variables: vértice (0, 4); torres en x = ±30 m con altura 19 m.","Modelo: y = a·x² + 4; con (30, 19): 19 = 900a + 4 → a = 1/60.","Cálculo: y = x²/60 + 4; en x = 15: y = 225/60 + 4 = 7,75 m.","Interpretación: la tensión es mínima en el vértice y máxima en las torres, donde el cable soporta el peso de todo el tramo."]);
     respuestaCorrecta = "y = x²/60 + 4; el tensor a 15 m del centro mide 7,75 m.";
     pistasSocraticas = ["¿Dónde conviene ubicar el origen para que la ecuación sea sencilla?","¿Qué punto conocido de la parábola te permite encontrar a?","¿Qué valor de x corresponde a 15 m del centro?"];
-  } else if (norm.includes("futbol") || norm.includes("fútbol") || norm.includes("tiro") || norm.includes("deporte")) {
+  } else if (busca.includes("futbol") || busca.includes("fútbol") || busca.includes("tiro") || busca.includes("deporte")) {
     topic = "Cinemática del Tiro Libre en la Liga Pro";
     context = "Física y Deportes";
     level = "1ro BGU";
@@ -360,7 +390,7 @@ function generateFallbackExercise(
     pistasSocraticas = ["¿Cómo separas la velocidad inicial en una parte horizontal y otra vertical?","¿Cuánto tarda el balón en llegar a la barrera?","Con ese tiempo, ¿a qué altura está el balón?"];
   } else {
     // Extractor semántico dinámico universal
-    const cleanedTopic = prompt
+    const cleanedTopic = (temaOriginal || prompt)
       .replace(/^(crea|crear|haz|hacer|diseña|diseñar|genera|generar|un|una|ejercicio|problema|actividad|sobre|de|para)\s+/gi, "")
       .replace(/\s+(para|con|en)\s+(1ro|2do|3ro|primero|segundo|tercero|bgu|colegio).*$/gi, "")
       .trim();
@@ -372,7 +402,7 @@ function generateFallbackExercise(
     topic = `Análisis y Optimización: ${displayTopic}`;
     context = "Ciencia y Aplicación Tecnológica";
     level = norm.includes("3ro") ? "3ro BGU" : norm.includes("1ro") ? "1ro BGU" : "2do BGU";
-    difficulty = norm.includes("difícil") ? "Avanzada" : norm.includes("fácil") ? "Básica" : "Intermedia";
+    difficulty = norm.includes("avanzada") || norm.includes("difícil") ? "Avanzada" : norm.includes("básica") || norm.includes("fácil") ? "Básica" : "Intermedia";
     situation = `Un grupo de estudiantes de ${level} analiza un problema real enfocado en “${displayTopic}” en el contexto ecuatoriano. A partir de una serie de mediciones y variables recopiladas en campo, el equipo debe modelar cuantitativamente la situación para tomar decisiones fundamentadas en evidencia.`;
     questionList = [
       `Identifica y define las variables clave (magnitudes y unidades) que intervienen en el análisis de ${displayTopic}.`,
@@ -492,40 +522,44 @@ export async function planErcaAI(
     }
     throw new Error("Could not parse ERCA JSON");
   } catch {
-    return {
-      data: [
-        {
-          id: "experience",
-          tag: "Experiencia concreta",
-          duration: "10 min",
-          title: "Observación de puentes y techumbres locales",
-          body: "Los estudiantes observan fotografías del puente del Chiche y estructuras patrimoniales para identificar patrones de vigas triangulares.",
-        },
-        {
-          id: "reflection",
-          tag: "Reflexión guiada",
-          duration: "10 min",
-          title: "¿Por qué triángulos y no cuadrados?",
-          body: "Discusión en parejas: ¿Por qué una estructura de 4 lados se deforma fácilmente al empujar un vértice, mientras que una de 3 lados permanece rígida?",
-        },
-        {
-          id: "conceptualization",
-          tag: "Conceptualización",
-          duration: "15 min",
-          title: "Teorema de rigidez triangular y cálculo de áreas",
-          body: "Formalización matemática del área de triángulos isósceles y descomposición de fuerzas coplanares en nodos.",
-        },
-        {
-          id: "application",
-          tag: "Aplicación y Transferencia",
-          duration: "10 min",
-          title: "Desafío de optimización para centro comunitario",
-          body: "Aplicar el modelo para calcular la cantidad de material y justificar el diseño ante un escenario real de ingeniería comunitaria.",
-        },
-      ],
-      isOfflineFallback: true,
-    };
+    return { data: planErcaBase(objective, duration), isOfflineFallback: true };
   }
+}
+
+function planErcaBase(objetivo: string, duracion: string): ErcaPhase[] {
+  const total = parseInt(duracion) || 45;
+  const min = (fraccion: number) => `${Math.max(5, Math.round(total * fraccion))} min`;
+  const tema = objetivo.trim().replace(/\.$/, "") || "el tema de la clase";
+  return [
+    {
+      id: "experience",
+      tag: "Experiencia",
+      duration: min(0.2),
+      title: "Partir de una situación cercana",
+      body: `Presenta una situación cotidiana de Ecuador relacionada con «${tema}». En parejas, los estudiantes cuentan qué saben y qué les gustaría averiguar.`,
+    },
+    {
+      id: "reflection",
+      tag: "Reflexión",
+      duration: min(0.2),
+      title: "Preguntas para pensar",
+      body: "Plantea dos o tres preguntas abiertas sobre la situación: ¿qué datos necesitamos?, ¿qué estrategia probarían primero y por qué? Cada pareja anota una hipótesis antes de resolver.",
+    },
+    {
+      id: "conceptualization",
+      tag: "Conceptualización",
+      duration: min(0.3),
+      title: "Formalizar el concepto",
+      body: "Formaliza el contenido matemático del objetivo con un ejemplo resuelto en la pizarra, el vocabulario clave y los errores más comunes.",
+    },
+    {
+      id: "application",
+      tag: "Aplicación",
+      duration: min(0.3),
+      title: "Reto aplicado tipo PISA",
+      body: "Los estudiantes resuelven un problema contextualizado que exige aplicar lo aprendido y justificar su respuesta. Puedes insertar aquí un ejercicio PISA.",
+    },
+  ];
 }
 
 export async function reviewExamAI(
@@ -542,7 +576,7 @@ export async function reviewExamAI(
     };
   } catch {
     return {
-      data: "Observa con detenimiento la opción que elegiste: ¿sumaste directamente los catetos al cuadrado para hallar la hipotenusa, o la hipotenusa era en realidad el lado conocido de la escalera? ¿Qué lado representa la distancia máxima?",
+      data: `Vuelve a leer la pregunta: «${questionPrompt.slice(0, 160)}». Elegiste «${studentChoice}». ¿Qué dato usaste primero y qué operación hiciste con él? Compara ese paso con lo que la pregunta pide de verdad.`,
       isOfflineFallback: true,
     };
   }

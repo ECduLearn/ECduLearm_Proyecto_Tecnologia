@@ -352,6 +352,7 @@ export const RETO_LOCAL_DEMO: RetoEstudiante = {
     "La velocidad está en km/h y el tiempo en minutos. ¿Qué fracción de una hora representan 45 minutos?",
     "¿Qué relación conecta distancia, velocidad y tiempo cuando la velocidad es constante?",
   ],
+  respuestaLocal: "45 km",
 };
 
 // Simulador de admisión local: respuestas verificadas a mano (índice de la opción correcta)

@@ -77,13 +77,16 @@
   #guide-document,
   #guide-document *,
   #reporte-institucional,
-  #reporte-institucional * {
+  #reporte-institucional *,
+  #planificacion-erca,
+  #planificacion-erca * {
     visibility: visible;
   }
 
   #exercise-document,
   #guide-document,
-  #reporte-institucional {
+  #reporte-institucional,
+  #planificacion-erca {
     position: absolute;
     inset: 0;
     border: 0;

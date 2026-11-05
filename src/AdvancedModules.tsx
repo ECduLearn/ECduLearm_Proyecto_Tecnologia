@@ -1,4 +1,4 @@
-import { DragEvent, ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { generateExerciseAI, planErcaAI } from "./services/aiService";
 import type { Exercise } from "./models/types";
 import { ejerciciosController, planificacionesController } from "./services/dbService";
@@ -137,10 +137,17 @@ const planningPhases = [
 
 const DESTREZA_INICIAL = "M.5.2.3. Resolver y plantear problemas que involucren áreas de figuras geométricas y relaciones de proporcionalidad, justificando procedimientos en contextos reales.";
 
+// El año lectivo de la Sierra empieza en septiembre
+function anioLectivo(): string {
+  const hoy = new Date();
+  const inicio = hoy.getMonth() >= 8 ? hoy.getFullYear() : hoy.getFullYear() - 1;
+  return `${inicio}–${inicio + 1}`;
+}
+
 export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
-  const [fileName, setFileName] = useState("");
-  const [uploadState, setUploadState] = useState<"idle" | "loading" | "ready">("idle");
   const [borrador] = useState(() => planificacionesController.getBorrador());
+  const [notas, setNotas] = useState(borrador?.notas ?? "");
+  const [ejercicioActivo] = useState(() => ejerciciosController.getEjercicioActivo());
   const [duration, setDuration] = useState(borrador?.duracion ?? "45 min");
   const [objective, setObjective] = useState(
     borrador?.objetivo ?? "Analizar cómo las formas triangulares distribuyen cargas en estructuras."
@@ -149,7 +156,6 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const [planId, setPlanId] = useState<string | undefined>(borrador?.planId);
   const [guardando, setGuardando] = useState(false);
   const [notice, setNotice] = useState("Plan guardado automáticamente");
-  const [isDragging, setIsDragging] = useState(false);
   const [pisaModalOpen, setPisaModalOpen] = useState(false);
   const [pisaContext, setPisaContext] = useState("");
   const [ejercicioInsertado, setEjercicioInsertado] = useState<Exercise | null>(borrador?.ejercicio ?? null);
@@ -166,8 +172,9 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
       destreza,
       fases,
       ejercicio: ejercicioInsertado,
+      notas,
     });
-  }, [planId, duration, objective, curso, destreza, fases, ejercicioInsertado]);
+  }, [planId, duration, objective, curso, destreza, fases, ejercicioInsertado, notas]);
 
   const editarFase = (clave: string, cambio: { title?: string; body?: string }) => {
     setFases((actuales) => actuales.map((fase) => (fase.key === clave ? { ...fase, ...cambio } : fase)));
@@ -196,17 +203,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
   const [estructurando, setEstructurando] = useState(false);
   const [isGeneratingPisa, setIsGeneratingPisa] = useState(false);
 
-  const acceptFile = (name: string) => {
-    if (!name) return;
-    setFileName(name);
-    setUploadState("loading");
-    window.setTimeout(() => setUploadState("ready"), 700);
-  };
-
-  const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    setIsDragging(false);
-    acceptFile(event.dataTransfer.files?.[0]?.name ?? "");
+  const insertarEjercicio = async (ejercicio: Exercise | null) => {
+    setEjercicioInsertado(ejercicio);
+    setNotice(ejercicio ? `Agregamos «${ejercicio.topic}» a la fase de Aplicación.` : "Quitamos el ejercicio de la fase de Aplicación.");
+    await guardarPlan(ejercicio);
   };
 
   const estructurarPlan = async () => {
@@ -216,7 +216,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
     }
     setEstructurando(true);
     setNotice("Estructurando tu plan de clase…");
-    const res = await planErcaAI(objective, duration, `${curso}${fileName ? ` · material de apoyo: ${fileName}` : ""}`);
+    const res = await planErcaAI(objective, duration, `${curso}${notas.trim() ? ` · notas del docente: ${notas.trim()}` : ""}`);
     setFases((actuales) =>
       actuales.map((fase) => {
         const nueva = res.data.find((f) => f.id === fase.key);
@@ -258,7 +258,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="ui-view min-h-screen bg-sand-50 text-sand-950">
-      <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-sand-200 bg-white/95 backdrop-blur print:hidden">
         <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6">
           <button
             type="button"
@@ -269,76 +269,51 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             <span className="hidden sm:inline">Panel docente</span>
           </button>
           <div className="min-w-0 text-center">
-            <p className="truncate text-sm font-bold text-ink-950 sm:text-base">Adaptador de planificación</p>
+            <p className="truncate text-sm font-bold text-ink-950 sm:text-base">Planificación ERCA</p>
             <p className="flex items-center justify-center gap-1.5 text-xs text-sand-500" aria-live="polite">
               <AdvancedIcon name="check" className="size-3.5 text-ink-700" />
               {notice}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => guardarPlan()}
-            disabled={guardando}
-            className="min-h-11 rounded-xl bg-ink-950 px-4 text-sm font-semibold text-sand-50 hover:bg-ink-800 disabled:opacity-70"
-          >
-            {guardando ? "Guardando…" : "Guardar planificación"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="hidden min-h-11 items-center rounded-xl border border-sand-300 px-4 text-sm font-semibold text-sand-700 hover:bg-sand-100 sm:flex"
+            >
+              Imprimir o guardar PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => guardarPlan()}
+              disabled={guardando}
+              className="min-h-11 rounded-xl bg-ink-950 px-4 text-sm font-semibold text-sand-50 hover:bg-ink-800 disabled:opacity-70"
+            >
+              {guardando ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1600px] lg:grid-cols-[22rem_1fr]">
-        <aside className="border-b border-sand-200 bg-sand-100 p-5 lg:border-b-0 lg:border-r lg:p-7">
+        <aside className="border-b border-sand-200 bg-sand-100 p-5 print:hidden lg:border-b-0 lg:border-r lg:p-7">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-ink-800">01 · Fuente pedagógica</p>
-            <h1 className="mt-2 text-xl font-semibold text-sand-950">Añade el contexto de tu clase</h1>
-            <p className="mt-2 text-sm leading-relaxed text-sand-600">
-              El sistema acepta documentos completos y conserva su estructura.
-            </p>
-          </div>
-
-          <label
-            className={`mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 text-center transition ${
-              isDragging
-                ? "border-ink-600 bg-ink-50"
-                : uploadState === "ready"
-                  ? "border-ink-400 bg-ink-50"
-                  : "border-sand-300 bg-white/70 hover:border-ink-700 hover:bg-ink-50"
-            }`}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-          >
-            <input
-              type="file"
-              className="sr-only"
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.odt"
-              onChange={(event) => acceptFile(event.target.files?.[0]?.name ?? "")}
+            <p className="text-xs font-bold uppercase tracking-widest text-ink-800">1. Contexto de tu clase</p>
+            <h1 className="mt-2 text-xl font-semibold text-sand-950">¿Qué necesita tu grupo?</h1>
+            <label htmlFor="plan-notas" className="mt-4 block text-sm font-bold text-sand-800">
+              Notas, temario o necesidades (opcional)
+            </label>
+            <textarea
+              id="plan-notas"
+              rows={5}
+              value={notas}
+              maxLength={1500}
+              onChange={(event) => setNotas(event.target.value)}
+              placeholder="Ej. Vienen de ver proporcionalidad; a varios les cuesta interpretar gráficas."
+              className="mt-2 w-full resize-none rounded-xl border border-sand-300 bg-white p-3 text-sm leading-relaxed outline-none placeholder:text-sand-400 focus:border-ink-700 focus:ring-4 focus:ring-ink-100"
             />
-            <span
-              className={`grid size-12 place-items-center rounded-2xl ${
-                uploadState === "ready" ? "bg-ink-100 text-ink-900" : "bg-white text-ink-900 shadow-sm"
-              }`}
-            >
-              <AdvancedIcon
-                name={uploadState === "ready" ? "check" : "upload"}
-                className={`size-6 ${uploadState === "loading" ? "animate-pulse" : ""}`}
-              />
-            </span>
-            <span className="mt-4 text-sm font-bold text-sand-800">
-              {uploadState === "loading"
-                ? "Analizando estructura..."
-                : fileName || "Arrastra o selecciona un archivo"}
-            </span>
-            <span className="mt-2 text-xs leading-relaxed text-sand-500">
-              Temario, currículo o libro de texto
-              <br />
-              PDF, Word, PowerPoint, ODT o TXT
-            </span>
-          </label>
+            <p className="mt-1 text-xs text-sand-500">El asistente las usa al estructurar el plan.</p>
+          </div>
 
           <div className="mt-7 border-t border-sand-200 pt-6">
             <p className="text-xs font-bold uppercase tracking-widest text-ink-700">2. Parámetros</p>
@@ -399,15 +374,15 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-ink-800">Lienzo editable</p>
-                <h2 className="mt-1 text-xl font-bold text-sand-950">Estructuras estables y distribución de cargas</h2>
+                <h2 className="mt-1 line-clamp-2 text-xl font-bold text-sand-950">{objective || "Tu plan de clase"}</h2>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-sand-500">
                 <AdvancedIcon name="clock" className="size-4" />
-                {duration} · 2do BGU
+                {duration} · {curso}
               </div>
             </div>
 
-            <article className="border border-sand-300 bg-white p-5 shadow-lg shadow-sand-900/5 sm:p-8">
+            <article id="planificacion-erca" className="border border-sand-300 bg-white p-5 shadow-lg shadow-sand-900/5 sm:p-8">
               <div className="border-b-2 border-ink-900 pb-6 text-center">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-sand-500">
                   Ministerio de Educación del Ecuador
@@ -415,7 +390,7 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 <h2 className="mt-2 text-2xl font-bold tracking-tight text-sand-950">
                   Planificación Microcurricular
                 </h2>
-                <p className="mt-1 text-xs font-semibold text-ink-800">Modelo ERCA · Año lectivo 2025–2026</p>
+                <p className="mt-1 text-xs font-semibold text-ink-800">Modelo ERCA · Año lectivo {anioLectivo()}</p>
               </div>
 
               <div className="mt-6 grid overflow-hidden rounded-2xl border border-sand-200 sm:grid-cols-2">
@@ -477,10 +452,10 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                       <button
                         type="button"
                         onClick={() => setPisaModalOpen(true)}
-                        className="absolute -top-4 right-4 z-10 flex min-h-10 items-center gap-2 rounded-xl bg-ink-600 px-4 text-xs font-bold text-white opacity-100 shadow-lg shadow-ink-900/20 transition hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        className="absolute -top-4 right-4 z-10 flex min-h-11 items-center gap-2 rounded-xl bg-ink-600 px-4 text-xs font-bold text-white shadow-lg shadow-ink-900/20 transition hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 print:hidden"
                       >
                         <AdvancedIcon name="sparkles" className="size-4" />
-                        Insertar Ejercicio PISA aquí
+                        Generar ejercicio PISA
                       </button>
                     )}
                     <div className="flex items-start gap-4">
@@ -544,6 +519,15 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                             >
                               {phase.body}
                             </p>
+                            {ejercicioActivo && (
+                              <button
+                                type="button"
+                                onClick={() => insertarEjercicio(ejercicioActivo)}
+                                className="mt-3 min-h-11 rounded-xl border border-ink-300 bg-ink-50 px-4 text-sm font-semibold text-ink-900 hover:bg-ink-100 print:hidden"
+                              >
+                                Insertar mi ejercicio actual: «{ejercicioActivo.topic}»
+                              </button>
+                            )}
                           </div>
                         )}
 
@@ -566,20 +550,29 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                                 )}
                               </div>
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
+                            <div className="mt-2 flex flex-wrap gap-2 print:hidden">
                               <button
                                 type="button"
                                 onClick={() => setPisaModalOpen(true)}
-                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-ink-700 hover:bg-ink-100"
+                                className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ink-700 hover:bg-ink-100"
                               >
-                                🔄 Regenerar
+                                Generar otro
                               </button>
+                              {ejercicioActivo && ejercicioActivo.id !== ejercicioInsertado.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => insertarEjercicio(ejercicioActivo)}
+                                  className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ink-700 hover:bg-ink-100"
+                                >
+                                  Usar mi ejercicio actual
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => setNotice("Ya puedes editar el ejercicio a mano")}
-                                className="min-h-10 rounded-lg px-3 text-xs font-bold text-sand-600 hover:bg-white"
+                                onClick={() => insertarEjercicio(null)}
+                                className="min-h-11 rounded-lg px-3 text-sm font-semibold text-sand-600 hover:bg-white"
                               >
-                                ✏️ Editar a mano
+                                Quitar ejercicio
                               </button>
                             </div>
                           </div>
@@ -590,13 +583,6 @@ export function PlanningWorkspace({ onBack }: { onBack: () => void }) {
                 ))}
               </div>
 
-              <button
-                type="button"
-                className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sand-300 text-sm font-bold text-sand-600 hover:border-ink-400 hover:bg-ink-50 hover:text-ink-900"
-              >
-                <AdvancedIcon name="plus" className="size-4" />
-                Añadir fase o actividad
-              </button>
             </article>
           </div>
         </section>

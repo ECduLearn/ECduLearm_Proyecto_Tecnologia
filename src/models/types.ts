@@ -132,6 +132,9 @@ export interface RetoEstudiante {
 
   // Solo en el reto local de respaldo; con sesión real las pistas las entrega fn_solicitar_pista
   pistasLocales?: string[]
+
+  // Solo en retos de este dispositivo (sin sesión real): con sesión real verifica el servidor
+  respuestaLocal?: string
 }
 
 export interface SesionEstudiante {

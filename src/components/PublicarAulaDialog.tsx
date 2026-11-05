@@ -108,8 +108,8 @@ export default function PublicarAulaDialog({
             <p className="mt-3 text-sm text-sand-600">Tus estudiantes lo escriben en la página de inicio, sin crear cuenta.</p>
             {paso.soloEsteNavegador && (
               <p className="mt-4 rounded-xl border border-hint-200 bg-hint-50 p-3 text-left text-sm leading-relaxed text-hint-900" role="status">
-                Estás en modo demo: este PIN solo funciona en este navegador. Para que entren desde sus celulares,
-                inicia sesión con la cuenta de tu colegio.
+                No pudimos guardar la clase en el servidor, así que este PIN solo funciona en este dispositivo.
+                Revisa tu conexión y vuelve a publicarla para que entren desde sus celulares.
               </p>
             )}
             <button
