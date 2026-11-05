@@ -1,6 +1,6 @@
 /**
  * SERVICIO CENTRAL DE BASE DE DATOS Y PERSISTENCIA (MVC / N-CAPAS)
- * Conexión cliente-servidor a PostgreSQL (Supabase) con mapeo 1:1 a 'schema.sql' v2.0.0
+ * Conexión cliente-servidor a PostgreSQL (Supabase) con mapeo 1:1 a 'schema.sql' v2.1.0
  * Incluye sanitización OWASP, autenticación JWT/roles, Zero-PII y fallback offline inquebrantable.
  */
 
@@ -12,6 +12,7 @@ import {
   RETO_LOCAL_DEMO,
 } from "../models/seedData";
 import { Exercise, PasoBloqueo, RetoEstudiante, SesionEstudiante, TeacherUser } from "../models/types";
+import { verificarRespuestaLocal } from "./respuestas";
 
 // ==============================================================================
 // 1. SEGURIDAD, OWASP Y SANITIZACIÓN DE ENTRADAS
@@ -184,7 +185,7 @@ const STORAGE_KEYS = {
   LOCAL_AUDITORIA: "ecdulearn_db_auditoria_admin",
 };
 
-// Usuario semilla pre-aprobado para el Evaluador/Jurado
+// Perfil del docente de prueba cuando el servidor no responde
 export const DEMO_DOCENTE_USER: DbUsuarioInstitucional = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   institucion_id: "11111111-1111-4111-8111-111111111111",
@@ -199,7 +200,8 @@ export const DEMO_DOCENTE_USER: DbUsuarioInstitucional = {
 // 4. CONTROLADOR DE AUTENTICACIÓN Y ROLES (usuarios_institucionales)
 // ==============================================================================
 
-// Cuentas demo públicas: solo operan con datos locales (sin sesión de Supabase, RLS bloquea la base).
+// Si el servidor no está disponible, la cuenta de prueba trabaja con datos de este dispositivo
+// (sin sesión de Supabase, RLS bloquea la base). Con conexión entra como una cuenta real más.
 const DEMO_ACCOUNTS: Record<string, { password: string; user: TeacherUser }> = {
   "docente@puce.edu.ec": {
     password: "demo123",
@@ -209,17 +211,6 @@ const DEMO_ACCOUNTS: Record<string, { password: string; user: TeacherUser }> = {
       email: "docente@puce.edu.ec",
       institution: "Unidad Educativa Demo ECduLearn",
       role: "docente",
-      isDemo: true,
-    },
-  },
-  "admin@ecdulearn.edu.ec": {
-    password: "admin123",
-    user: {
-      id: "99999999-9999-4999-8999-999999999999",
-      name: "Administrador Demo ECduLearn",
-      email: "admin@ecdulearn.edu.ec",
-      institution: "ECduLearn · Administración Central",
-      role: "admin",
       isDemo: true,
     },
   },
@@ -248,7 +239,7 @@ function clearCurrentUser(): void {
 function demoLogin(email: string): LoginResult {
   const user = DEMO_ACCOUNTS[email].user;
   saveCurrentUser(user);
-  return { success: true, user, message: "Entraste en modo demo con datos de ejemplo." };
+  return { success: true, user, message: "No pudimos conectar con el servidor: tus cambios se guardarán en este dispositivo." };
 }
 
 function mapRol(rol: string): TeacherUser["role"] {
@@ -433,7 +424,83 @@ function etiquetaLibre(deseada: string, usadas: string[]): string {
   return `Iteración ${Math.min(999, Math.max(1, ...numeros) + 1)}`;
 }
 
+const RESPUESTAS_PENDIENTES = ["Revisa la solución paso a paso.", "Solución pendiente: complétala antes de publicar el ejercicio."];
+
+// Fila de ejercicios_pisa (snake_case) → Exercise (camelCase) que usan las vistas
+function filaAEjercicio(fila: Record<string, unknown>): Exercise {
+  const texto = (valor: unknown) => (typeof valor === "string" ? valor : "");
+  const opcional = (valor: unknown) => {
+    const t = texto(valor).trim();
+    return t && !RESPUESTAS_PENDIENTES.includes(t) ? t : undefined;
+  };
+  const preguntas = texto(fila.pregunta_razonamiento)
+    .split("\n")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return {
+    id: texto(fila.id),
+    topic: texto(fila.tema_curricular),
+    context: texto(fila.contexto_pisa),
+    level: texto(fila.curso_bgu) || "2do BGU",
+    difficulty: texto(fila.nivel_dificultad) || "Intermedia",
+    questions: preguntas.length,
+    version: 1,
+    situation: texto(fila.enunciado_contexto),
+    questionList: preguntas,
+    solucionDocente: opcional(fila.solucion_paso_a_paso_docente),
+    respuestaCorrecta: opcional(fila.respuesta_correcta),
+    pistasSocraticas: Array.isArray(fila.pistas_socraticas_base) ? fila.pistas_socraticas_base.map(String) : [],
+  };
+}
+
 export const ejerciciosController = {
+  /** Últimos ejercicios del docente que inició sesión (los de este dispositivo si no hay conexión). */
+  async getMisEjercicios(limite = 8): Promise<{ ejercicio: Exercise; creadoEn: string | null }[]> {
+    const client = clienteDocente();
+    const user = authController.getCurrentUser();
+    if (client && user) {
+      const { data, error } = await client
+        .from("ejercicios_pisa")
+        .select(
+          "id, tema_curricular, contexto_pisa, curso_bgu, nivel_dificultad, enunciado_contexto, pregunta_razonamiento, respuesta_correcta, solucion_paso_a_paso_docente, pistas_socraticas_base, created_at"
+        )
+        .eq("docente_creador_id", user.id)
+        .eq("etiqueta_version", "Original")
+        .order("created_at", { ascending: false })
+        .limit(limite);
+      if (!error && data) {
+        return data.map((fila) => ({ ejercicio: filaAEjercicio(fila), creadoEn: String(fila.created_at ?? "") || null }));
+      }
+      if (error) console.warn(`[dbService] No se pudieron leer los ejercicios (${error.code}): ${error.message}`);
+    }
+    try {
+      const semillas = new Set(SEED_EJERCICIOS_PISA.map((e) => e.id));
+      const lista: FullPisaExercise[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_EJERCICIOS) || "[]");
+      return lista
+        .filter((e) => !semillas.has(e.id))
+        .slice(0, limite)
+        .map((e) => ({
+          ejercicio: {
+            id: e.id,
+            topic: e.topic,
+            context: e.context,
+            level: e.level,
+            difficulty: e.difficulty,
+            questions: e.questions,
+            version: e.version,
+            situation: e.situation,
+            questionList: e.questionList,
+            solucionDocente: e.solucionDocente,
+            respuestaCorrecta: e.respuestaCorrecta,
+            pistasSocraticas: e.pistasSocraticas,
+          },
+          creadoEn: null,
+        }));
+    } catch {
+      return [];
+    }
+  },
+
   /**
    * Guarda el ejercicio y lo deja como activo del docente, con el UUID real si la base lo aceptó,
    * para que las versiones y la publicación en un aula apunten al registro correcto.
@@ -784,6 +851,7 @@ export interface BorradorPlanificacion {
   destreza: string;
   fases: { key: string; label: string; time: string; title: string; body: string }[];
   ejercicio: Exercise | null;
+  notas?: string;
 }
 
 const BORRADOR_PLAN_KEY = "ecdulearn_borrador_planificacion";
@@ -915,7 +983,125 @@ export const planificacionesController = {
 // 7. CONTROLADOR DE AULAS VIRTUALES POR PIN (aulas_virtuales)
 // ==============================================================================
 
+export interface ResumenAula {
+  id: string;
+  pin: string;
+  titulo: string;
+  activa: boolean;
+  expiraEn: string | null;
+  estudiantes: number;
+  intentos: number;
+  resueltos: number;
+  pistas: number;
+  pctResueltos: number;
+  pasoBloqueo: string;
+  // false: el aula solo existe en este dispositivo y no recibe actividad de estudiantes
+  enServidor: boolean;
+}
+
+function aulasDeEsteDispositivo(): ResumenAula[] {
+  try {
+    const aulas = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS) || "{}") as Record<
+      string,
+      { pin: string; titulo?: string; createdAt?: number }
+    >;
+    return Object.values(aulas)
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .map((a) => ({
+        id: `local-${a.pin}`,
+        pin: a.pin,
+        titulo: a.titulo || "Clase",
+        activa: true,
+        expiraEn: null,
+        estudiantes: 0,
+        intentos: 0,
+        resueltos: 0,
+        pistas: 0,
+        pctResueltos: 0,
+        pasoBloqueo: "",
+        enServidor: false,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export const aulasController = {
+  /**
+   * Aulas del docente con lo que pasó en cada PIN: estudiantes que entraron, pistas pedidas,
+   * retos resueltos y el paso donde más se trabaron. RLS limita las filas al docente.
+   */
+  async getMisAulas(): Promise<{ estado: "ok" | "error"; aulas: ResumenAula[] }> {
+    const client = clienteDocente();
+    const user = authController.getCurrentUser();
+    if (!client || !user) return { estado: "ok", aulas: aulasDeEsteDispositivo() };
+
+    try {
+      const [aulas, completitud] = await Promise.all([
+        client
+          .from("aulas_virtuales")
+          .select("id, pin_acceso, titulo_sesion, activa, expires_at")
+          .eq("docente_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        client
+          .from("vw_completitud_socratica_aula")
+          .select("aula_id, estudiantes_anonimos, intentos_totales, resueltos, promedio_pistas")
+          .eq("docente_id", user.id),
+      ]);
+      const fallo = aulas.error || completitud.error;
+      if (fallo) {
+        console.warn(`[dbService] No se pudieron leer las aulas (${fallo.code}): ${fallo.message}`);
+        return { estado: "error", aulas: [] };
+      }
+
+      const filas = aulas.data ?? [];
+      const ids = filas.map((a) => String(a.id));
+      const bloqueos = ids.length
+        ? await client
+            .from("vw_pasos_bloqueo_aula")
+            .select("aula_id, paso_bloqueo_detectado, estudiantes_bloqueados")
+            .in("aula_id", ids)
+        : { data: [], error: null };
+      if (bloqueos.error) console.warn(`[dbService] No se pudieron leer los bloqueos (${bloqueos.error.code}): ${bloqueos.error.message}`);
+
+      const porAula = new Map((completitud.data ?? []).map((c) => [String(c.aula_id), c]));
+      const pasoTop = new Map<string, { paso: string; total: number }>();
+      for (const b of bloqueos.data ?? []) {
+        const aula = String(b.aula_id);
+        const total = Number(b.estudiantes_bloqueados ?? 0);
+        if (total > (pasoTop.get(aula)?.total ?? 0)) pasoTop.set(aula, { paso: String(b.paso_bloqueo_detectado), total });
+      }
+
+      return {
+        estado: "ok",
+        aulas: filas.map((a) => {
+          const c = porAula.get(String(a.id));
+          const intentos = Number(c?.intentos_totales ?? 0);
+          const resueltos = Number(c?.resueltos ?? 0);
+          const paso = pasoTop.get(String(a.id))?.paso ?? "";
+          return {
+            id: String(a.id),
+            pin: String(a.pin_acceso),
+            titulo: String(a.titulo_sesion),
+            activa: Boolean(a.activa) && (!a.expires_at || new Date(String(a.expires_at)).getTime() > Date.now()),
+            expiraEn: a.expires_at ? String(a.expires_at) : null,
+            estudiantes: Number(c?.estudiantes_anonimos ?? 0),
+            intentos,
+            resueltos,
+            pistas: Math.round(Number(c?.promedio_pistas ?? 0) * intentos),
+            pctResueltos: intentos ? Math.round((100 * resueltos) / intentos) : 0,
+            pasoBloqueo: paso ? ETIQUETAS_PASO[paso] ?? paso : "",
+            enServidor: true,
+          };
+        }),
+      };
+    } catch (err) {
+      console.warn("[dbService] Error al cargar las aulas:", (err as Error).message);
+      return { estado: "error", aulas: [] };
+    }
+  },
+
   /**
    * Publica un aula con PIN y le vincula el ejercicio en aula_ejercicios, para que el estudiante lo
    * reciba en fn_iniciar_sesion_anonima. Si el ejercicio aún no está en la base, lo guarda primero.
@@ -1079,6 +1265,7 @@ function aulaLocal(pin: string): SesionEstudiante | null {
           pregunta: (ej.questionList ?? []).join("\n"),
           totalPistas: pistas.length,
           pistasLocales: pistas,
+          respuestaLocal: ej.respuestaCorrecta,
         },
       ],
       isOffline: true,
@@ -1213,6 +1400,39 @@ export const estudianteSocraticoController = {
     });
   },
 
+  /**
+   * Comprueba el resultado que escribió el estudiante. Con sesión real lo decide el servidor
+   * (fn_verificar_respuesta) y queda registrado; la respuesta correcta nunca llega al navegador.
+   * verificable = false: no hay un resultado numérico con qué comparar.
+   */
+  async verificarRespuesta(
+    sesion: SesionEstudiante,
+    reto: RetoEstudiante,
+    respuesta: string
+  ): Promise<{ verificable: boolean; correcta?: boolean }> {
+    const limpia = sanitizeInput(respuesta).slice(0, 500);
+    if (sesion.isOffline) {
+      const correcta = reto.respuestaLocal ? verificarRespuestaLocal(limpia, reto.respuestaLocal, reto.enunciado) : null;
+      return correcta === null ? { verificable: false } : { verificable: true, correcta };
+    }
+    const data = await rpcEstudiante<{ verificable: boolean; correcta?: boolean }>("fn_verificar_respuesta", sesion, {
+      p_ejercicio_id: reto.id,
+      p_respuesta: limpia,
+    });
+    return data ?? { verificable: false };
+  },
+
+  /** Sale del aula en este dispositivo; la sesión del servidor se cierra sola por inactividad. */
+  salirDelAula(): void {
+    try {
+      for (const clave of [SESION_ESTUDIANTE_KEY, "ecdulearn_sesion_id", "ecdulearn_alias_temporal", "ecdulearm_active_pin"]) {
+        localStorage.removeItem(clave);
+      }
+    } catch {
+      // Sin almacenamiento no queda nada guardado.
+    }
+  },
+
   /** Cierra la sesión; en un aula de simulador el servidor calcula el puntaje. */
   async finalizarSesion(sesion: SesionEstudiante): Promise<{ puntaje_simulador: number | null } | null> {
     return rpcEstudiante("fn_finalizar_sesion", sesion, {});
@@ -1287,23 +1507,8 @@ export interface ReporteInstitucional {
 }
 
 export type ResultadoReporte =
-  | { estado: "ok" | "demo"; reporte: ReporteInstitucional }
+  | { estado: "ok"; reporte: ReporteInstitucional }
   | { estado: "sin_permiso" | "error" };
-
-const REPORTE_DE_EJEMPLO: ReporteInstitucional = {
-  docentesActivos: 6,
-  ejerciciosGenerados: 48,
-  horasAhorradas: 34.5,
-  aulasActivas: 9,
-  sesionesAnonimas: 214,
-  pctResueltosConAyuda: 58,
-  pasoBloqueoFrecuente: "Plantear la ecuación",
-  docentes: [
-    { nombre: "Docente de Matemáticas A", ejercicios: 14, horas: 10.2 },
-    { nombre: "Docente de Matemáticas B", ejercicios: 11, horas: 8.1 },
-    { nombre: "Docente de Física", ejercicios: 9, horas: 6.6 },
-  ],
-};
 
 export const reporteController = {
   /**
@@ -1313,9 +1518,7 @@ export const reporteController = {
   async getReporteInstitucional(): Promise<ResultadoReporte> {
     const client = getSupabaseClient();
     const user = authController.getCurrentUser();
-    if (!client || !user || user.isDemo || !isValidUuid(user.id)) {
-      return { estado: "demo", reporte: REPORTE_DE_EJEMPLO };
-    }
+    if (!client || !user || user.isDemo || !isValidUuid(user.id)) return { estado: "error" };
 
     try {
       const [resumen, porDocente] = await Promise.all([
@@ -1358,17 +1561,17 @@ export const reporteController = {
   },
 };
 
-// Muestra para la cuenta demo o sin conexión: la UI la marca como «Datos de ejemplo»
-const METRICAS_DE_EJEMPLO: DbMetricasDocente = {
-  ejerciciosGenerados: 12,
-  promedioSegundos: 8.5,
-  horasAhorradasEstimadas: 8.4,
-  pctResueltosConAyuda: 62,
-  estudiantesConectados: 36,
-  aulasActivas: 1,
-  pasoBloqueoFrecuente: "Plantear la ecuación",
-  estudiantesBloqueados: 14,
-  pctBloqueo: 39,
+// Sin conexión no se inventan cifras: la vista muestra el aviso para reintentar
+const METRICAS_VACIAS: DbMetricasDocente = {
+  ejerciciosGenerados: 0,
+  promedioSegundos: 0,
+  horasAhorradasEstimadas: 0,
+  pctResueltosConAyuda: 0,
+  estudiantesConectados: 0,
+  aulasActivas: 0,
+  pasoBloqueoFrecuente: "",
+  estudiantesBloqueados: 0,
+  pctBloqueo: 0,
   isOffline: true,
 };
 
@@ -1433,7 +1636,7 @@ export const metricasController = {
       }
     }
 
-    return METRICAS_DE_EJEMPLO;
+    return METRICAS_VACIAS;
   },
 };
 
@@ -1704,7 +1907,7 @@ function esAdmin(): boolean {
 const ACCESO_DENEGADO_ADMIN = "Acceso denegado: se requiere perfil de Administrador.";
 
 function sufijoDemo(): string {
-  return clienteAdmin() ? "" : " (modo demo: solo en este navegador)";
+  return clienteAdmin() ? "" : " (sin conexión: solo en este dispositivo)";
 }
 
 function mensajeErrorAdmin(error: { code?: string; message: string }, accion: string): string {
@@ -2027,7 +2230,7 @@ export const adminController = {
     if (!client) {
       return {
         success: false,
-        message: "En modo demo no se envían correos. Con una cuenta real, el usuario recibe un enlace para crear su contraseña.",
+        message: "Sin conexión con el servidor no se envían correos. Vuelve a intentarlo cuando tengas conexión.",
       };
     }
 

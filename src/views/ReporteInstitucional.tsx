@@ -88,12 +88,6 @@ export default function ReporteInstitucional({ onVolver }: { onVolver: () => voi
 
         {resultado && "reporte" in resultado && (
           <>
-            {resultado.estado === "demo" && (
-              <p className="mt-6 inline-block rounded-full bg-hint-50 px-3 py-1 text-xs font-semibold text-hint-800 ring-1 ring-hint-200">
-                Datos de ejemplo
-              </p>
-            )}
-
             <section className="ui-stagger mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Resumen del colegio">
               {[
                 { etiqueta: "Docentes activos", valor: resultado.reporte.docentesActivos, detalle: "con cuenta habilitada" },

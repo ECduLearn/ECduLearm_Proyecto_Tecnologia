@@ -3,15 +3,6 @@ import type { AppView } from "@/router"
 import { getAIStatus, testAIConnection } from "@/services/aiService"
 import { getSupabaseClient, getSupabaseConfig, getSupabaseOverride, setSupabaseConfig } from "@/services/supabaseClient"
 
-// Import dinámico: dbService (y supabase-js) no entra en el chunk de la barra
-async function irComoAdmin(onViewChange: (view: AppView) => void) {
-  const { authController } = await import("@/services/dbService")
-  if (authController.getCurrentUser()?.role !== "admin") {
-    await authController.loginDocente("admin@ecdulearn.edu.ec", "admin123")
-  }
-  onViewChange("admin")
-}
-
 export function EvaluatorTopBar({
   currentView,
 
@@ -332,7 +323,7 @@ export function EvaluatorTopBar({
             </button>
             <button
               type="button"
-              onClick={() => irComoAdmin(onViewChange)}
+              onClick={() => onViewChange("admin")}
               className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                 currentView === "admin"
                   ? "bg-hint-600 text-white shadow-sm ring-1 ring-hint-300"
@@ -716,8 +707,7 @@ export function EvaluatorPill({
                 key={v}
                 type="button"
                 onClick={() => {
-                  if (v === "admin") irComoAdmin(onViewChange)
-                  else onViewChange(v)
+                  onViewChange(v)
                   setOpen(false)
                 }}
                 className={`rounded-lg px-2.5 py-1.5 text-left font-medium transition ${

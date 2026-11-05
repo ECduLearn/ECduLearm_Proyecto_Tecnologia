@@ -57,7 +57,7 @@ function pinActivo(): string {
   }
 }
 
-export default function RetoColegio({ header }: { header: (titulo: string) => ReactNode }) {
+export default function RetoColegio({ header, onTerminar }: { header: (titulo: string) => ReactNode; onTerminar: () => void }) {
   const [estado, setEstado] = useState<Estado>("loading");
   const [sesion, setSesion] = useState<SesionEstudiante | null>(null);
   const [indice, setIndice] = useState(0);
@@ -69,6 +69,11 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
   const [entrada, setEntrada] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [resueltos, setResueltos] = useState<Record<string, boolean>>({});
+  const [respuesta, setRespuesta] = useState("");
+  const [opcion, setOpcion] = useState<number | null>(null);
+  const [verificando, setVerificando] = useState(false);
+  const [feedback, setFeedback] = useState<"correcta" | "incorrecta" | "registrada" | null>(null);
+  const [fallos, setFallos] = useState(0);
 
   useEffect(() => {
     let activo = true;
@@ -146,10 +151,40 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
     enviarAlTutor(paso.prompt, "CHIP_RAPIDO");
   };
 
-  const marcarResuelto = () => {
-    if (!sesion || !reto) return;
+  const marcarResuelto = (comoQueda: "correcta" | "registrada") => {
+    if (!reto) return;
     setResueltos((actuales) => ({ ...actuales, [reto.id]: true }));
-    estudiante.registrarIntento(sesion, { ejercicioId: reto.id, logroResolver: true });
+    setFeedback(comoQueda);
+  };
+
+  const comprobar = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!sesion || !reto || verificando) return;
+
+    if (reto.opciones) {
+      if (opcion === null) return;
+      setVerificando(true);
+      const res = await estudiante.registrarIntento(sesion, { ejercicioId: reto.id, opcionSeleccionada: opcion });
+      setVerificando(false);
+      if (!res) return marcarResuelto("registrada");
+      if (res.logro_resolver) return marcarResuelto("correcta");
+      setFallos((n) => n + 1);
+      setFeedback("incorrecta");
+      return;
+    }
+
+    if (!respuesta.trim()) return;
+    setVerificando(true);
+    const res = await estudiante.verificarRespuesta(sesion, reto, respuesta);
+    setVerificando(false);
+    if (!res.verificable) {
+      // Sin un resultado numérico con qué comparar: se registra que terminó el reto
+      estudiante.registrarIntento(sesion, { ejercicioId: reto.id, logroResolver: true });
+      return marcarResuelto("registrada");
+    }
+    if (res.correcta) return marcarResuelto("correcta");
+    setFallos((n) => n + 1);
+    setFeedback("incorrecta");
   };
 
   const siguienteReto = () => {
@@ -159,6 +194,10 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
     setBloqueo(null);
     setMensajes([]);
     setEntrada("");
+    setRespuesta("");
+    setOpcion(null);
+    setFeedback(null);
+    setFallos(0);
   };
 
   const enviarEntrada = (event: FormEvent) => {
@@ -198,6 +237,13 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
             </span>
             <h1 className="mt-5 text-lg font-semibold text-sand-950">{aviso.titulo}</h1>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-sand-600">{aviso.texto}</p>
+            <button
+              type="button"
+              onClick={onTerminar}
+              className="mt-6 min-h-11 rounded-xl border border-sand-300 px-5 text-sm font-semibold text-sand-800 hover:bg-sand-100"
+            >
+              Volver al inicio
+            </button>
           </section>
         </main>
       </div>
@@ -377,31 +423,101 @@ export default function RetoColegio({ header }: { header: (titulo: string) => Re
           </form>
         </section>
 
-        {resuelto ? (
-          <div className="mt-4 space-y-3">
-            <p className="ui-pop flex items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm font-semibold text-ink-950" role="status">
-              <ZoneIcon name="check" className="size-5 shrink-0" />
-              ¡Bien hecho! Registramos que resolviste este reto.
-            </p>
-            {indice < total - 1 && (
-              <button
-                type="button"
-                onClick={siguienteReto}
-                className="min-h-14 w-full rounded-2xl bg-ink-600 px-6 text-sm font-bold text-white shadow-lg shadow-ink-600/20 transition-colors duration-150 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200"
-              >
-                Ir al siguiente reto
-              </button>
+        <form onSubmit={comprobar} className="mt-4 border border-sand-200 bg-white p-5 shadow-sm sm:p-7" aria-labelledby="respuesta-titulo">
+          <h2 id="respuesta-titulo" className="font-semibold text-sand-950">
+            Tu respuesta final
+          </h2>
+          {reto.opciones ? (
+            <fieldset className="mt-3 space-y-2" disabled={resuelto}>
+              <legend className="sr-only">Elige una opción</legend>
+              {reto.opciones.map((texto, i) => (
+                <label
+                  key={i}
+                  className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm transition-colors duration-150 ${
+                    opcion === i ? "border-ink-700 bg-ink-50 text-ink-950" : "border-sand-300 text-sand-800 hover:bg-sand-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="opcion-reto"
+                    checked={opcion === i}
+                    onChange={() => {
+                      setOpcion(i);
+                      if (feedback === "incorrecta") setFeedback(null);
+                    }}
+                    className="size-4 accent-ink-700"
+                  />
+                  <span>
+                    <span className="font-semibold">{String.fromCharCode(65 + i)}.</span> {texto}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-sand-500">Escribe el resultado con su unidad, por ejemplo «12 m» o «7,5».</p>
+              <input
+                value={respuesta}
+                onChange={(event) => {
+                  setRespuesta(event.target.value);
+                  if (feedback === "incorrecta") setFeedback(null);
+                }}
+                disabled={resuelto}
+                inputMode="decimal"
+                autoComplete="off"
+                maxLength={200}
+                aria-label="Tu respuesta final"
+                placeholder="Tu resultado"
+                className="mt-3 min-h-12 w-full rounded-xl border border-sand-300 px-4 text-base outline-none focus:border-ink-700 focus:ring-4 focus:ring-ink-100 disabled:bg-sand-100"
+              />
+            </>
+          )}
+
+          {!resuelto && (
+            <button
+              type="submit"
+              disabled={verificando || (reto.opciones ? opcion === null : !respuesta.trim())}
+              className="mt-4 min-h-14 w-full rounded-2xl bg-ink-600 px-6 text-sm font-bold text-white shadow-lg shadow-ink-600/20 transition-colors duration-150 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200 disabled:bg-sand-300 disabled:shadow-none"
+            >
+              {verificando ? "Revisando tu respuesta…" : "Comprobar respuesta"}
+            </button>
+          )}
+
+          <div aria-live="polite">
+            {feedback === "incorrecta" && (
+              <p className="ui-enter mt-4 rounded-2xl border border-hint-200 bg-hint-50 p-4 text-sm leading-relaxed text-hint-900">
+                Todavía no coincide. Revisa tu último cálculo y las unidades.
+                {fallos >= 2 ? " Si te trabaste, marca en qué parte o pide una pista: el tutor te ayuda a encontrar el error." : ""}
+              </p>
+            )}
+            {feedback === "correcta" && (
+              <p className="ui-pop mt-4 flex items-start gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm text-ink-950" role="status">
+                <ZoneIcon name="check" className="mt-0.5 size-5 shrink-0" />
+                <span>
+                  <span className="font-semibold">¡Correcto!</span> Llegaste al resultado
+                  {pistas.length ? ` con ${pistas.length} ${pistas.length === 1 ? "pista" : "pistas"}` : " sin pistas"}.
+                  {sesion.isOffline ? "" : " Tu avance ya le llega a tu docente."}
+                </span>
+              </p>
+            )}
+            {feedback === "registrada" && (
+              <p className="ui-pop mt-4 flex items-start gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 text-sm text-ink-950" role="status">
+                <ZoneIcon name="check" className="mt-0.5 size-5 shrink-0" />
+                Registramos que terminaste este reto. Su respuesta no se puede comprobar aquí, así que coméntala con tu docente.
+              </p>
             )}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={marcarResuelto}
-            className="mt-4 min-h-14 w-full rounded-2xl bg-ink-600 px-6 text-sm font-bold text-white shadow-lg shadow-ink-600/20 transition-colors duration-150 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200"
-          >
-            Ya lo resolví
-          </button>
-        )}
+
+          {resuelto && (
+            <button
+              type="button"
+              onClick={indice < total - 1 ? siguienteReto : onTerminar}
+              className="mt-4 min-h-14 w-full rounded-2xl bg-ink-600 px-6 text-sm font-bold text-white shadow-lg shadow-ink-600/20 transition-colors duration-150 hover:bg-ink-500 focus:outline-none focus:ring-4 focus:ring-ink-200"
+            >
+              {indice < total - 1 ? "Ir al siguiente reto" : "Terminaste los retos: volver al inicio"}
+            </button>
+          )}
+        </form>
 
         <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-sand-500">
           <ZoneIcon name="shield" className="size-4 text-ink-700" />

@@ -448,11 +448,6 @@ export function AdminDashboard({
               <span className="font-semibold text-sand-800">
                 {currentUser?.name || "Administrador"}
               </span>
-              {(!currentUser || currentUser.isDemo) && (
-                <span className="rounded-full bg-hint-50 px-2 py-0.5 font-bold text-hint-700 ring-1 ring-hint-200">
-                  Modo demo
-                </span>
-              )}
             </div>
 
             <button

@@ -1,5 +1,6 @@
-import { Suspense, lazy, useEffect } from "react";
+import { ReactNode, Suspense, lazy, useEffect } from "react";
 import { LandingPage } from "./LandingPage";
+import { BarraDesarrollo, BotonDesarrollo } from "./components/BarraDesarrollo";
 
 // Vistas con carga diferida: la landing no descarga el código del portal, el panel ni la zona del estudiante
 const cargarPortal = () => import("./Portal");
@@ -11,30 +12,17 @@ const PlanningWorkspace = lazy(() => import("./AdvancedModules").then((m) => ({ 
 const AdmissionSimulator = lazy(() => import("./views/SimuladorAdmision"));
 const AsistenteDocente = lazy(() => import("./views/AsistenteDocente"));
 const EditorGuia = lazy(() => import("./views/EditorGuia"));
-const BarraEvaluador = lazy(() => import("./components/BarraEvaluador").then((m) => ({ default: m.EvaluatorTopBar })));
-const BotonEvaluador = lazy(() => import("./components/BarraEvaluador").then((m) => ({ default: m.EvaluatorPill })));
 const ReporteInstitucional = lazy(() => import("./views/ReporteInstitucional"));
 const RestablecerClave = lazy(() => import("./views/RestablecerClave"));
 const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
+// Las guardas usan dbService: se cargan junto con la vista protegida, no con la landing
+const RutaDocente = lazy(() => import("./components/RutasProtegidas").then((m) => ({ default: m.RutaDocente })));
+const RutaEstudiante = lazy(() => import("./components/RutasProtegidas").then((m) => ({ default: m.RutaEstudiante })));
 import { AppView, useAppRouter } from "./router";
 export type { AppView } from "./router";
 
-// La barra del evaluador se carga aparte; mientras llega no se muestra nada en su lugar
-function EvaluatorTopBar(props: { currentView: AppView; onViewChange: (v: AppView) => void }) {
-  return (
-    <Suspense fallback={null}>
-      <BarraEvaluador {...props} />
-    </Suspense>
-  )
-}
-
-function EvaluatorPill(props: { currentView: AppView; onViewChange: (v: AppView) => void }) {
-  return (
-    <Suspense fallback={null}>
-      <BotonEvaluador {...props} />
-    </Suspense>
-  )
-}
+const VISTAS_DOCENTE: AppView[] = ["dashboard", "chat", "editor", "planner", "reporte"];
+const VISTAS_ESTUDIANTE: AppView[] = ["student", "simulator"];
 
 function App() {
   // Con la landing ya pintada y el navegador libre, se precargan los siguientes pasos habituales
@@ -57,67 +45,11 @@ function App() {
     return (
       <LandingPage
         onEnterApp={() => setView("portal")}
-        onNavigate={(target) => setView(target as AppView)}
         onStudentEnter={(pin) => {
           if (pin) localStorage.setItem("ecdulearm_active_pin", pin)
-
           setView("student")
         }}
       />
-    )
-  }
-
-  if (view === "portal") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <AccessPortal
-          onStudentEnter={() => setView("student")}
-          onTeacherEnter={() => setView("dashboard")}
-          onAdminEnter={() => setView("admin")}
-          onBackToLanding={() => setView("landing")}
-        />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  if (view === "student") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <AutonomousZone
-          onExit={() => setView("portal")}
-          onSimulator={() => setView("simulator")}
-        />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  if (view === "dashboard") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <TeacherDashboard
-          onExit={() => setView("portal")}
-          onCreateContent={() => setView("chat")}
-          onOpenPlanner={() => setView("planner")}
-          onOpenAdmin={() => setView("admin")}
-          onOpenReporte={() => setView("reporte")}
-        />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  if (view === "reporte") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <ReporteInstitucional onVolver={() => setView("dashboard")} />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
     )
   }
 
@@ -125,51 +57,78 @@ function App() {
     return <RestablecerClave onIrAlPortal={() => setView("portal")} />
   }
 
-  if (view === "admin") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
+  let contenido: ReactNode
+  switch (view) {
+    case "portal":
+      contenido = (
+        <AccessPortal
+          onStudentEnter={() => setView("student")}
+          onTeacherEnter={() => setView("dashboard")}
+          onAdminEnter={() => setView("admin")}
+          onBackToLanding={() => setView("landing")}
+        />
+      )
+      break
+    case "student":
+      contenido = <AutonomousZone onExit={() => setView("landing")} onSimulator={() => setView("simulator")} />
+      break
+    case "simulator":
+      contenido = <AdmissionSimulator onBack={() => setView("student")} />
+      break
+    case "dashboard":
+      contenido = (
+        <TeacherDashboard
+          onExit={() => setView("portal")}
+          onCreateContent={() => setView("chat")}
+          onOpenPlanner={() => setView("planner")}
+          onOpenAdmin={() => setView("admin")}
+          onOpenReporte={() => setView("reporte")}
+        />
+      )
+      break
+    case "reporte":
+      contenido = <ReporteInstitucional onVolver={() => setView("dashboard")} />
+      break
+    case "planner":
+      contenido = <PlanningWorkspace onBack={() => setView("dashboard")} />
+      break
+    case "editor":
+      contenido = <EditorGuia onBack={() => setView("chat")} />
+      break
+    case "admin":
+      contenido = (
         <AdminDashboard
           onExit={() => setView("portal")}
           onNavigateTeacher={() => setView("dashboard")}
           onNavigateLanding={() => setView("landing")}
         />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
+      )
+      break
+    default:
+      contenido = <AsistenteDocente setView={setView} />
+  }
+
+  if (VISTAS_DOCENTE.includes(view)) {
+    contenido = (
+      <Suspense fallback={null}>
+        <RutaDocente onSinSesion={() => setView("portal")}>{contenido}</RutaDocente>
+      </Suspense>
+    )
+  } else if (VISTAS_ESTUDIANTE.includes(view)) {
+    contenido = (
+      <Suspense fallback={null}>
+        <RutaEstudiante onSinSesion={() => setView("landing")}>{contenido}</RutaEstudiante>
+      </Suspense>
     )
   }
 
-  if (view === "planner") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <PlanningWorkspace onBack={() => setView("dashboard")} />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  if (view === "simulator") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <AdmissionSimulator onBack={() => setView("student")} />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  if (view === "editor") {
-    return (
-      <>
-        <EvaluatorTopBar currentView={view} onViewChange={setView} />
-        <EditorGuia onBack={() => setView("chat")} />
-        <EvaluatorPill currentView={view} onViewChange={setView} />
-      </>
-    )
-  }
-
-  return <AsistenteDocente view={view} setView={setView} />
+  return (
+    <>
+      <BarraDesarrollo currentView={view} onViewChange={setView} />
+      {contenido}
+      <BotonDesarrollo currentView={view} onViewChange={setView} />
+    </>
+  )
 }
 
 export default App

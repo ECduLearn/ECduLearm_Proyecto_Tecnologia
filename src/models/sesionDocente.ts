@@ -11,7 +11,12 @@ export type MensajeChat = {
   text: string
 
   exercise?: Exercise
+
+  // La respuesta salió del respaldo local porque la IA no respondió
+  sinConexion?: boolean
 }
+
+export type LetraParalelo = "A" | "B" | "C"
 
 export interface EstadoDocente {
   mensajes: MensajeChat[]
@@ -21,6 +26,11 @@ export interface EstadoDocente {
   versiones: Exercise[]
 
   tieneEjercicio: boolean
+
+  // Versiones equivalentes para paralelos (A = original); la activa es la que se edita y se publica
+  paralelos: Partial<Record<LetraParalelo, Exercise>>
+
+  paraleloActivo: LetraParalelo
 }
 
 type Actualizacion<T> = T | ((anterior: T) => T)
