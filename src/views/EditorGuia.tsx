@@ -3,7 +3,7 @@ import Icon from "@/components/Icon"
 import { generateExerciseAI } from "@/services/aiService"
 import { ejerciciosController, isValidUuid } from "@/services/dbService"
 import { estadoInicialDocente } from "@/models/estadoInicialDocente"
-import { actualizarSesionDocente, useSesionDocente } from "@/models/sesionDocente"
+import { actualizarItem, actualizarSeleccionado, reemplazarEnItem, useSesionDocente } from "@/models/sesionDocente"
 import { ACCIONES_EJERCICIO, type AccionIA } from "@/models/accionesIA"
 import type { Exercise } from "@/models/types"
 
@@ -328,24 +328,26 @@ function EditorView({
 const SITUACION_VACIA = "Escribe aquí la situación del problema o pídele al asistente que la genere."
 
 export default function EditorGuia({ onBack }: { onBack: () => void }) {
-  const { ejercicio, versiones, tieneEjercicio } = useSesionDocente(estadoInicialDocente)
-  // Ediciones manuales pendientes de guardar en la base; padreId es el ejercicio que se editó
-  const pendiente = useRef<{ padreId?: string } | null>(null)
+  const { ejercicio, versiones, tieneEjercicio, item } = useSesionDocente(estadoInicialDocente)
+  // Ediciones manuales pendientes de guardar en la base; padreId es el ejercicio que se editó y
+  // clave el de la lista del chat, por si el docente cambia de ejercicio mientras se guarda
+  const pendiente = useRef<{ padreId?: string; clave: string } | null>(null)
   const ultimo = useRef(ejercicio)
   ultimo.current = ejercicio
 
   const guardarPendiente = async () => {
     if (!pendiente.current) return
-    const { padreId } = pendiente.current
+    const { padreId, clave } = pendiente.current
     pendiente.current = null
-    const guardado = await ejerciciosController.guardarComoActivo(ultimo.current, {
+    const editado = ultimo.current
+    const guardado = await ejerciciosController.guardarComoActivo(editado, {
       ejercicioPadreId: padreId,
       etiquetaVersion: "Iteración 2",
+      activo: false,
     })
-    actualizarSesionDocente((actual) => ({
-      ejercicio: guardado,
-      paralelos: { ...actual.paralelos, [actual.paraleloActivo]: guardado },
-    }))
+    actualizarItem(clave, (actual) =>
+      actual.paralelos[actual.paraleloActivo] === editado ? reemplazarEnItem(actual, guardado, { conservarAnterior: false }) : {},
+    )
   }
 
   // Al salir del editor (o cerrar la vista) se envía lo editado como una iteración nueva
@@ -363,29 +365,21 @@ export default function EditorGuia({ onBack }: { onBack: () => void }) {
       exercise={ejercicio}
       hayAnterior={versiones.length > 0}
       onBack={onBack}
-      onExerciseChange={(nuevo) =>
-        actualizarSesionDocente((actual) => ({
-          versiones: [...actual.versiones, actual.ejercicio],
-          ejercicio: nuevo,
-          paralelos: { ...actual.paralelos, [actual.paraleloActivo]: nuevo },
-        }))
-      }
+      onExerciseChange={(nuevo) => actualizarSeleccionado((actual) => reemplazarEnItem(actual, nuevo))}
       onEditarCampo={(cambio) => {
-        if (!pendiente.current) pendiente.current = { padreId: isValidUuid(ejercicio.id) ? ejercicio.id : undefined }
+        if (!pendiente.current && item) {
+          pendiente.current = { padreId: isValidUuid(ejercicio.id) ? ejercicio.id : undefined, clave: item.clave }
+        }
         // Sin id: lo editado ya no es el registro original; al publicar se guarda como ejercicio nuevo
-        actualizarSesionDocente((actual) => {
-          const editado = { ...actual.ejercicio, ...cambio, id: undefined }
-          ejerciciosController.guardarActivoLocal(editado)
-          return { ejercicio: editado, paralelos: { ...actual.paralelos, [actual.paraleloActivo]: editado } }
-        })
+        actualizarSeleccionado((actual, vigente) =>
+          reemplazarEnItem(actual, { ...vigente, ...cambio, id: undefined }, { conservarAnterior: false }),
+        )
       }}
       onVersionAnterior={() => {
-        actualizarSesionDocente((actual) => {
+        actualizarSeleccionado((actual) => {
           const anterior = actual.versiones.at(-1)
           if (!anterior) return {}
-          ejerciciosController.guardarActivoLocal(anterior)
           return {
-            ejercicio: anterior,
             versiones: actual.versiones.slice(0, -1),
             paralelos: { ...actual.paralelos, [actual.paraleloActivo]: anterior },
           }

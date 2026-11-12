@@ -13,6 +13,7 @@ import {
 } from "../models/seedData";
 import { Exercise, PasoBloqueo, RetoEstudiante, SesionEstudiante, TeacherUser } from "../models/types";
 import { verificarRespuestaLocal } from "./respuestas";
+import { MAX_EJERCICIOS_AULA } from "../models/limites";
 
 // ==============================================================================
 // 1. SEGURIDAD, OWASP Y SANITIZACIÓN DE ENTRADAS
@@ -507,16 +508,73 @@ export const ejerciciosController = {
    */
   async guardarComoActivo(
     ejercicio: Exercise,
-    opciones: { ejercicioPadreId?: string; etiquetaVersion?: string; tiempoCreacionSegundos?: number } = {}
+    opciones: { ejercicioPadreId?: string; etiquetaVersion?: string; tiempoCreacionSegundos?: number; activo?: boolean } = {}
   ): Promise<Exercise> {
-    const guardado = await this.createEjercicio({ ...ejercicio, ...opciones });
-    const activo: Exercise = { ...ejercicio, id: guardado.isOffline ? ejercicio.id : guardado.data.id };
-    try {
-      localStorage.setItem(ACTIVE_EXERCISE_KEY, JSON.stringify(activo));
-    } catch {
-      // Sin almacenamiento el ejercicio activo vive solo en memoria.
-    }
+    // activo: false guarda sin tocar el ejercicio activo (lotes en paralelo, que si no se pisarían)
+    const { activo: marcarActivo = true, ...datos } = opciones;
+    const guardado = await this.createEjercicio({ ...ejercicio, ...datos });
+    // Sin servidor también se usa el id de la copia local, para poder encontrarla al descartar
+    const activo: Exercise = { ...ejercicio, id: guardado.data.id };
+    if (marcarActivo) this.guardarActivoLocal(activo);
     return activo;
+  },
+
+  /** Olvida el ejercicio activo (el docente empezó un chat nuevo). */
+  limpiarActivo(): void {
+    try {
+      localStorage.removeItem(ACTIVE_EXERCISE_KEY);
+    } catch {
+      // Nada que borrar sin almacenamiento.
+    }
+  },
+
+  /**
+   * Borra un ejercicio descartado junto con todo lo que cuelga de él (versiones B/C e iteraciones de
+   * los atajos, que se encadenan por ejercicio_padre_id). Se borra en una sola sentencia: si alguno
+   * está en un aula, una planificación o tiene intentos (ON DELETE RESTRICT), no se borra ninguno.
+   */
+  async descartarConVersiones(
+    raizId: string,
+    conocidos: string[] = []
+  ): Promise<{ ok: boolean; motivo?: "en_uso" | "error" }> {
+    const client = clienteDocente();
+    // conocidos: versiones que el chat ya tiene (también las de este dispositivo, sin UUID)
+    const locales = [...new Set([raizId, ...conocidos].filter(Boolean))];
+    const ids = locales.filter((id) => isValidUuid(id));
+
+    if (client && isValidUuid(raizId)) {
+      try {
+        let nivel = [raizId];
+        // Tope de seguridad: nadie encadena 50 iteraciones sobre un mismo ejercicio
+        for (let vuelta = 0; vuelta < 50 && nivel.length; vuelta++) {
+          const { data, error } = await client.from("ejercicios_pisa").select("id").in("ejercicio_padre_id", nivel);
+          if (error) throw error;
+          nivel = (data ?? []).map((fila) => String(fila.id)).filter((id) => !ids.includes(id));
+          ids.push(...nivel);
+        }
+        const { error } = await client.from("ejercicios_pisa").delete().in("id", ids);
+        if (error) {
+          if (error.code === "23503") return { ok: false, motivo: "en_uso" };
+          console.warn(`[dbService] No se pudo descartar el ejercicio (${error.code}): ${error.message}`);
+          return { ok: false, motivo: "error" };
+        }
+      } catch (err) {
+        console.warn("[dbService] Fallo al descartar el ejercicio:", (err as Error).message);
+        return { ok: false, motivo: "error" };
+      }
+    }
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_EJERCICIOS);
+      if (raw) {
+        const lista: FullPisaExercise[] = JSON.parse(raw);
+        const borrar = new Set([...locales, ...ids]);
+        localStorage.setItem(STORAGE_KEYS.LOCAL_EJERCICIOS, JSON.stringify(lista.filter((e) => !borrar.has(e.id))));
+      }
+    } catch {
+      // Sin almacenamiento no hay copia local que limpiar.
+    }
+    return { ok: true };
   },
 
   /** Guarda el ejercicio activo solo en este navegador (ediciones manuales aún sin enviar a la base). */
@@ -999,6 +1057,12 @@ export interface ResumenAula {
   enServidor: boolean;
 }
 
+/** Ejercicios de un aula guardada en este navegador: `ejercicios` (varios) o `ejercicio` (formato anterior). */
+function ejerciciosDeAulaLocal(aula: Record<string, unknown>): Exercise[] {
+  if (Array.isArray(aula.ejercicios)) return (aula.ejercicios as Exercise[]).filter(Boolean);
+  return aula.ejercicio ? [aula.ejercicio as Exercise] : [];
+}
+
 function aulasDeEsteDispositivo(): ResumenAula[] {
   try {
     const aulas = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS) || "{}") as Record<
@@ -1103,36 +1167,42 @@ export const aulasController = {
   },
 
   /**
-   * Publica un aula con PIN y le vincula el ejercicio en aula_ejercicios, para que el estudiante lo
-   * reciba en fn_iniciar_sesion_anonima. Si el ejercicio aún no está en la base, lo guarda primero.
+   * Publica un aula con PIN y le vincula los ejercicios en aula_ejercicios (en ese orden), para que el
+   * estudiante los reciba en fn_iniciar_sesion_anonima. Los que aún no están en la base se guardan primero.
+   * Devuelve los ejercicios con su id definitivo, para actualizarlos en la lista del chat.
    */
   async publicarAula(
     pin: string,
     titulo: string,
-    ejercicio: Exercise
+    lista: Exercise[]
   ): Promise<{
     success: boolean;
     pin: string;
     isOffline: boolean;
-    ejercicioId?: string;
+    ejercicios: Exercise[];
     motivo?: "pin_ocupado" | "sin_sesion" | "error";
   }> {
     const clean = sanitizeInput(pin).toUpperCase().replace(/\s+/g, "");
     const user = authController.getCurrentUser();
     const client = getSupabaseClient();
-    let ejercicioId = isValidUuid(ejercicio.id) ? (ejercicio.id as string) : undefined;
+    const ejercicios = lista.slice(0, MAX_EJERCICIOS_AULA);
+    if (!ejercicios.length || lista.length > MAX_EJERCICIOS_AULA) {
+      return { success: false, pin: clean, isOffline: true, ejercicios: lista, motivo: "error" };
+    }
+    const ids: (string | undefined)[] = ejercicios.map((e) => (isValidUuid(e.id) ? (e.id as string) : undefined));
     let savedInDb = false;
     let motivo: "pin_ocupado" | "sin_sesion" | "error" | undefined;
 
     // RLS exige una sesión real de docente: la cuenta demo solo publica en este navegador
     if (client && user && !user.isDemo && isValidUuid(user.id)) {
       try {
-        if (!ejercicioId) {
-          const creado = await ejerciciosController.createEjercicio(ejercicio);
-          if (!creado.isOffline) ejercicioId = creado.data.id;
+        for (let i = 0; i < ejercicios.length; i++) {
+          if (ids[i]) continue;
+          const creado = await ejerciciosController.createEjercicio(ejercicios[i]);
+          if (!creado.isOffline) ids[i] = creado.data.id;
         }
 
-        if (!ejercicioId) {
+        if (ids.some((id) => !id)) {
           motivo = "error";
         } else {
           const { data: aula, error } = await client
@@ -1157,11 +1227,12 @@ export const aulasController = {
             motivo = error?.code === "23505" || error?.code === "42501" ? "pin_ocupado" : "error";
             if (error) console.warn(`[dbService] aulas_virtuales rechazó el PIN (${error.code}): ${error.message}`);
           } else {
-            // Un aula, un reto: el vínculo anterior se reemplaza
+            // Los vínculos anteriores del aula se reemplazan; un ejercicio repetido se vincula una sola vez
             await client.from("aula_ejercicios").delete().eq("aula_id", aula.id);
+            const unicos = [...new Set(ids as string[])];
             const { error: errorVinculo } = await client
               .from("aula_ejercicios")
-              .insert({ aula_id: aula.id, ejercicio_id: ejercicioId, orden: 1 });
+              .insert(unicos.map((ejercicioId, i) => ({ aula_id: aula.id, ejercicio_id: ejercicioId, orden: i + 1 })));
             if (errorVinculo) {
               motivo = "error";
               console.warn(`[dbService] aula_ejercicios rechazó el vínculo (${errorVinculo.code}): ${errorVinculo.message}`);
@@ -1178,6 +1249,8 @@ export const aulasController = {
       motivo = "sin_sesion";
     }
 
+    const publicados = ejercicios.map((e, i) => ({ ...e, id: ids[i] ?? e.id }));
+
     // Respaldo local (modo demo u offline)
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS);
@@ -1185,7 +1258,7 @@ export const aulasController = {
       aulas[clean] = {
         pin: clean,
         titulo,
-        ejercicio: { ...ejercicio, id: ejercicioId ?? ejercicio.id },
+        ejercicios: publicados,
         docente: user?.name || "Docente",
         createdAt: Date.now(),
         active: true,
@@ -1195,7 +1268,45 @@ export const aulasController = {
       // Sin almacenamiento: el aula solo existe en la base de datos.
     }
 
-    return { success: savedInDb || motivo === "sin_sesion", pin: clean, isOffline: !savedInDb, ejercicioId, motivo: savedInDb ? undefined : motivo };
+    return {
+      success: savedInDb || motivo === "sin_sesion",
+      pin: clean,
+      isOffline: !savedInDb,
+      ejercicios: publicados,
+      motivo: savedInDb ? undefined : motivo,
+    };
+  },
+
+  /**
+   * De estos ids, los que ya están vinculados a un aula del docente (aula_ejercicios, que RLS limita a
+   * sus aulas) o a un aula guardada en este navegador. null si no se pudo consultar el servidor.
+   */
+  async idsPublicados(ids: string[]): Promise<Set<string> | null> {
+    const publicados = new Set<string>();
+    const buscados = new Set(ids);
+
+    try {
+      const aulas = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS) || "{}") as Record<string, Record<string, unknown>>;
+      for (const aula of Object.values(aulas)) {
+        for (const ej of ejerciciosDeAulaLocal(aula)) {
+          if (ej.id && buscados.has(ej.id)) publicados.add(ej.id);
+        }
+      }
+    } catch {
+      // Sin almacenamiento solo cuenta lo que diga el servidor.
+    }
+
+    const validos = ids.filter((id) => isValidUuid(id));
+    const client = clienteDocente();
+    if (client && validos.length) {
+      const { data, error } = await client.from("aula_ejercicios").select("ejercicio_id").in("ejercicio_id", validos);
+      if (error) {
+        console.warn(`[dbService] No se pudo saber qué ejercicios están publicados (${error.code}): ${error.message}`);
+        return null;
+      }
+      for (const fila of data ?? []) publicados.add(String(fila.ejercicio_id));
+    }
+    return publicados;
   },
 };
 
@@ -1246,17 +1357,17 @@ function aulaLocal(pin: string): SesionEstudiante | null {
   try {
     const aulas = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_AULAS) || "{}");
     const aula = aulas[pin];
-    const ej: Exercise | undefined = aula?.ejercicio;
-    if (!ej) return null;
-    const pistas = ej.pistasSocraticas ?? [];
+    const lista = aula ? ejerciciosDeAulaLocal(aula) : [];
+    if (!lista.length) return null;
     return {
       sesionId: `ses-anon-${Date.now()}`,
       pin,
       alias: `Estudiante #${Math.floor(10 + Math.random() * 89)}`,
-      titulo: aula.titulo || ej.topic,
-      ejercicios: [
-        {
-          id: ej.id || `local-${pin}`,
+      titulo: aula.titulo || lista[0].topic,
+      ejercicios: lista.map((ej, i) => {
+        const pistas = ej.pistasSocraticas ?? [];
+        return {
+          id: ej.id || `local-${pin}-${i + 1}`,
           tema: ej.topic,
           contexto: ej.context,
           curso: ej.level,
@@ -1266,8 +1377,8 @@ function aulaLocal(pin: string): SesionEstudiante | null {
           totalPistas: pistas.length,
           pistasLocales: pistas,
           respuestaLocal: ej.respuestaCorrecta,
-        },
-      ],
+        };
+      }),
       isOffline: true,
     };
   } catch {

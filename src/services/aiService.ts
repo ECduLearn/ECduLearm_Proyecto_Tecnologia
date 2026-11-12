@@ -82,9 +82,31 @@ function listaValida(valor: unknown): string[] | undefined {
   return lista.length ? lista.slice(0, 5) : undefined;
 }
 
+/** Falla de la IA con un motivo legible para el docente (solo con `sinRespaldo`). */
+export class ErrorGeneracionIA extends Error {}
+
+const MOTIVOS_FALLO: Record<string, string> = {
+  rate_limited: "Se hicieron demasiadas solicitudes seguidas. Espera un minuto y vuelve a intentarlo.",
+  ai_unavailable: "La IA no está disponible ahora (puede ser el límite de uso). Inténtalo en un momento.",
+  ai_not_configured: "La IA no está configurada en el servidor.",
+  sin_ejercicio: "La IA no devolvió un ejercicio válido.",
+};
+
+function motivoDeFallo(err: unknown): string {
+  const error = err as Error;
+  if (error?.name === "TimeoutError" || error?.name === "AbortError") return "La IA tardó demasiado en responder.";
+  if (error instanceof TypeError) return "No hay conexión con el servidor. Revisa tu internet.";
+  return MOTIVOS_FALLO[error?.message] ?? "No se pudo generar el ejercicio.";
+}
+
+/**
+ * Genera o ajusta un ejercicio. Sin respuesta de la IA devuelve un ejercicio preparado de antemano;
+ * con `sinRespaldo` (lotes de varios) lanza ErrorGeneracionIA con el motivo, para no repetir plantillas.
+ */
 export async function generateExerciseAI(
   prompt: string,
-  currentExercise?: Exercise
+  currentExercise?: Exercise,
+  opciones: { sinRespaldo?: boolean } = {}
 ): Promise<AIResult<{ exercise: Exercise; reply: string }>> {
   try {
     // La solución anterior no se reenvía: el modelo la vuelve a escribir para el ejercicio ajustado
@@ -128,6 +150,9 @@ export async function generateExerciseAI(
       }
     }
 
+    // En un lote se pidió un ejercicio: una respuesta solo conversacional cuenta como fallo
+    if (opciones.sinRespaldo) throw new Error("sin_ejercicio");
+
     // If no JSON block or it's a conversational greeting like "Hola":
     // Clean raw text in case it had markdown code wrappers
     const cleanReply = raw.replace(/```json[\s\S]*?```/g, "").trim() || raw.trim();
@@ -139,6 +164,7 @@ export async function generateExerciseAI(
       isOfflineFallback: false,
     };
   } catch (err) {
+    if (opciones.sinRespaldo) throw new ErrorGeneracionIA(motivoDeFallo(err));
     // Intelligent dynamic contextual fallback
     return {
       data: generateFallbackExercise(prompt, currentExercise),

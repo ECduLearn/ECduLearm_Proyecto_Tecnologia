@@ -1,11 +1,23 @@
 import Icon from "./Icon"
 import type { Exercise } from "@/models/types"
 
-export default function ExerciseCard({ exercise }: { exercise: Exercise }) {
+// documento: es la tarjeta que se imprime (#exercise-document); solo una en pantalla debe serlo
+// incrustado: va dentro de otra tarjeta (lista del chat), sin sangría ni sombra propias
+export default function ExerciseCard({
+  exercise,
+  documento = false,
+  incrustado = false,
+}: {
+  exercise: Exercise
+  documento?: boolean
+  incrustado?: boolean
+}) {
   return (
     <article
-      id="exercise-document"
-      className="mt-4 overflow-hidden rounded-3xl border border-sand-200 bg-white shadow-xl shadow-sand-900/5 sm:ml-12"
+      id={documento ? "exercise-document" : undefined}
+      className={`mt-4 overflow-hidden rounded-3xl border border-sand-200 bg-white ${
+        incrustado ? "" : "shadow-xl shadow-sand-900/5 sm:ml-12"
+      }`}
     >
       <div className="border-b border-sand-200 bg-sand-50 px-5 py-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
