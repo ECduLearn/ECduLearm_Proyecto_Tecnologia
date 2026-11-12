@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
-export type AppView = "landing" | "portal" | "student" | "dashboard" | "planner" | "simulator" | "chat" | "editor" | "admin" | "restablecer" | "reporte"
+export type AppView = "landing" | "portal" | "student" | "dashboard" | "planner" | "simulator" | "chat" | "editor" | "admin" | "restablecer" | "reporte" | "crear-clave"
 
 export const VIEW_PATHS: Record<AppView, string> = {
   landing: "/",
@@ -21,6 +21,7 @@ export const VIEW_PATHS: Record<AppView, string> = {
 
   admin: "/admin",
   restablecer: "/restablecer",
+  "crear-clave": "/crear-clave",
   reporte: "/reporte",
 }
 
@@ -43,6 +44,7 @@ export const VIEW_TITLES: Record<AppView, string> = {
 
   admin: "Panel de Administración y Control de Usuarios | ECduLearn",
   restablecer: "Crear contraseña nueva | ECduLearn",
+  "crear-clave": "Crea tu contraseña | ECduLearn",
   reporte: "Reporte institucional | ECduLearn",
 }
 
@@ -161,6 +163,9 @@ export function getViewFromPath(pathname: string): AppView {
 
     case "/restablecer":
       return "restablecer"
+
+    case "/crear-clave":
+      return "crear-clave"
 
     case "/admin":
 

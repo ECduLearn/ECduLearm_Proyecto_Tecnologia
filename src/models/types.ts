@@ -99,6 +99,9 @@ export interface TeacherUser {
   role: "docente" | "coordinador" | "admin"
 
   isDemo?: boolean
+
+  // Entró con la contraseña temporal del administrador: debe crear la suya antes de seguir
+  debeCambiarClave?: boolean
 }
 
 // Vocabulario cerrado de schema.sql (ck_intentos_paso): fases donde se traba el estudiante

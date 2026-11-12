@@ -175,6 +175,8 @@ export function AccessPortal({
 
   onAdminEnter,
 
+  onCambiarClave,
+
   onBackToLanding,
 }: {
   onStudentEnter: () => void
@@ -182,6 +184,8 @@ export function AccessPortal({
   onTeacherEnter: () => void
 
   onAdminEnter?: () => void
+
+  onCambiarClave: () => void
 
   onBackToLanding?: () => void
 }) {
@@ -255,7 +259,9 @@ export function AccessPortal({
       if (res.success) {
         setLoginOpen(false)
 
-        if (res.user?.role === "admin" && onAdminEnter) {
+        if (res.user?.debeCambiarClave) {
+          onCambiarClave()
+        } else if (res.user?.role === "admin" && onAdminEnter) {
           onAdminEnter()
         } else {
           onTeacherEnter()

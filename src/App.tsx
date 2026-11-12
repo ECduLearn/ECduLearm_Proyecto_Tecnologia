@@ -14,6 +14,7 @@ const AsistenteDocente = lazy(() => import("./views/AsistenteDocente"));
 const EditorGuia = lazy(() => import("./views/EditorGuia"));
 const ReporteInstitucional = lazy(() => import("./views/ReporteInstitucional"));
 const RestablecerClave = lazy(() => import("./views/RestablecerClave"));
+const CrearClave = lazy(() => import("./views/CrearClave"));
 const AdminDashboard = lazy(() => import("./AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
 // Las guardas usan dbService: se cargan junto con la vista protegida, no con la landing
 const RutaDocente = lazy(() => import("./components/RutasProtegidas").then((m) => ({ default: m.RutaDocente })));
@@ -21,7 +22,7 @@ const RutaEstudiante = lazy(() => import("./components/RutasProtegidas").then((m
 import { AppView, useAppRouter } from "./router";
 export type { AppView } from "./router";
 
-const VISTAS_DOCENTE: AppView[] = ["dashboard", "chat", "editor", "planner", "reporte"];
+const VISTAS_DOCENTE: AppView[] = ["dashboard", "chat", "editor", "planner", "reporte", "admin"];
 const VISTAS_ESTUDIANTE: AppView[] = ["student", "simulator"];
 
 function App() {
@@ -57,6 +58,10 @@ function App() {
     return <RestablecerClave onIrAlPortal={() => setView("portal")} />
   }
 
+  if (view === "crear-clave") {
+    return <CrearClave onListo={(esAdmin) => setView(esAdmin ? "admin" : "dashboard")} onSalir={() => setView("portal")} />
+  }
+
   let contenido: ReactNode
   switch (view) {
     case "portal":
@@ -65,6 +70,7 @@ function App() {
           onStudentEnter={() => setView("student")}
           onTeacherEnter={() => setView("dashboard")}
           onAdminEnter={() => setView("admin")}
+          onCambiarClave={() => setView("crear-clave")}
           onBackToLanding={() => setView("landing")}
         />
       )
@@ -111,7 +117,7 @@ function App() {
   if (VISTAS_DOCENTE.includes(view)) {
     contenido = (
       <Suspense fallback={null}>
-        <RutaDocente onSinSesion={() => setView("portal")}>{contenido}</RutaDocente>
+        <RutaDocente onSinSesion={() => setView("portal")} onCambiarClave={() => setView("crear-clave")}>{contenido}</RutaDocente>
       </Suspense>
     )
   } else if (VISTAS_ESTUDIANTE.includes(view)) {
