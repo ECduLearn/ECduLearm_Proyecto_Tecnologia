@@ -6,7 +6,16 @@ import {
   DbAuditLog,
   DbInstitucion,
   UsuarioConDetalles,
+  type ClaveTemporal,
+  type EstadoAcceso,
 } from "./services/dbService"
+import ClaveTemporalDialog, { type FaseClave } from "./components/ClaveTemporalDialog"
+
+const ETIQUETA_ACCESO: Record<Exclude<EstadoAcceso, "activo">, string> = {
+  pendiente: "Pendiente de primer ingreso",
+  vencida: "Contraseña temporal vencida",
+  sin_acceso: "Sin cuenta de acceso",
+}
 
 interface AdminDashboardProps {
   onExit: () => void
@@ -47,6 +56,15 @@ export function AdminDashboard({
   const [filterRole, setFilterRole] = useState<string>("TODOS")
   const [filterInstitution, setFilterInstitution] = useState<string>("TODAS")
   const [filterStatus, setFilterStatus] = useState<string>("TODOS")
+
+  // Acceso: estado de la cuenta de cada usuario y diálogo de la contraseña temporal
+  const [estadosAcceso, setEstadosAcceso] = useState<Record<string, EstadoAcceso>>({})
+  const [dialogoClave, setDialogoClave] = useState<{
+    usuario: UsuarioConDetalles
+    fase: FaseClave
+    clave?: ClaveTemporal
+    mensaje?: string
+  } | null>(null)
 
   // Modales
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -111,6 +129,7 @@ export function AdminDashboard({
       setInstituciones(instList)
       setStats(statsData)
       setAuditLogs(adminController.getAuditLogs())
+      adminController.getEstadosAcceso().then(setEstadosAcceso)
 
       if (instList.length > 0 && !newInstitucionId) {
         setNewInstitucionId(instList[0].id)
@@ -179,7 +198,11 @@ export function AdminDashboard({
       })
 
       if (res.success) {
-        showToast(res.message, "success")
+        if (res.claveTemporal && res.usuario) {
+          setDialogoClave({ usuario: res.usuario, fase: "lista", clave: res.claveTemporal })
+        } else {
+          showToast(res.message, "info")
+        }
         setCreateModalOpen(false)
         setNewNombre("")
         setNewEmail("")
@@ -271,10 +294,21 @@ export function AdminDashboard({
     }
   }
 
-  // Manejador: enviar correo para crear una contraseña nueva
-  const handleResetPassword = async (user: UsuarioConDetalles) => {
-    const res = await adminController.resetPassword(user.id)
-    showToast(res.message, res.success ? "success" : "info")
+  // Manejador: contraseña temporal de un solo uso (crea la cuenta si aún no existe)
+  const confirmarClaveTemporal = async () => {
+    if (!dialogoClave) return
+    const usuario = dialogoClave.usuario
+    setDialogoClave({ usuario, fase: "generando" })
+    const res = await adminController.generarClaveTemporal(usuario.id)
+    setDialogoClave(
+      res.success && res.claveTemporal
+        ? { usuario, fase: "lista", clave: res.claveTemporal }
+        : { usuario, fase: "error", mensaje: res.message },
+    )
+    if (res.success) {
+      setAuditLogs(adminController.getAuditLogs())
+      adminController.getEstadosAcceso().then(setEstadosAcceso)
+    }
   }
 
   // Manejador: Eliminar Usuario
@@ -859,6 +893,11 @@ export function AdminDashboard({
                                   {u.activo ? "Con Permiso" : "Sin Acceso"}
                                 </span>
                               </button>
+                              {estadosAcceso[u.id] && estadosAcceso[u.id] !== "activo" && (
+                                <p className="mt-1.5 text-[11px] font-semibold text-hint-800">
+                                  {ETIQUETA_ACCESO[estadosAcceso[u.id] as Exclude<EstadoAcceso, "activo">]}
+                                </p>
+                              )}
                             </td>
 
                             {/* Acciones */}
@@ -866,11 +905,12 @@ export function AdminDashboard({
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => handleResetPassword(u)}
-                                  className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1 text-[11px] font-semibold text-sand-700 transition hover:bg-sand-200"
-                                  title="Enviar un correo para crear una contraseña nueva"
+                                  onClick={() => setDialogoClave({ usuario: u, fase: "confirmar" })}
+                                  disabled={!u.activo}
+                                  className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1 text-[11px] font-semibold text-sand-700 transition hover:bg-sand-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                  title={u.activo ? "Generar una contraseña temporal de un solo uso" : "Activa al usuario para darle acceso"}
                                 >
-                                  Restablecer clave
+                                  Contraseña temporal
                                 </button>
 
                                 <button
@@ -1628,6 +1668,19 @@ export function AdminDashboard({
             </div>
           </div>
         </div>
+      )}
+
+      {dialogoClave && (
+        <ClaveTemporalDialog
+          nombre={dialogoClave.usuario.nombre_completo}
+          correo={dialogoClave.usuario.email_institucional}
+          fase={dialogoClave.fase}
+          clave={dialogoClave.clave}
+          mensaje={dialogoClave.mensaje}
+          tieneAcceso={estadosAcceso[dialogoClave.usuario.id] !== "sin_acceso" && estadosAcceso[dialogoClave.usuario.id] !== undefined}
+          onConfirmar={confirmarClaveTemporal}
+          onClose={() => setDialogoClave(null)}
+        />
       )}
     </div>
   )

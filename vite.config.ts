@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
-const SERVER_ENV_KEYS = ['GEMINI_API_KEY', 'GEMINI_MODELS', 'AI_ALLOWED_ORIGINS']
+const SERVER_ENV_KEYS = ['GEMINI_API_KEY', 'GEMINI_MODELS', 'AI_ALLOWED_ORIGINS', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'VITE_SUPABASE_URL']
+const API_FUNCTIONS = ['ai', 'usuarios']
 
 // En desarrollo sirve las Vercel Functions de /api con el mismo código que en producción.
 function vercelApiDev(): Plugin {
@@ -11,9 +12,9 @@ function vercelApiDev(): Plugin {
     name: 'ecdulearn-vercel-api-dev',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use('/api/ai', async (req, res) => {
+      for (const nombre of API_FUNCTIONS) server.middlewares.use(`/api/${nombre}`, async (req, res) => {
         try {
-          const mod = await server.ssrLoadModule('/api/ai.ts')
+          const mod = await server.ssrLoadModule(`/api/${nombre}.ts`)
           const handler = mod[req.method ?? 'GET']
           if (typeof handler !== 'function') {
             res.statusCode = 405
@@ -30,7 +31,7 @@ function vercelApiDev(): Plugin {
           }
 
           const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
-          const request = new Request(`http://${req.headers.host}${req.originalUrl ?? '/api/ai'}`, {
+          const request = new Request(`http://${req.headers.host}${req.originalUrl ?? `/api/${nombre}`}`, {
             method: req.method,
             headers,
             body: hasBody ? Buffer.concat(chunks) : undefined,

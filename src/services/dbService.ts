@@ -276,6 +276,53 @@ async function fetchTeacherProfile(client: SupabaseClient, authUserId: string): 
   };
 }
 
+// Errores de api/usuarios en lenguaje del usuario
+const MENSAJES_API_USUARIOS: Record<string, string> = {
+  servicio_no_configurado: "Falta configurar la clave de servicio de Supabase en el servidor (SUPABASE_SERVICE_ROLE_KEY).",
+  requiere_admin: "Acceso denegado: se requiere perfil de Administrador.",
+  usuario_inactivo: "Primero activa al usuario para poder darle acceso.",
+  usuario_no_encontrado: "No encontramos a ese usuario.",
+  sin_sesion: "Tu sesión venció. Vuelve a iniciar sesión.",
+  sesion_invalida: "Tu sesión venció. Vuelve a iniciar sesión.",
+  clave_debil: "La contraseña debe tener al menos 8 caracteres, con letras y números.",
+  misma_clave: "Usa una contraseña distinta de la temporal.",
+  clave_vencida: "Tu contraseña temporal venció. Pide una nueva a la administración de tu colegio.",
+  sin_cambio_pendiente: "Tu contraseña ya estaba configurada.",
+  rate_limited: "Hiciste muchos intentos seguidos. Espera un minuto y vuelve a intentarlo.",
+  sin_conexion: "No pudimos conectar con el servidor. Revisa tu internet y vuelve a intentarlo.",
+};
+
+function mensajeApiUsuarios(codigo: string): string {
+  return MENSAJES_API_USUARIOS[codigo] ?? "No pudimos completar la acción. Vuelve a intentarlo.";
+}
+
+async function llamarApiUsuarios<T>(cuerpo: Record<string, unknown>): Promise<{ data: T } | { error: string }> {
+  const client = getSupabaseClient();
+  const { data } = client ? await client.auth.getSession() : { data: { session: null } };
+  const token = data.session?.access_token;
+  if (!token) return { error: "sin_sesion" };
+  try {
+    const res = await fetch("/api/usuarios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(cuerpo),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) return { error: String(payload?.error ?? `http_${res.status}`) };
+    return { data: payload as T };
+  } catch {
+    return { error: "sin_conexion" };
+  }
+}
+
+export type EstadoAcceso = "activo" | "pendiente" | "vencida" | "sin_acceso";
+
+export interface ClaveTemporal {
+  clave: string;
+  expira: string;
+}
+
 export const authController = {
   /**
    * Inicia sesión con Supabase Auth (correo + contraseña); el rol sale del perfil en la base.
@@ -294,6 +341,15 @@ export const authController = {
         const { data, error } = await client.auth.signInWithPassword({ email: cleanEmail, password });
 
         if (!error && data.user) {
+          const meta = data.user.app_metadata ?? {};
+          if (meta.debe_cambiar_clave && Date.parse(String(meta.clave_temporal_expira)) < Date.now()) {
+            await client.auth.signOut();
+            return {
+              success: false,
+              user: null,
+              message: "Tu contraseña temporal venció. Pide una nueva a la administración de tu colegio.",
+            };
+          }
           const profile = await fetchTeacherProfile(client, data.user.id);
           if (!profile) {
             await client.auth.signOut();
@@ -303,8 +359,9 @@ export const authController = {
               message: "Tu cuenta existe, pero tu institución aún no la ha habilitado. Contacta con la coordinación de tu colegio.",
             };
           }
-          saveCurrentUser(profile);
-          return { success: true, user: profile, message: `Te damos la bienvenida, ${profile.name}.` };
+          const usuario: TeacherUser = { ...profile, debeCambiarClave: Boolean(meta.debe_cambiar_clave) };
+          saveCurrentUser(usuario);
+          return { success: true, user: usuario, message: `Te damos la bienvenida, ${profile.name}.` };
         }
 
         if (error && !isAuthRetryableFetchError(error)) {
@@ -352,7 +409,27 @@ export const authController = {
       clearCurrentUser();
       return null;
     }
+    const debeCambiarClave = Boolean(data.session.user.app_metadata?.debe_cambiar_clave);
+    if (debeCambiarClave !== Boolean(cached.debeCambiarClave)) {
+      const actualizado = { ...cached, debeCambiarClave };
+      saveCurrentUser(actualizado);
+      return actualizado;
+    }
     return cached;
+  },
+
+  /**
+   * Primer ingreso: cambia la contraseña temporal por la del usuario. Lo hace el servidor
+   * (api/usuarios) para que la marca de primer ingreso solo se quite si la contraseña cambió.
+   */
+  async cambiarClaveTemporal(nueva: string): Promise<{ success: boolean; message: string }> {
+    const res = await llamarApiUsuarios<{ ok: boolean }>({ accion: "cambiar-clave", nueva });
+    if ("error" in res) return { success: false, message: mensajeApiUsuarios(res.error) };
+    // El token guardado aún trae la marca vieja: se renueva antes de seguir
+    await getSupabaseClient()?.auth.refreshSession();
+    const cached = this.getCurrentUser();
+    if (cached) saveCurrentUser({ ...cached, debeCambiarClave: false });
+    return { success: true, message: "Listo, tu contraseña quedó guardada." };
   },
 
   /** Cambia la contraseña de la sesión abierta por el enlace de recuperación de Supabase Auth. */
@@ -2086,7 +2163,7 @@ export const adminController = {
     institucion_id: string;
     asignatura_principal_id?: number | null;
     activo?: boolean;
-  }): Promise<{ success: boolean; usuario?: UsuarioConDetalles; message: string }> {
+  }): Promise<{ success: boolean; usuario?: UsuarioConDetalles; claveTemporal?: ClaveTemporal; message: string }> {
     if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
     const cleanEmail = sanitizeInput(data.email_institucional).toLowerCase();
     const cleanNombre = sanitizeInput(data.nombre_completo);
@@ -2167,10 +2244,31 @@ export const adminController = {
       cleanEmail
     );
 
+    if (!client) {
+      return { success: true, usuario: newUser, message: `Usuario «${cleanNombre}» registrado${sufijoDemo()}.` };
+    }
+    if (!newUser.activo) {
+      return {
+        success: true,
+        usuario: newUser,
+        message: `Usuario «${cleanNombre}» registrado sin permiso. Actívalo y genera su contraseña temporal cuando deba entrar.`,
+      };
+    }
+
+    // La cuenta de acceso se crea en el mismo paso: el usuario puede entrar en cuanto recibe la clave
+    const acceso = await this.generarClaveTemporal(newUser.id);
+    if (!acceso.success || !acceso.claveTemporal) {
+      return {
+        success: true,
+        usuario: newUser,
+        message: `Usuario «${cleanNombre}» registrado, pero no pudimos crear su acceso: ${acceso.message} Usa «Contraseña temporal» en la lista para reintentar.`,
+      };
+    }
     return {
       success: true,
       usuario: newUser,
-      message: `Usuario «${cleanNombre}» registrado${sufijoDemo()}. Para que pueda entrar, crea su acceso con este mismo correo en Supabase (Authentication → Users).`,
+      claveTemporal: acceso.claveTemporal,
+      message: `Usuario «${cleanNombre}» creado con su acceso.`,
     };
   },
 
@@ -2326,39 +2424,35 @@ export const adminController = {
   },
 
   /**
-   * Genera una clave provisional / PIN de bienvenida para el docente.
+   * Crea la cuenta de acceso (o reemplaza su contraseña) con una contraseña temporal de 72 h.
+   * El usuario debe cambiarla en su primer ingreso. La clave solo se devuelve aquí, una vez.
    */
-  /**
-   * Envía al usuario un enlace de Supabase Auth para crear una contraseña nueva (/restablecer).
-   * El navegador no puede cambiar la contraseña de otra cuenta: eso solo lo hace el propio usuario.
-   */
-  async resetPassword(id: string): Promise<{ success: boolean; message: string }> {
-    const list = await this.getUsuarios();
-    const user = list.find((u) => u.id === id);
-    if (!user) return { success: false, message: "Usuario no encontrado." };
-
-    const client = clienteAdmin();
-    if (!client) {
-      return {
-        success: false,
-        message: "Sin conexión con el servidor no se envían correos. Vuelve a intentarlo cuando tengas conexión.",
-      };
+  async generarClaveTemporal(id: string): Promise<{ success: boolean; claveTemporal?: ClaveTemporal; message: string }> {
+    if (!esAdmin()) return { success: false, message: ACCESO_DENEGADO_ADMIN };
+    if (!clienteAdmin()) {
+      return { success: false, message: "Sin conexión con el servidor no se pueden crear accesos. Vuelve a intentarlo cuando tengas conexión." };
     }
+    const res = await llamarApiUsuarios<ClaveTemporal>({ accion: "generar-clave", usuarioId: id });
+    if ("error" in res) return { success: false, message: mensajeApiUsuarios(res.error) };
 
-    const { error } = await client.auth.resetPasswordForEmail(user.email_institucional, {
-      redirectTo: `${window.location.origin}/restablecer`,
-    });
-    if (error) {
-      console.warn(`[adminController] Envío de restablecimiento rechazado (${error.code}): ${error.message}`);
-      return { success: false, message: "No pudimos enviar el correo. Vuelve a intentarlo en unos minutos." };
-    }
-
+    const user = (await this.getUsuarios()).find((u) => u.id === id);
     recordAuditLog(
       "RESET_PASSWORD",
-      `Se envió un enlace para restablecer la contraseña de «${user.nombre_completo}».`,
-      user.email_institucional
+      `Se generó una contraseña temporal para «${user?.nombre_completo ?? id}».`,
+      user?.email_institucional
     );
-    return { success: true, message: `Enviamos a ${user.email_institucional} un enlace para crear una contraseña nueva.` };
+    return { success: true, claveTemporal: res.data, message: "Contraseña temporal generada." };
+  },
+
+  /** Estado de acceso de cada usuario (cuenta creada, primer ingreso pendiente o vencido). */
+  async getEstadosAcceso(): Promise<Record<string, EstadoAcceso>> {
+    if (!clienteAdmin()) return {};
+    const res = await llamarApiUsuarios<{ estados: Record<string, EstadoAcceso> }>({ accion: "estados" });
+    if ("error" in res) {
+      console.warn(`[adminController] No se pudieron leer los estados de acceso (${res.error}).`);
+      return {};
+    }
+    return res.data.estados;
   },
 
   /**
