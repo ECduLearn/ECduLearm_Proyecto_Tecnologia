@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import ZoneIcon from "@/components/ZoneIcon"
 import { aulasController, ejerciciosController } from "@/services/dbService"
 import { copyPinToClipboard, formatPin, generarPinAula } from "@/services/pinService"
+import { MAX_EJERCICIOS_AULA } from "@/models/limites"
 import type { Exercise } from "@/models/types"
 
 type Paso =
@@ -10,18 +11,45 @@ type Paso =
   | { tipo: "listo"; pin: string; soloEsteNavegador: boolean }
   | { tipo: "error"; mensaje: string }
 
+/** Ejercicio del chat que se puede publicar; `clave` lo identifica en la lista del asistente. */
+export interface OpcionPublicar {
+  clave: string
+
+  ejercicio: Exercise
+
+  publicado: boolean
+}
+
 export default function PublicarAulaDialog({
   onClose,
   onIrAlAsistente,
+  opciones,
+  seleccionInicial,
+  onPublicado,
 }: {
   onClose: () => void
   onIrAlAsistente: () => void
+  // Desde el asistente: ejercicios del chat para elegir. Sin opciones se publica el ejercicio activo.
+  opciones?: OpcionPublicar[]
+  seleccionInicial?: string | null
+  onPublicado?: (publicados: { clave: string; ejercicio: Exercise }[]) => void
 }) {
-  const [ejercicio] = useState<Exercise | null>(() => ejerciciosController.getEjercicioActivo())
-  const [titulo, setTitulo] = useState(ejercicio?.topic ?? "")
+  const [lista] = useState<OpcionPublicar[]>(() => {
+    if (opciones) return opciones
+    const activo = ejerciciosController.getEjercicioActivo()
+    return activo ? [{ clave: "activo", ejercicio: activo, publicado: false }] : []
+  })
+  const [elegidos, setElegidos] = useState<string[]>(() => {
+    const inicial = lista.find((o) => o.clave === seleccionInicial) ?? lista[0]
+    return inicial ? [inicial.clave] : []
+  })
+  const conLista = Boolean(opciones && lista.length > 1)
+  const marcados = lista.filter((o) => elegidos.includes(o.clave))
+  const [titulo, setTitulo] = useState(() => marcados[0]?.ejercicio.topic ?? "")
   const [paso, setPaso] = useState<Paso>({ tipo: "elegir" })
   const [copiado, setCopiado] = useState(false)
   const dialogo = useRef<HTMLElement>(null)
+  const enTope = elegidos.length >= MAX_EJERCICIOS_AULA
 
   useEffect(() => {
     dialogo.current?.querySelector<HTMLElement>("button, input")?.focus()
@@ -32,12 +60,25 @@ export default function PublicarAulaDialog({
     return () => window.removeEventListener("keydown", cerrarConEscape)
   }, [onClose])
 
+  const alternar = (clave: string) => {
+    setElegidos((actuales) => {
+      if (actuales.includes(clave)) return actuales.filter((c) => c !== clave)
+      if (actuales.length >= MAX_EJERCICIOS_AULA) return actuales
+      return [...actuales, clave]
+    })
+  }
+
   const publicar = async () => {
-    if (!ejercicio) return
+    if (!marcados.length) return
     setPaso({ tipo: "publicando" })
+    const nombre = titulo.trim() || marcados[0].ejercicio.topic
     // Un PIN aleatorio casi nunca choca, pero si ya existe se prueba con otro
     for (let intento = 0; intento < 3; intento++) {
-      const res = await aulasController.publicarAula(generarPinAula(), titulo.trim() || ejercicio.topic, ejercicio)
+      const res = await aulasController.publicarAula(
+        generarPinAula(),
+        nombre,
+        marcados.map((o) => o.ejercicio),
+      )
       if (res.motivo === "pin_ocupado") continue
       if (res.motivo === "error") {
         setPaso({ tipo: "error", mensaje: "No pudimos publicar la clase. Revisa tu conexión y vuelve a intentarlo." })
@@ -48,6 +89,7 @@ export default function PublicarAulaDialog({
       } catch {
         // El PIN igual se muestra en pantalla.
       }
+      onPublicado?.(marcados.map((o, i) => ({ clave: o.clave, ejercicio: res.ejercicios[i] ?? o.ejercicio })))
       setPaso({ tipo: "listo", pin: res.pin, soloEsteNavegador: res.isOffline })
       return
     }
@@ -67,7 +109,7 @@ export default function PublicarAulaDialog({
         aria-modal="true"
         aria-labelledby="publicar-titulo"
         onClick={(event) => event.stopPropagation()}
-        className="ui-pop relative w-full max-w-md rounded-[1.25rem] border border-sand-200 bg-sand-50 p-6 shadow-2xl sm:p-8"
+        className="ui-pop relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[1.25rem] border border-sand-200 bg-sand-50 p-6 shadow-2xl sm:p-8"
       >
         <button
           type="button"
@@ -80,7 +122,7 @@ export default function PublicarAulaDialog({
           </svg>
         </button>
 
-        {!ejercicio ? (
+        {!lista.length ? (
           <div className="pr-8">
             <h2 id="publicar-titulo" className="text-xl font-semibold text-sand-950">
               Primero crea un ejercicio
@@ -105,7 +147,10 @@ export default function PublicarAulaDialog({
             <p className="mt-6 rounded-2xl border border-sand-300 bg-sand-100/70 px-4 py-5 font-mono text-[2.5rem] font-medium tracking-[0.18em] text-ink-900">
               {formatPin(paso.pin)}
             </p>
-            <p className="mt-3 text-sm text-sand-600">Tus estudiantes lo escriben en la página de inicio, sin crear cuenta.</p>
+            <p className="mt-3 text-sm text-sand-600">
+              {marcados.length > 1 ? `Resolverán ${marcados.length} ejercicios, uno tras otro. ` : ""}
+              Tus estudiantes lo escriben en la página de inicio, sin crear cuenta.
+            </p>
             {paso.soloEsteNavegador && (
               <p className="mt-4 rounded-xl border border-hint-200 bg-hint-50 p-3 text-left text-sm leading-relaxed text-hint-900" role="status">
                 No pudimos guardar la clase en el servidor, así que este PIN solo funciona en este dispositivo.
@@ -127,15 +172,62 @@ export default function PublicarAulaDialog({
               Publicar en una clase
             </h2>
             <p className="mt-2 text-[0.9375rem] leading-relaxed text-sand-600">
-              Crearemos un PIN nuevo para que tus estudiantes resuelvan este ejercicio con el tutor.
+              {conLista
+                ? `Elige los ejercicios que resolverán tus estudiantes con el tutor, hasta ${MAX_EJERCICIOS_AULA}. Crearemos un PIN nuevo.`
+                : "Crearemos un PIN nuevo para que tus estudiantes resuelvan este ejercicio con el tutor."}
             </p>
 
-            <div className="mt-5 rounded-xl border border-sand-200 bg-sand-100/60 p-4">
-              <p className="text-xs font-medium text-sand-500">
-                {ejercicio.level} · {String(ejercicio.difficulty)}
-              </p>
-              <p className="mt-1 font-semibold text-sand-950">{ejercicio.topic}</p>
-            </div>
+            {conLista ? (
+              <fieldset className="mt-5">
+                <legend className="flex w-full items-center justify-between text-sm font-medium text-sand-800">
+                  <span>Ejercicios de este chat</span>
+                  <span className="text-xs font-semibold text-sand-500">
+                    {elegidos.length} de {MAX_EJERCICIOS_AULA}
+                  </span>
+                </legend>
+                <div className="mt-2 space-y-2">
+                  {lista.map((opcion) => {
+                    const marcado = elegidos.includes(opcion.clave)
+                    const bloqueado = !marcado && enTope
+                    return (
+                      <label
+                        key={opcion.clave}
+                        className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors duration-150 ${
+                          marcado ? "border-ink-400 bg-ink-50" : "border-sand-200 bg-sand-100/60 hover:bg-sand-100"
+                        } ${bloqueado ? "cursor-not-allowed opacity-60" : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={marcado}
+                          disabled={bloqueado || paso.tipo === "publicando"}
+                          onChange={() => alternar(opcion.clave)}
+                          className="mt-0.5 size-5 shrink-0 accent-ink-900"
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-sand-950">{opcion.ejercicio.topic}</span>
+                          <span className="mt-0.5 block text-xs text-sand-600">
+                            {opcion.ejercicio.level} · {String(opcion.ejercicio.difficulty)}
+                            {opcion.publicado ? " · Ya publicado en otra clase" : ""}
+                          </span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                {enTope && (
+                  <p className="mt-2 text-xs font-medium text-sand-600" role="status">
+                    Máximo {MAX_EJERCICIOS_AULA} ejercicios por clase.
+                  </p>
+                )}
+              </fieldset>
+            ) : (
+              <div className="mt-5 rounded-xl border border-sand-200 bg-sand-100/60 p-4">
+                <p className="text-xs font-medium text-sand-500">
+                  {lista[0].ejercicio.level} · {String(lista[0].ejercicio.difficulty)}
+                </p>
+                <p className="mt-1 font-semibold text-sand-950">{lista[0].ejercicio.topic}</p>
+              </div>
+            )}
 
             <label htmlFor="publicar-nombre" className="mt-5 block text-sm font-medium text-sand-800">
               Nombre que verán tus estudiantes
@@ -157,10 +249,16 @@ export default function PublicarAulaDialog({
             <button
               type="button"
               onClick={publicar}
-              disabled={paso.tipo === "publicando"}
+              disabled={paso.tipo === "publicando" || !marcados.length}
               className="mt-6 min-h-12 w-full rounded-xl bg-ink-950 px-5 font-semibold text-sand-50 transition-colors duration-150 hover:bg-ink-800 disabled:opacity-70"
             >
-              {paso.tipo === "publicando" ? "Creando el PIN…" : paso.tipo === "error" ? "Intentar otra vez" : "Crear PIN y publicar"}
+              {paso.tipo === "publicando"
+                ? "Creando el PIN…"
+                : paso.tipo === "error"
+                  ? "Intentar otra vez"
+                  : marcados.length > 1
+                    ? `Crear PIN y publicar ${marcados.length} ejercicios`
+                    : "Crear PIN y publicar"}
             </button>
           </div>
         )}
