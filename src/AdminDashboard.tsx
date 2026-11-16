@@ -10,6 +10,7 @@ import {
   type EstadoAcceso,
 } from "./services/dbService"
 import ClaveTemporalDialog, { type FaseClave } from "./components/ClaveTemporalDialog"
+import PanelUso from "./components/PanelUso"
 
 const ETIQUETA_ACCESO: Record<Exclude<EstadoAcceso, "activo">, string> = {
   pendiente: "Pendiente de primer ingreso",
@@ -49,7 +50,7 @@ export function AdminDashboard({
 
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] =
-    useState<"usuarios" | "instituciones" | "auditoria">("usuarios")
+    useState<"usuarios" | "instituciones" | "auditoria" | "uso">("usuarios")
 
   // Filtros de búsqueda para usuarios
   const [searchQuery, setSearchQuery] = useState("")
@@ -644,7 +645,7 @@ export function AdminDashboard({
           </div>
 
           {/* 4. Selector de Pestañas Principales */}
-          <div className="mt-7 flex items-center gap-2 border-b border-sand-300 pb-px">
+          <div className="mt-7 flex items-center gap-2 overflow-x-auto border-b border-sand-300 pb-px">
             <button
               type="button"
               onClick={() => setActiveTab("usuarios")}
@@ -688,6 +689,18 @@ export function AdminDashboard({
               <span className="rounded-full bg-sand-200 px-2 py-0.5 text-[10px] font-semibold">
                 {auditLogs.length}
               </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("uso")}
+              className={`flex shrink-0 items-center gap-2 px-4 py-2.5 text-xs font-bold transition border-b-2 ${
+                activeTab === "uso"
+                  ? "border-ink-950 text-ink-950"
+                  : "border-transparent text-sand-600 hover:text-sand-900"
+              }`}
+            >
+              <span>📈 Uso de la plataforma</span>
             </button>
           </div>
         </div>
@@ -1063,6 +1076,8 @@ export function AdminDashboard({
             </div>
           </div>
         )}
+
+        {activeTab === "uso" && <PanelUso />}
 
         {/* Pestaña 3: Auditoría & Cumplimiento */}
         {activeTab === "auditoria" && (

@@ -486,7 +486,8 @@ export function LandingPage({ onEnterApp, onStudentEnter }: LandingPageProps) {
                   <p className="mt-2">
                     De acuerdo con el Código de la Niñez y Adolescencia y la LOPDP, ECduLearn no pide, guarda ni procesa
                     información que identifique a un estudiante. El acceso a las actividades y al tutor es solo con un PIN
-                    temporal de 6 caracteres.
+                    temporal de 6 caracteres. Para mejorar la plataforma contamos las visitas de forma anónima, sin
+                    cookies ni datos que identifiquen a nadie.
                   </p>
                 </section>
                 <section>

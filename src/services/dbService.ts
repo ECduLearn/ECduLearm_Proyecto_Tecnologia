@@ -318,6 +318,17 @@ async function llamarApiUsuarios<T>(cuerpo: Record<string, unknown>): Promise<{ 
 
 export type EstadoAcceso = "activo" | "pendiente" | "vencida" | "sin_acceso";
 
+// Uso de la plataforma (api/usuarios, acción «uso»): cifras agregadas, sin datos personales
+export interface UsoPlataforma {
+  generadoEn: string;
+  docentes: { total: number; hoy: number; semana: number; mes: number; pendientes: number };
+  estudiantes: { ahora: number; hoy: number; semana: number; mes: number };
+  ultimos30: { ejercicios: number; mensajesTutor: number; copiasBloqueadas: number; pistas: number; retosResueltos: number };
+  aulasActivas: number;
+  serie: { fecha: string; sesiones: number; ejercicios: number; mensajesTutor: number }[];
+  colegios: { id: string; nombre: string; docentes: number; docentesActivos: number; sesiones: number; ejercicios: number }[];
+}
+
 export interface ClaveTemporal {
   clave: string;
   expira: string;
@@ -2442,6 +2453,15 @@ export const adminController = {
       user?.email_institucional
     );
     return { success: true, claveTemporal: res.data, message: "Contraseña temporal generada." };
+  },
+
+  /** Usuarios activos y uso de la plataforma en los últimos 30 días (solo administración). */
+  async getUsoPlataforma(): Promise<{ estado: "ok"; uso: UsoPlataforma } | { estado: "error"; mensaje: string }> {
+    if (!esAdmin()) return { estado: "error", mensaje: ACCESO_DENEGADO_ADMIN };
+    if (!clienteAdmin()) return { estado: "error", mensaje: mensajeApiUsuarios("sin_conexion") };
+    const res = await llamarApiUsuarios<UsoPlataforma>({ accion: "uso" });
+    if ("error" in res) return { estado: "error", mensaje: mensajeApiUsuarios(res.error) };
+    return { estado: "ok", uso: res.data };
   },
 
   /** Estado de acceso de cada usuario (cuenta creada, primer ingreso pendiente o vencido). */

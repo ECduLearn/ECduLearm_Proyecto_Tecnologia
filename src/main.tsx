@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
+import { Analytics } from '@vercel/analytics/react'
 import App from './App'
 import CargandoVista from './components/CargandoVista'
 import './index.css'
@@ -9,6 +10,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Suspense fallback={<CargandoVista />}>
       <App />
     </Suspense>
+    {/* Visitas anónimas, sin cookies; el script solo existe en los despliegues de Vercel */}
+    {import.meta.env.PROD && !location.hostname.endsWith('github.io') && <Analytics />}
   </React.StrictMode>,
 )
 
